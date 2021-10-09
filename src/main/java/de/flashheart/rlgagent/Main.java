@@ -52,7 +52,6 @@ public class Main {
 
         Options opts = new Options();
         opts.addOption("h", "help", false, "show help");
-        opts.addOption("w", "workspace", true, String.format("defines the workspace folder (for configs and log files) to be used. default folder is '<user.home>/%s'", PROJECT));
 
         DefaultParser parser = new DefaultParser();
         CommandLine cl = null;
@@ -103,11 +102,17 @@ public class Main {
 
     }
 
-
+    /**
+     * we are working with 4 hardware abstractions here. they are all Optionals, because the agent
+     * may not be necessarily running on a Raspi.
+     * <ul>
+     *     <li>gpioController</li>
+     *     <li>i2CBus</li>
+     *     <li>lcd_hardware</li>
+     *     <li>mcp23017_1</li> - not currently in use by the rlgagent hat. "but we could if we wanted to"
+     * </ul>
+     */
     private static void initHardware() {
-
-        // Zuerst mal alles an Hardware auf leer setzen.
-        // Ich arbeite hier immer mit Optionals. So brauche ich die NULLs nicht mehr abzufangen.
         gpioController = Optional.empty();
         i2CBus = Optional.empty();
         lcd_hardware = Optional.empty();
