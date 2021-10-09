@@ -1,0 +1,53 @@
+2021-08-22 11:33:11,483 DEBUG d.f.r.h.a.MyPin [de.flashheart.rlgagent.Main.main()] adding MyPin led_wht
+2021-08-22 11:33:11,495 DEBUG d.f.r.h.a.MyLCD [Thread-3] wifi: 0
+2021-08-22 11:33:11,496 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:11,514 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:11,533 DEBUG d.f.r.h.a.MyPin [de.flashheart.rlgagent.Main.main()] adding MyPin led_red
+2021-08-22 11:33:11,545 DEBUG d.f.r.h.a.MyPin [de.flashheart.rlgagent.Main.main()] adding MyPin led_ylw
+2021-08-22 11:33:11,553 DEBUG d.f.r.h.a.MyPin [de.flashheart.rlgagent.Main.main()] adding MyPin led_grn
+2021-08-22 11:33:11,561 DEBUG d.f.r.h.a.MyPin [de.flashheart.rlgagent.Main.main()] adding MyPin led_blu
+2021-08-22 11:33:12,036 INFO d.f.r.g.MyTerminal [de.flashheart.rlgagent.Main.main()] broker @tcp://mqtt:1883
+2021-08-22 11:33:12,041 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:12,051 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:12,084 INFO d.f.r.g.MyTerminal [de.flashheart.rlgagent.Main.main()] I am ag02
+2021-08-22 11:33:12,122 DEBUG d.f.r.h.p.PinBlinkModel [de.flashheart.rlgagent.Main.main()] ∞:on,350;off,3700
+2021-08-22 11:33:12,123 DEBUG d.f.r.h.p.PinBlinkModel [de.flashheart.rlgagent.Main.main()] ∞:off,350;on,350;off,3350
+2021-08-22 11:33:12,123 DEBUG d.f.r.h.p.PinBlinkModel [de.flashheart.rlgagent.Main.main()] ∞:off,700;on,350;off,3000
+2021-08-22 11:33:12,123 DEBUG d.f.r.h.p.PinBlinkModel [pool-3-thread-1] 2021-08-22T11:33:12.123150 working on:led_wht]  onOffScheme.size()=2
+2021-08-22 11:33:12,123 DEBUG d.f.r.h.p.PinBlinkModel [pool-3-thread-2] 2021-08-22T11:33:12.123462 working on:led_red]  onOffScheme.size()=3
+2021-08-22 11:33:12,123 DEBUG d.f.r.h.p.PinBlinkModel [de.flashheart.rlgagent.Main.main()] ∞:off,1050;on,350;off,2650
+2021-08-22 11:33:12,123 DEBUG d.f.r.h.p.PinBlinkModel [pool-3-thread-3] 2021-08-22T11:33:12.123651 working on:led_ylw]  onOffScheme.size()=3
+2021-08-22 11:33:12,123 DEBUG d.f.r.h.p.PinBlinkModel [de.flashheart.rlgagent.Main.main()] ∞:off,1400;on,350;off,2300
+2021-08-22 11:33:12,124 DEBUG d.f.r.h.p.PinBlinkModel [pool-3-thread-4] 2021-08-22T11:33:12.123957 working on:led_grn]  onOffScheme.size()=3
+2021-08-22 11:33:12,124 DEBUG d.f.r.h.p.PinBlinkModel [pool-3-thread-5] 2021-08-22T11:33:12.124299 working on:led_blu]  onOffScheme.size()=3
+2021-08-22 11:33:12,574 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:12,576 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:13,084 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:13,088 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:13,600 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:13,603 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:14,114 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:14,119 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:14,633 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:14,640 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:15,155 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:15,161 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:15,675 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:15,681 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:16,195 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:16,210 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:16,748 DEBUG d.f.r.h.a.MyLCD [Thread-3] wifi: 5
+2021-08-22 11:33:16,748 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:16,751 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:17,264 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:17,271 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:17,785 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:17,792 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:18,306 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:18,309 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:18,823 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:18,826 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:19,335 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:19,338 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
+2021-08-22 11:33:19,851 DEBUG d.f.r.g.MyTerminal [Thread-3] W5 / ag02       
+2021-08-22 11:33:19,854 DEBUG d.f.r.g.MyTerminal [Thread-3] NO GAMETIME INFO
