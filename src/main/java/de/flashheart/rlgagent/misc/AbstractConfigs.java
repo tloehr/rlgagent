@@ -17,7 +17,7 @@ public abstract class AbstractConfigs {
     public static final String MYUUID = "uuid";
 
     protected final String CONFIGFILE;
-    protected final String WORKINGPATH;
+
     protected final SortedProperties configs;
     protected final Properties buildContext;
 
@@ -25,17 +25,11 @@ public abstract class AbstractConfigs {
 
     public abstract void loadDefaults();
 
-    public String getWORKINGPATH() {
-        return WORKINGPATH;
-    }
-
     protected AbstractConfigs(String workingpath) throws IOException {
-        WORKINGPATH = workingpath;
-        CONFIGFILE = WORKINGPATH + File.separator + "config.txt";
+        CONFIGFILE = workingpath + File.separator + "config.txt";
 
         configs = new SortedProperties(); // Einstellungen, die verändert werden
         buildContext = new Properties(); // inhalte der build.properties (von Maven)
-
 
         // configdatei einlesen
         loadDefaults(); // defaults from the inheriting classes
@@ -67,7 +61,7 @@ public abstract class AbstractConfigs {
         configFile.createNewFile(); // falls nicht vorhanden
 
         FileInputStream in = new FileInputStream(configFile);
-        Properties p = new SortedProperties();
+        SortedProperties p = new SortedProperties();
         p.load(in);
         configs.putAll(p);
         p.clear();
