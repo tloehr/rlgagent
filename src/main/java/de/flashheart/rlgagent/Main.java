@@ -49,7 +49,7 @@ public class Main {
     }
 
     private static void initBaseSystem(String[] args) throws IOException {
-
+        if (System.getProperty("workspace") == null) System.setProperty("workspace", Tools.getWorkingPath(PROJECT));
         Options opts = new Options();
         opts.addOption("h", "help", false, "show help");
 
@@ -70,8 +70,6 @@ public class Main {
             f.printHelp(PROJECT + ".jar [OPTION]", PROJECT, opts, footer);
             System.exit(0);
         }
-
-        if (System.getProperty("workspace") == null) System.setProperty("workspace", Tools.getWorkingPath(PROJECT));
 
         configs = new Configs();
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
@@ -152,7 +150,7 @@ public class Main {
             });
         }
 
-        myLCD = new MyLCD(16, 2, myUI, configs, lcd_hardware);
+        myLCD = new MyLCD(myUI, configs, lcd_hardware);
         myLCD.setLine(0, 1, PROJECT + " V" + configs.getBuildInfo("my.version"));
         myLCD.setLine(0, 2, "build " + configs.getBuildInfo("buildNumber"));
     }

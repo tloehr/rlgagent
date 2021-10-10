@@ -133,21 +133,21 @@ public class RLGAgent implements MqttCallbackExtended {
             bnt01.setDebounce(DEBOUNCE);
             bnt01.addListener((GpioPinListenerDigital) event -> {
                 if (event.getState() != PinState.LOW) return;
-                publishMessage("btn01");
+                publishMessage(new JSONObject().put("button_pressed", "btn01").toString());
             });
 
             GpioPinDigitalInput bnt02 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN02)), PinPullResistance.PULL_UP);
             bnt02.setDebounce(DEBOUNCE);
             bnt02.addListener((GpioPinListenerDigital) event -> {
                 if (event.getState() != PinState.LOW) return;
-                publishMessage("btn02");
+                publishMessage(new JSONObject().put("button_pressed", "btn02").toString());
             });
         });
 
         // Software Buttons
         myUI.ifPresent(myUI1 -> {
-            myUI1.addActionListenerToBTN01(e -> publishMessage("btn01"));
-            myUI1.addActionListenerToBTN02(e -> publishMessage("btn02"));
+            myUI1.addActionListenerToBTN01(e -> publishMessage(new JSONObject().put("button_pressed", "btn01").toString()));
+            myUI1.addActionListenerToBTN02(e -> publishMessage(new JSONObject().put("button_pressed", "btn02").toString()));
         });
 
     }
@@ -308,19 +308,19 @@ public class RLGAgent implements MqttCallbackExtended {
         myUI.ifPresent(myUI1 -> myUI1.addLog(text));
         log.info(text);
     }
+//    private void publishMessage(String event) {
+//        publishMessage(event, Optional.empty());
+//    }
 
-    private void publishMessage(String event) {
-        publishMessage(event, Optional.empty());
-    }
-
-    private void publishMessage(String event, Optional<String> payload) {
+    private void publishMessage(String payload) {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             try {
                 MqttMessage msg = new MqttMessage();
                 msg.setQos(2);
                 msg.setRetained(true);
-                payload.ifPresent(string -> msg.setPayload(string.getBytes()));
-                iMqttClient.get().publish(TOPIC_EVENT_FROM_ME + event, msg);
+                msg.setPayload(payload.getBytes());
+                //payload.ifPresent(string -> msg.setPayload(string.getBytes()));
+                iMqttClient.get().publish(TOPIC_EVENT_FROM_ME, msg);
                 addLog(TOPIC_EVENT_FROM_ME);
             } catch (MqttException mqe) {
                 log.warn(mqe);
@@ -389,10 +389,7 @@ public class RLGAgent implements MqttCallbackExtended {
         me.setWifi(Tools.getWifiSignalStrength(configs.get(Configs.WIFI_CMD_LINE)));
         myLCD.setWifiQuality(me.getWifi());
 
-        publishMessage(
-                "status",
-                Optional.of(me.toJson().toString())
-        );
+        publishMessage(new JSONObject().put("status",me.toJson()).toString());
     }
 
 

@@ -22,6 +22,8 @@ public class Configs extends AbstractConfigs {
     public static final String IN_BTN01 = "btn01";
     public static final String IN_BTN02 = "btn02";
     public static final String LCD_I2C_ADDRESS = "lcd_i2c_address";
+    public static final String LCD_ROWS = "lcd_rows";
+    public static final String LCD_COLS = "lcd_cols";
     public static final String MCP23017_I2C_ADDRESS = "mcp23017_i2c_address";
     public static final String LOGLEVEL = "loglevel";
     // to notify the commander about my capabilities
@@ -67,6 +69,9 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(HAS_MATRIX_DISPLAY, "false");
         configs.setProperty(HAS_RFID, "false");
         configs.setProperty(HAS_SOUND, "false");
+
+        configs.setProperty(LCD_COLS, "20");
+        configs.setProperty(LCD_ROWS, "4");
 
         configs.setProperty(LOGLEVEL, Level.DEBUG.name());
 

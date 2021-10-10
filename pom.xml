@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>de.flashheart</groupId>
-    <artifactId>rlg-agent</artifactId>
+    <artifactId>rlgagent</artifactId>
     <version>0.9</version>
 
 
@@ -14,7 +14,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <exec.mainClass>de.flashheart.rlgagent.Main</exec.mainClass>
-
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <pi.host>raspi2.fritz.box</pi.host>
         <pi.port>22</pi.port>
         <pi.user>pi</pi.user>

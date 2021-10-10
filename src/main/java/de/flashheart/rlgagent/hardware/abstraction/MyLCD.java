@@ -52,9 +52,9 @@ public class MyLCD implements Runnable {
     private final Configs configs;
     private int wifiQuality = 0; // 0 bis 6. 6 ist die beste
 
-    public MyLCD(int cols, int rows, Optional<MyUI> myUI, Configs configs, Optional<I2CLCD> i2CLCD) {
-        this.cols = cols;
-        this.rows = rows;
+    public MyLCD( Optional<MyUI> myUI, Configs configs, Optional<I2CLCD> i2CLCD) {
+        this.cols = Integer.parseInt(configs.get(Configs.LCD_COLS));
+        this.rows =  Integer.parseInt(configs.get(Configs.LCD_ROWS));
         this.myUI = myUI;
         this.configs = configs;
         this.i2CLCD = i2CLCD;

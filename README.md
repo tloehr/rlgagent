@@ -30,3 +30,49 @@ With
 
 In addition to the two standard topics, a commander can instruct agents to listen to more topics, so it can combine agent to more "logic groups".
 
+### Commands
+Commands are MQTT messages received from the commander module. The details are sent in the payload part as JSON Objects.
+
+#### Signals
+Signals are LED blinking schemes, siren sounds and buzzer notifications. Signal schemes are lists of **on** and **off** times (in milliseconds) for the specific raspi pin. Every list is preceded by the number of repeats. If a scheme should go on forever (until changed), the repeat number can be replaced by the infinity sign ∞.
+
+The following devices are recognized:
+- buzzer
+- led_wht
+- led_red
+- led_ylw
+- led_grn
+- led_blu
+- sir1
+- sir2
+- sir3
+
+Two "group" devices can also be addressed.
+- led_all - All LEDs
+- sir_all - All Sirens (Buzzer not included)
+
+Use "0:" or the word "off" to turn off a scheme.
+
+A JSON which turns off the buzzer and then let it sound two times (75 ms) looks like this:
+
+`{"signal": {buzzer: ["off", "2:on,75;off,75"]}}`
+
+If we want to turn off all LEDs and let them blink every second until further notice we would send this:
+
+`{"signal": {led_all: ["off", "∞:on,1000;off,1000"]}}`
+
+We can combine several pin scheme commands in one signal complex: 
+
+`{"signal": {led_all: ["off", "∞:on,1000;off,1000"], {buzzer: ["off", "2:on,75;off,75"]}}}`
+
+#### Displays
+
+##### Line Display
+Agents can handle LCD displays driven by the [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) controller chip. LCDs with line/col dimensions of 16x2 and 20x4 are supported.
+
+To change the display output, use the following command syntax: `{"line_display": ['Rot: 123','Blau: 90']}'`
+
+##### Matrix Displays
+Matrix displays based on stripes of WS2812 LEDs are planned but not yet implemented.
+
+### Events
