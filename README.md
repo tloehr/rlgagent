@@ -75,4 +75,14 @@ To change the display output, use the following command syntax: `{"line_display"
 ##### Matrix Displays
 Matrix displays based on stripes of WS2812 LEDs are planned but not yet implemented.
 
+#### Additional Subscriptions
+In order to reduce the amount of messages sent in a short time period, we can order agents to subscribe to additional functional channels, like "sirens", "leds" etc.
+
+`{"subscribe_to": ["sirens","leds"]}`
+
+An agent receiving the above command, will unsubscribe from all existing additional subscriptions and subscribe to "sirens" and "leds".
+
 ### Events
+The agent currently sends 2 different types of events.
+1. Notifications about pressed buttons. The agent handles two buttons, but only button 1 is in use. The second button was implemented for later usage. Example: `{"button_pressed":"btn01"}`
+2. Status reports about the current state of the agent, to be considered by the commander module. example: `{"status":{"gameid":"g1","has_rfid":false,"agentid":"ag01","wifi":3,"has_line_display":true,"has_sirens":false,"has_sound":false,"has_leds":true,"has_matrix_display":false,"timestamp":"2021-10-11T15:30:49.345767+02:00[Europe/Berlin]"}}` 

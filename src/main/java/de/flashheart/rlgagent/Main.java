@@ -49,27 +49,35 @@ public class Main {
     }
 
     private static void initBaseSystem(String[] args) throws IOException {
-        if (System.getProperty("workspace") == null) System.setProperty("workspace", Tools.getWorkingPath(PROJECT));
         Options opts = new Options();
         opts.addOption("h", "help", false, "show help");
-
+        //opts.addOption("w", "workspace", true, "specficy workspace folder for config and log files. default (if omitted): " + Tools.getWorkingPath(PROJECT));
         DefaultParser parser = new DefaultParser();
         CommandLine cl = null;
         String footer = "https://www.flashheart.de";
+
+        String jarname = new java.io.File(RLGAgent.class.getProtectionDomain()
+                .getCodeSource()
+                .getLocation()
+                .getPath())
+                .getName();
 
         try {
             cl = parser.parse(opts, args);
         } catch (ParseException ex) {
             HelpFormatter f = new HelpFormatter();
-            f.printHelp(PROJECT + ".jar [OPTION]", PROJECT, opts, footer);
+            f.printHelp(jarname + ".jar [OPTION]", PROJECT, opts, footer);
             System.exit(0);
         }
 
         if (cl.hasOption("h")) {
             HelpFormatter f = new HelpFormatter();
-            f.printHelp(PROJECT + ".jar [OPTION]", PROJECT, opts, footer);
+            f.printHelp(jarname + ".jar [OPTION]", PROJECT, opts, footer);
             System.exit(0);
         }
+
+//        if (cl.hasOption("w")) System.setProperty("workspace", cl.getOptionValue("w"));
+//        else System.setProperty("workspace", Tools.getWorkingPath(PROJECT));
 
         configs = new Configs();
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
@@ -101,8 +109,8 @@ public class Main {
     }
 
     /**
-     * we are working with 4 hardware abstractions here. they are all Optionals, because the agent
-     * may not be necessarily running on a Raspi.
+     * we are working with 4 hardware abstractions here. they are all Optionals, because the agent may not be
+     * necessarily running on a Raspi.
      * <ul>
      *     <li>gpioController</li>
      *     <li>i2CBus</li>
@@ -121,7 +129,7 @@ public class Main {
             try {
                 i2CBus = Optional.of(I2CFactory.getInstance(I2CBus.BUS_1));
             } catch (I2CFactory.UnsupportedBusNumberException | IOException e) {
-                log.error(e);
+                log.warn(e);
                 i2CBus = Optional.empty();
             }
 
@@ -129,12 +137,12 @@ public class Main {
             i2CBus.ifPresent(i2CBus1 -> {
                 try {
                     I2CDevice device = i2CBus.get().getDevice(Integer.decode(configs.get(Configs.LCD_I2C_ADDRESS)));
-                    device.read(); // nur um zu prüfen ob das Device auch da ist. provoziert eine IOE
+                    device.read(); // to make sure the device is available. Will produce an Exception otherwise.
                     lcd_hardware = Optional.of(new I2CLCD(device));
                     lcd_hardware.get().init();
                     lcd_hardware.get().backlight(true);
                 } catch (IOException e) {
-                    log.error(e);
+                    log.warn(e);
                     lcd_hardware = Optional.empty();
                 }
             });
@@ -144,7 +152,7 @@ public class Main {
                 try {
                     mcp23017_1 = Optional.of(new MCP23017GpioProvider(i2CBus.get(), Integer.decode(configs.get(Configs.MCP23017_I2C_ADDRESS))));
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.warn(e);
                     mcp23017_1 = Optional.empty();
                 }
             });

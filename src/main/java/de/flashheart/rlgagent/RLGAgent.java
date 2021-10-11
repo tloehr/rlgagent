@@ -196,6 +196,7 @@ public class RLGAgent implements MqttCallbackExtended {
      * @param receivedMessage
      */
     private void processCommand(MqttMessage receivedMessage) {
+        log.debug(receivedMessage);
         //String payload = new String(receivedMessage.getPayload());
         //JSONObject json = new JSONObject(payload);
 //        Properties props = new Properties();
@@ -257,35 +258,22 @@ public class RLGAgent implements MqttCallbackExtended {
                         myLCD.setRemaining(cmds.getLong(key));
                         break;
                     }
-//                    case "init": { // remove all subscriptions
-//                        extra_subscriptions.forEach(s -> {
-//                            try {
-//                                iMqttClient.get().unsubscribe(s);
-//                            } catch (MqttException e) {
-//                                log.warn(e);
-//                            }
-//                        });
-//                        extra_subscriptions.clear();
-//                        break;
-//                    }
+                    case "init": { // remove all subscriptions
+                        unsubscribe_from_extras();
+                        break;
+                    }
                     case "subscribe_to": {
-                        extra_subscriptions.forEach(s -> {
-                            try {
-                                iMqttClient.get().unsubscribe(s);
-                                log.debug("unsubscribing from {}", s);
-                            } catch (MqttException e) {
-                                log.warn(e);
-                            }
-                        });
-                        extra_subscriptions.clear();
+                        //unsubscribe_from_extras();
                         final JSONArray subs = cmds.getJSONArray(key);
                         for (int isub = 0; isub < subs.length(); isub++) {
-                            log.debug(subs.getString(isub));
-                            String extra_subscription = String.format("%s/%s", TOPIC_PREFIX, subs.getString(isub));
                             try {
-                                iMqttClient.get().subscribe(extra_subscription, (topic, msg) -> processCommand(msg));
-                                extra_subscriptions.add(extra_subscription);
-                                log.debug("extra subscribing to {}", extra_subscription);
+                                log.debug(subs.getString(isub));
+                                String additional = String.format("%s/%s", TOPIC_PREFIX, subs.getString(isub));
+                                if (!extra_subscriptions.contains(additional)) {
+                                    iMqttClient.get().subscribe(additional, (topic, msg) -> processCommand(msg));
+                                    extra_subscriptions.add(additional);
+                                    log.debug("subscribing to {}", additional);
+                                }
                             } catch (MqttException e) {
                                 log.warn(e);
                             }
@@ -302,6 +290,18 @@ public class RLGAgent implements MqttCallbackExtended {
             log.warn(e);
         }
 
+    }
+
+    private void unsubscribe_from_extras() {
+        log.debug("removing all additional subscriptions");
+        extra_subscriptions.forEach(s -> {
+            try {
+                iMqttClient.get().unsubscribe(s);
+            } catch (MqttException e) {
+                log.warn(e);
+            }
+        });
+        extra_subscriptions.clear();
     }
 
     private void addLog(String text) {
@@ -334,26 +334,18 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     private void waitForCommander() {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
-//            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,350;off,3700");
-//            pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,350;on,350;off,3350");
-//            pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,700;on,350;off,3000");
-//            pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1050;on,350;off,2650");
-//            pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1400;on,350;off,2300");
-
-            // neuer ansatz JSON pinhandler {repeat}
-            //  "repeat": 2,
-            //  scheme: [
-            //    {"on:500","off:500},{"on:500","off:500},{"on:500","off:500}
-            //    ]
-
-            //JSONObject jsonObject = new JSONObject().put("repeat",2).put(new JSONArray(2).);
+            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,350;off,3700");
+            pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,350;on,350;off,3350");
+            pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,700;on,350;off,3000");
+            pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1050;on,350;off,2650");
+            pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1400;on,350;off,2300");
 
 
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,400;on,0;off,2800");
-            pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,400;on,400;off,2000;on,400");
-            pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,800;on,400;off,1200;on,400;off,400");
-            pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1200;on,400;off,400;on,400;off,800");
-            pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1600;on,400;off,1200");
+//            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,400;on,0;off,2800");
+//            pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,400;on,400;off,2000;on,400");
+//            pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,800;on,400;off,1200;on,400;off,400");
+//            pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1200;on,400;off,400;on,400;off,800");
+//            pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1600;on,400;off,1200");
 
             myLCD.setLine(lcdPage, 1, "waiting for");
             myLCD.setLine(lcdPage, 2, "commander");
@@ -389,7 +381,7 @@ public class RLGAgent implements MqttCallbackExtended {
         me.setWifi(Tools.getWifiSignalStrength(configs.get(Configs.WIFI_CMD_LINE)));
         myLCD.setWifiQuality(me.getWifi());
 
-        publishMessage(new JSONObject().put("status",me.toJson()).toString());
+        publishMessage(new JSONObject().put("status", me.toJson()).toString());
     }
 
 
