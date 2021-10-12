@@ -34,7 +34,13 @@ In addition to the two standard topics, a commander can instruct agents to liste
 Commands are MQTT messages received from the commander module. The details are sent in the payload part as JSON Objects.
 
 #### Signals
-Signals are LED blinking schemes, siren sounds and buzzer notifications. Signal schemes are lists of **on** and **off** times (in milliseconds) for the specific raspi pin. Every list is preceded by the number of repeats. If a scheme should go on forever (until changed), the repeat number can be replaced by the infinity sign ∞.
+Signals are "on/off" schemes for specified pins of the Raspberry Pi. We use a PCB hat, to connect 12V LED Stripes, relay driven 12V sirens and a 12 V buzzers to send out notifications.
+
+Signal schemes are lists of **on** and **off** times (in milliseconds) for the specific raspi pin. Every list is preceded by the number of repeats. If a scheme should go on forever (until changed), the repeat_count can be replaced by the infinity sign ∞ (in fact, there is no infinity, it is Long.MAX_VALUE, but for our purpose this would take forever). A repeat_count of 0, turns off the signal. Like so: "0:" or the word "off" (which is also understood).
+
+The syntax of the scheme is: `<repeat_count>:[on|off],<period_in_ms>;[on|off],<period_in_ms>`
+
+The agent abstracts devices from their GPIO counterparts on the Raspi. The DEVICE-to-GPIO assignment is stored in the config.txt and can be changed, if You use a different connection approach as to use our PCB.
 
 The following devices are recognized:
 - buzzer
@@ -51,19 +57,19 @@ Two "group" devices can also be addressed.
 - led_all - All LEDs
 - sir_all - All Sirens (Buzzer not included)
 
-Use "0:" or the word "off" to turn off a scheme.
-
 A JSON which turns off the buzzer and then let it sound two times (75 ms) looks like this:
 
-`{"signal": {buzzer: ["off", "2:on,75;off,75"]}}`
+`{"signal": {buzzer: "off", "2:on,75;off,75"}}`
 
-If we want to turn off all LEDs and let them blink every second until further notice we would send this:
+If we want to let all LEDs blink every second (until further notice), we would send this:
 
-`{"signal": {led_all: ["off", "∞:on,1000;off,1000"]}}`
+`{"signal": {led_all: "∞:on,1000;off,1000"}}`
 
-We can combine several pin scheme commands in one signal complex: 
+We can combine several messages into one combined command. Because of the nature of the JSON Objects, only one device can be adressed in every message. But thats enough. I couldn't think of a scenario where we would want to send 2 different pin schemes to the same device. The first scheme would be overwritten immediately. 
 
-`{"signal": {led_all: ["off", "∞:on,1000;off,1000"], {buzzer: ["off", "2:on,75;off,75"]}}}`
+
+Example for "turn all the LEDs off, and sound the buzzer quickly 2 times."
+`{"signal": {led_all: "off", buzzer: "2:on,75;off,75"}}`
 
 #### Displays
 
@@ -78,9 +84,13 @@ Matrix displays based on stripes of WS2812 LEDs are planned but not yet implemen
 #### Additional Subscriptions
 In order to reduce the amount of messages sent in a short time period, we can order agents to subscribe to additional functional channels, like "sirens", "leds" etc.
 
-`{"subscribe_to": ["sirens","leds"]}`
+`{"subscribe_to": "sirens"}`
+`{"subscribe_to": "leds"}`
 
-An agent receiving the above command, will unsubscribe from all existing additional subscriptions and subscribe to "sirens" and "leds".
+The name of the groups is not preset. The commander can choose the group names as needed.
+
+`{"init": ""}`
+An agent receiving the above command, will unsubscribe from all existing additional subscriptions.
 
 ### Events
 The agent currently sends 2 different types of events.

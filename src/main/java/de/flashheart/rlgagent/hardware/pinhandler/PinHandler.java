@@ -16,7 +16,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Log4j2
 public class PinHandler {
-    public static final String FOREVER = "∞";
 
     final ReentrantLock lock;
     final HashMap<String, GenericBlinkModel> pinMap;

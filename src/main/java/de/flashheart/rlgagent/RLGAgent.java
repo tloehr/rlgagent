@@ -11,6 +11,7 @@ import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
 import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
+import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
@@ -21,9 +22,9 @@ import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -41,12 +42,12 @@ public class RLGAgent implements MqttCallbackExtended {
     private final Configs configs;
     private final MyLCD myLCD;
     private Optional<IMqttClient> iMqttClient;
-    int lcdPage;
+    int lcdPage = 0;
     private final JobKey myStatusJobKey, myConnectionJobKey;
     private final Scheduler scheduler;
     private final Agent me;
     private SimpleTrigger connectionTrigger;
-    private List<String> extra_subscriptions;
+    private HashSet<String> group_channels; // to keep track of additional subscriptions
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         this.myUI = myUI;
@@ -55,11 +56,13 @@ public class RLGAgent implements MqttCallbackExtended {
         this.configs = configs;
         this.myLCD = myLCD;
 
+        String wifiResponse = Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE));
+
         me = new Agent(new JSONObject()
                 .put("agentid", configs.get(Configs.MY_ID))
                 .put("gameid", configs.get(Configs.GAME_ID))
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
-                .put("wifi", Tools.getWifiSignalStrength(configs.get(Configs.WIFI_CMD_LINE))) // Tools.getWifiSignalStrength()
+                .put("wifi_response_by_driver", wifiResponse)
                 .put(Configs.HAS_SIRENS, configs.get(Configs.HAS_SIRENS, "false"))
                 .put(Configs.HAS_LEDS, configs.get(Configs.HAS_LEDS, "false"))
                 .put(Configs.HAS_LINE_DISPLAY, configs.get(Configs.HAS_LINE_DISPLAY, "false"))
@@ -76,11 +79,11 @@ public class RLGAgent implements MqttCallbackExtended {
         TOPIC_CMD_ME = String.format("%s/%s", TOPIC_PREFIX, configs.get(Configs.MY_ID));
         TOPIC_CMD_ALL = String.format("%s/all", TOPIC_PREFIX);
         TOPIC_EVENT_FROM_ME = String.format("%s/evt/%s/", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
-        extra_subscriptions = new ArrayList<>();
+        group_channels = new HashSet();
         myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
 
-        lcdPage = myLCD.addPage();
+        //lcdPage = myLCD.addPage();
         myLCD.setLine(lcdPage, 1, "Ready 4");
         myLCD.setLine(lcdPage, 2, "Action");
 
@@ -94,6 +97,10 @@ public class RLGAgent implements MqttCallbackExtended {
      * this method is called from the connection job - not directly
      */
     public void initMQttClient() {
+        // the wifi quality might be of interest during that phase
+        me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
+        myLCD.setWifiQuality(me.getWifi());
+
         try {
             iMqttClient = Optional.ofNullable(new MqttClient(configs.get(Configs.MQTT_BROKER), configs.get(Configs.MYUUID), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
             MqttConnectOptions options = new MqttConnectOptions();
@@ -117,9 +124,12 @@ public class RLGAgent implements MqttCallbackExtended {
                     log.warn(e);
                 }
                 // if the connection is lost, these subscriptions are lost too.
+                // we need to resubscribe
                 iMqttClient.get().subscribe(TOPIC_CMD_ME, (topic, receivedMessage) -> processCommand(receivedMessage));
-                // todo: aspect oriented subscriptions like "led_all", "siren_all", "capture_points" on the fly
                 iMqttClient.get().subscribe(TOPIC_CMD_ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
+                for (String channel : group_channels) {
+                    iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
+                }
             }
         } catch (MqttException e) {
             log.warn(e.getMessage());
@@ -184,36 +194,20 @@ public class RLGAgent implements MqttCallbackExtended {
         connectionTrigger = newTrigger()
                 .withIdentity(MqttConnectionJob.name + "-trigger", "group1")
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(10)
+                        .withIntervalInSeconds(5)
                         .repeatForever())
                 .build();
         scheduler.scheduleJob(job, connectionTrigger);
     }
 
     /**
-     * messages from the commander come in as JSonobjects like {"command":{details}}
+     * messages from the commander
      *
      * @param receivedMessage
      */
     private void processCommand(MqttMessage receivedMessage) {
-        log.debug(receivedMessage);
-        //String payload = new String(receivedMessage.getPayload());
-        //JSONObject json = new JSONObject(payload);
-//        Properties props = new Properties();
-//        try {
-//            props = Property.toProperties(json);
-//        } catch (JSONException e) {
-//            log.debug(e);
-//        }
-//
-//        addLog(topic + ": " + payload);
-//
-//        // last element after "/"
-//        String device = topic.substring(topic.lastIndexOf('/') + 1);
-//        addLog(device + ": " + payload);
-        // mosquitto_pub -h mqtt -t "g1/cmd/ag03" -m '{"signal":{buzzer:["off", "2:on,75;off,75"]}},
-        // {"led_red":["2:on,75;off,75"]},
-        // {"line_display": ['Rot: 123','Blau: 90']}'
+        log.debug("received command {}", receivedMessage);
+
         try {
             final JSONObject cmds = new JSONObject(new String(receivedMessage.getPayload()));
             cmds.keySet().forEach(key -> {
@@ -235,22 +229,25 @@ public class RLGAgent implements MqttCallbackExtended {
                     }
                     case "signal": {
                         final JSONObject signals = cmds.getJSONObject("signal");
-                        signals.keySet().forEach(signal_key -> {
-                            JSONArray signal_list = signals.getJSONArray(signal_key);
-                            if (signal_key.equalsIgnoreCase("led_all")) {
-                                for (String led : Configs.ALL_LEDS) {
-                                    for (Object signal : signal_list.toList())
-                                        pinHandler.setScheme(led, signal.toString());
-                                }
-                            } else if (signal_key.equalsIgnoreCase("sir_all")) {
-                                for (String siren : Configs.ALL_SIRENS) {
-                                    for (Object signal : signal_list.toList())
-                                        pinHandler.setScheme(siren, signal.toString());
-                                }
-                            } else {
-                                for (Object signal : signal_list.toList())
-                                    pinHandler.setScheme(signal_key, signal.toString());
+
+                        // JSON Key:Values are unordered by definition. So we need to look first for led_all and sir_all.
+                        Set<String> keys = signals.keySet();
+                        if (keys.contains("led_all")) {
+                            for (String led : Configs.ALL_LEDS) {
+                                pinHandler.setScheme(led, signals.getString("led_all"));
                             }
+                        }
+                        if (keys.contains("sir_all")) {
+                            for (String sirens : Configs.ALL_SIRENS) {
+                                pinHandler.setScheme(sirens, signals.getString("sir_all"));
+                            }
+                        }
+                        keys.remove("led_all");
+                        keys.remove("sir_all");
+
+                        // cycle through the rest of the signals - one by one
+                        keys.forEach(signal_key -> {
+                            pinHandler.setScheme(signal_key, signals.getString(signal_key));
                         });
                         break;
                     }
@@ -263,21 +260,17 @@ public class RLGAgent implements MqttCallbackExtended {
                         break;
                     }
                     case "subscribe_to": {
-                        //unsubscribe_from_extras();
-                        final JSONArray subs = cmds.getJSONArray(key);
-                        for (int isub = 0; isub < subs.length(); isub++) {
-                            try {
-                                log.debug(subs.getString(isub));
-                                String additional = String.format("%s/%s", TOPIC_PREFIX, subs.getString(isub));
-                                if (!extra_subscriptions.contains(additional)) {
-                                    iMqttClient.get().subscribe(additional, (topic, msg) -> processCommand(msg));
-                                    extra_subscriptions.add(additional);
-                                    log.debug("subscribing to {}", additional);
-                                }
-                            } catch (MqttException e) {
-                                log.warn(e);
+                        try {
+                            String additional_channel = String.format("%s/%s", TOPIC_PREFIX, cmds.getString(key));
+                            if (!group_channels.contains(additional_channel)) {
+                                iMqttClient.get().subscribe(additional_channel, (topic, msg) -> processCommand(msg));
+                                group_channels.add(additional_channel);
+                                log.debug("subscribing to {}", additional_channel);
                             }
+                        } catch (MqttException e) {
+                            log.warn(e);
                         }
+
                         break;
                     }
                     default: {
@@ -289,19 +282,18 @@ public class RLGAgent implements MqttCallbackExtended {
         } catch (JSONException e) {
             log.warn(e);
         }
-
     }
 
     private void unsubscribe_from_extras() {
         log.debug("removing all additional subscriptions");
-        extra_subscriptions.forEach(s -> {
+        group_channels.forEach(s -> {
             try {
                 iMqttClient.get().unsubscribe(s);
             } catch (MqttException e) {
                 log.warn(e);
             }
         });
-        extra_subscriptions.clear();
+        group_channels.clear();
     }
 
     private void addLog(String text) {
@@ -365,7 +357,7 @@ public class RLGAgent implements MqttCallbackExtended {
             pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,500;on,500");
 
             // the wifi strength is reduced to good, fair, bad, none
-            int wifi = me.getWifi();//Tools.getWifiSignalStrength();
+            int wifi = me.getWifi();
             if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "∞:on,1000;off,1000");
             if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:on,1000;off,1000");
             if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:on,1000;off,1000");
@@ -375,19 +367,23 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * inform commander about my current status and what I am capable of (role)
+     * inform commander about my current status and what I am capable of (role) is repeated every 60 seconds by the
+     * StatusJob
      */
     public void sendStatus() {
-        me.setWifi(Tools.getWifiSignalStrength(configs.get(Configs.WIFI_CMD_LINE)));
+        me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
+        // todo: lcd anpassen
         myLCD.setWifiQuality(me.getWifi());
 
         publishMessage(new JSONObject().put("status", me.toJson()).toString());
     }
 
 
+    @SneakyThrows
     @Override
     public void connectionLost(Throwable cause) {
         log.warn("connection to broker lost - {}", cause.getMessage());
+        initMqttConnectionJob();
         waitForCommander();
     }
 

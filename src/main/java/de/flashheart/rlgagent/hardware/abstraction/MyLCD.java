@@ -179,37 +179,6 @@ public class MyLCD implements Runnable {
         }
     }
 
-//    private void updateWifiSignalStrength() {
-//        try {
-//            String cmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I | grep CtlRSSI";
-//            if (Tools.isArm()) {
-//
-//            } else if (Tools.isMac()) {
-//                // /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I | grep CtlRSSI |sed 's/[^0-9\-]//g'
-//            } else {
-//
-//            }
-//            Runtime r = Runtime.getRuntime();
-//            Process p = r.exec(cmd);
-//
-//            p.waitFor();
-//            BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()));
-//            int wifi = Integer.parseInt(b.readLine().replaceAll("[^0-9\\-]", ""));
-//            log.debug("wifi: " + wifiQuality);
-//
-//            if (wifi > WIFI_EXCELLENT) wifiQuality = 6;
-//            else if (wifi > WIFI_GOOD) wifiQuality = 5;
-//            else if (wifi > WIFI_FAIR) wifiQuality = 4;
-//            else if (wifi > WIFI_MINIMUM) wifiQuality = 3;
-//            else if (wifi > WIFI_UNSTABLE) wifiQuality = 2;
-//            else if (wifi > WIFI_BAD) wifiQuality = 1;
-//            else wifiQuality = 0;
-//
-//        } catch (IOException | InterruptedException ioe) {
-//            log.error(ioe);
-//        }
-//    }
-
     private void updateTimer() {
         // Entweder wir brauchen keinen Timer oder er ist abgelaufen
         // Aber kümmert uns hier nicht, muss der Commander machen

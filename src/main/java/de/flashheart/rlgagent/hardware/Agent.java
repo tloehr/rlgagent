@@ -2,6 +2,7 @@ package de.flashheart.rlgagent.hardware;
 
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
+import de.flashheart.rlgagent.misc.Tools;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -14,11 +15,11 @@ import java.time.LocalDateTime;
 @Setter
 public class Agent {
 
-
     private String agentid;
     private String gameid;
     private LocalDateTime lastheartbeat;
     private int wifi;
+    private String wifi_response_by_driver;
     private boolean has_siren;
     private boolean has_leds;
     private boolean has_sound;
@@ -30,13 +31,14 @@ public class Agent {
         this.agentid = jsonObject.getString("agentid");
         this.gameid = jsonObject.getString("gameid");
         this.lastheartbeat = JavaTimeConverter.from_iso8601(jsonObject.getString("timestamp"));
-        this.wifi = jsonObject.getInt("wifi");
+        this.wifi_response_by_driver = jsonObject.getString("wifi_response_by_driver");
         this.has_siren = jsonObject.getBoolean(Configs.HAS_SIRENS);
         this.has_leds = jsonObject.getBoolean(Configs.HAS_LEDS);
         this.has_sound = jsonObject.getBoolean(Configs.HAS_SOUND);
         this.has_line_display = jsonObject.getBoolean(Configs.HAS_LINE_DISPLAY);
         this.has_matrix_display = jsonObject.getBoolean(Configs.HAS_MATRIX_DISPLAY);
         this.has_rfid = jsonObject.getBoolean(Configs.HAS_RFID);
+        setWifi(Tools.getWifiQuality(wifi_response_by_driver));
     }
 
     public JSONObject toJson() {
@@ -44,12 +46,18 @@ public class Agent {
                 .put("gameid", gameid)
                 .put("timestamp", JavaTimeConverter.to_iso8601(lastheartbeat))
                 .put("wifi", wifi)
+                .put("wifi_response_by_driver", wifi_response_by_driver)
                 .put(Configs.HAS_SIRENS, has_siren)
                 .put(Configs.HAS_LEDS, has_leds)
                 .put(Configs.HAS_LINE_DISPLAY, has_line_display)
                 .put(Configs.HAS_MATRIX_DISPLAY, has_matrix_display)
                 .put(Configs.HAS_SOUND, has_sound)
                 .put(Configs.HAS_RFID, has_rfid);
+    }
+
+    public void setWifi_response_by_driver(String wifi_response_by_driver) {
+        this.wifi_response_by_driver = wifi_response_by_driver;
+        setWifi(Tools.getWifiQuality(wifi_response_by_driver));
     }
 
     @Override

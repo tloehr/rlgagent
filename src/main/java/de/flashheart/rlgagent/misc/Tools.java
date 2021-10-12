@@ -23,7 +23,7 @@ public class Tools {
     private static final int WIFI_UNSTABLE = -80;
     private static final int WIFI_BAD = -90;
     private static final int NO_WIFI = -99;
-    public static final String[] WIFI = new String[]{"UGLY","BAD","FAIR","GOOD"};
+    public static final String[] WIFI = new String[]{"UGLY", "BAD", "FAIR", "GOOD"};
 
     // http://www.mkyong.com/java/how-to-detect-os-in-java-systemgetpropertyosname/
     public static boolean isArm() {
@@ -161,19 +161,16 @@ public class Tools {
         return ZonedDateTime.parse(iso8601).toLocalDateTime();
     }
 
-    /**
-     *
-     * @param cmd shell command to get the signal strength from the wifi driver. can be in dbm or percentage like "70/100"
-     * @return 3 - good, 2 - bad, 1 - ugly, 0 - dead
-     */
-    public static int getWifiSignalStrength(String cmd) {
-        if (!Tools.isArm()) return 3; // which is good
-        
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command("bash", "-c", cmd);
-        int wifiQuality;
+
+    public static String getWifiDriverResponse(String cmd) {
+        if (!Tools.isArm()) return "desktop";
+
+        String result = "error";
 
         try {
+
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command("bash", "-c", cmd);
 
             Process process = processBuilder.start();
             StringBuilder output = new StringBuilder();
@@ -186,37 +183,46 @@ public class Tools {
 
             int exitVal = process.waitFor();
             if (exitVal == 0) {
-                System.out.println("Success!");
-                System.out.println(output);
 
                 log.debug(cmd);
                 log.debug(output);
-                int wifi = 0;
-                // some wifi drivers show the link quality in percentage (e.g. 70/100) rather than dbm
-                if (output.toString().contains("/")) { // link quality in percentage
-                    StringTokenizer tokenizer = new StringTokenizer(output.toString(), "/");
-                    int quality = Integer.parseInt(tokenizer.nextToken());
-                    wifi = quality / 2 - 100;
-                } else { // link quality in dbm
-                    wifi = Integer.parseInt(output.toString().replaceAll("[^0-9\\-]", ""));
-                }
 
-                if (wifi >= 0) wifiQuality = 0;
-                else if (wifi > WIFI_EXCELLENT) wifiQuality = 3; // good
-                else if (wifi > WIFI_GOOD) wifiQuality = 3;
-                else if (wifi > WIFI_FAIR) wifiQuality = 2; // fair
-                else if (wifi > WIFI_MINIMUM) wifiQuality = 2;
-                else if (wifi > WIFI_UNSTABLE) wifiQuality = 1; // bad
-                else if (wifi > WIFI_BAD) wifiQuality = 1;
-                else wifiQuality = 0; //ugly
-            } else {
-                wifiQuality = 0;
+                result = output.toString();
+
             }
-
-        } catch (IOException | InterruptedException ioe) {
-            log.error(ioe);
-            wifiQuality = 0;
+        } catch (IOException | InterruptedException io) {
+            log.error(io);
         }
+        return result;
+    }
+
+
+    /**
+     * @param cmd shell command to get the signal strength from the wifi driver. can be in dbm or percentage like
+     *            "70/100"
+     * @return 3 - good, 2 - bad, 1 - ugly, 0 - dead
+     */
+    public static int getWifiQuality(String driver_response) {
+        int wifiQuality = 0;
+        int wifi;
+        // some wifi drivers show the link quality in percentage (e.g. 70/100) rather than dbm
+        if (driver_response.contains("/")) { // link quality in percentage
+            StringTokenizer tokenizer = new StringTokenizer(driver_response, "/");
+            int quality = Integer.parseInt(tokenizer.nextToken());
+            wifi = quality / 2 - 100;
+        } else { // link quality in dbm
+            wifi = Integer.parseInt(driver_response.replaceAll("[^0-9\\-]", ""));
+        }
+
+        if (wifi >= 0) wifiQuality = 0;
+        else if (wifi > WIFI_EXCELLENT) wifiQuality = 3; // good
+        else if (wifi > WIFI_GOOD) wifiQuality = 3;
+        else if (wifi > WIFI_FAIR) wifiQuality = 2; // fair
+        else if (wifi > WIFI_MINIMUM) wifiQuality = 2;
+        else if (wifi > WIFI_UNSTABLE) wifiQuality = 1; // bad
+        else if (wifi > WIFI_BAD) wifiQuality = 1;
+        else wifiQuality = 0; //ugly
+
         return wifiQuality;
     }
 
