@@ -35,7 +35,6 @@ public class MyUI extends JFrame {
         setTitle(title);
         initLEDs();
         initLCD();
-        initLogger();
         pack();
     }
 
@@ -43,40 +42,40 @@ public class MyUI extends JFrame {
         lineList = new ArrayList<>();
     }
 
-    private void initLogger() {
-        // keeps the log window under MAX_LOG_LINES lines to prevent out of memory exception
-        txtLogger.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                SwingUtilities.invokeLater(() -> {
-                    Element root = e.getDocument().getDefaultRootElement();
-                    while (root.getElementCount() > MAX_LOG_LINES) {
-                        Element firstLine = root.getElement(0);
-                        try {
-                            e.getDocument().remove(0, firstLine.getEndOffset());
-                        } catch (BadLocationException ble) {
-                            log.error(ble);
-                        }
-                    }
-                });
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-            }
-        });
-    }
-
-    public void addLog(String text) {
-        SwingUtilities.invokeLater(() -> {
-            txtLogger.append(text + "\n");
-            scrollPane1.getVerticalScrollBar().setValue(scrollPane1.getVerticalScrollBar().getMaximum());
-        });
-    }
+//    private void initLogger() {
+//        // keeps the log window under MAX_LOG_LINES lines to prevent out of memory exception
+//        txtLogger.getDocument().addDocumentListener(new DocumentListener() {
+//            @Override
+//            public void insertUpdate(DocumentEvent e) {
+//                SwingUtilities.invokeLater(() -> {
+//                    Element root = e.getDocument().getDefaultRootElement();
+//                    while (root.getElementCount() > MAX_LOG_LINES) {
+//                        Element firstLine = root.getElement(0);
+//                        try {
+//                            e.getDocument().remove(0, firstLine.getEndOffset());
+//                        } catch (BadLocationException ble) {
+//                            log.error(ble);
+//                        }
+//                    }
+//                });
+//            }
+//
+//            @Override
+//            public void removeUpdate(DocumentEvent e) {
+//            }
+//
+//            @Override
+//            public void changedUpdate(DocumentEvent e) {
+//            }
+//        });
+//    }
+//
+//    public void addLog(String text) {
+//        SwingUtilities.invokeLater(() -> {
+//            txtLogger.append(text + "\n");
+//            scrollPane1.getVerticalScrollBar().setValue(scrollPane1.getVerticalScrollBar().getMaximum());
+//        });
+//    }
 
     private void initLEDs() {
         pinMap = new HashMap<>();
@@ -143,9 +142,6 @@ public class MyUI extends JFrame {
         content2 = new JPanel();
         scrlMatrix = new JScrollPane();
         pnlLCD = new JPanel();
-        content3 = new JPanel();
-        scrollPane1 = new JScrollPane();
-        txtLogger = new JTextArea();
         buttonBar = new JPanel();
         btn01 = new JButton();
         btn02 = new JButton();
@@ -182,24 +178,6 @@ public class MyUI extends JFrame {
                     content2.add(pnlLCD);
                 }
                 tabPanel.addTab("Displays", content2);
-
-                //======== content3 ========
-                {
-                    content3.setLayout(new BoxLayout(content3, BoxLayout.X_AXIS));
-
-                    //======== scrollPane1 ========
-                    {
-
-                        //---- txtLogger ----
-                        txtLogger.setForeground(Color.green);
-                        txtLogger.setBackground(Color.black);
-                        txtLogger.setLineWrap(true);
-                        txtLogger.setWrapStyleWord(true);
-                        scrollPane1.setViewportView(txtLogger);
-                    }
-                    content3.add(scrollPane1);
-                }
-                tabPanel.addTab("Logfile", content3);
             }
             dialogPane.add(tabPanel, BorderLayout.CENTER);
 
@@ -237,9 +215,6 @@ public class MyUI extends JFrame {
     private JPanel content2;
     private JScrollPane scrlMatrix;
     private JPanel pnlLCD;
-    private JPanel content3;
-    private JScrollPane scrollPane1;
-    private JTextArea txtLogger;
     private JPanel buttonBar;
     private JButton btn01;
     private JButton btn02;

@@ -78,7 +78,7 @@ public class RLGAgent implements MqttCallbackExtended {
         TOPIC_PREFIX = String.format("%s/cmd", configs.get(Configs.GAME_ID));
         TOPIC_CMD_ME = String.format("%s/%s", TOPIC_PREFIX, configs.get(Configs.MY_ID));
         TOPIC_CMD_ALL = String.format("%s/all", TOPIC_PREFIX);
-        TOPIC_EVENT_FROM_ME = String.format("%s/evt/%s/", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
+        TOPIC_EVENT_FROM_ME = String.format("%s/evt/%s", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
         group_channels = new HashSet();
         myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
@@ -143,21 +143,21 @@ public class RLGAgent implements MqttCallbackExtended {
             bnt01.setDebounce(DEBOUNCE);
             bnt01.addListener((GpioPinListenerDigital) event -> {
                 if (event.getState() != PinState.LOW) return;
-                publishMessage(new JSONObject().put("button_pressed", "btn01").toString());
+                publishMessage(new JSONObject().put("agentid", me.getAgentid()).put("button_pressed", "btn01").toString());
             });
 
             GpioPinDigitalInput bnt02 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN02)), PinPullResistance.PULL_UP);
             bnt02.setDebounce(DEBOUNCE);
             bnt02.addListener((GpioPinListenerDigital) event -> {
                 if (event.getState() != PinState.LOW) return;
-                publishMessage(new JSONObject().put("button_pressed", "btn02").toString());
+                publishMessage(new JSONObject().put("agentid", me.getAgentid()).put("button_pressed", "btn02").toString());
             });
         });
 
         // Software Buttons
         myUI.ifPresent(myUI1 -> {
-            myUI1.addActionListenerToBTN01(e -> publishMessage(new JSONObject().put("button_pressed", "btn01").toString()));
-            myUI1.addActionListenerToBTN02(e -> publishMessage(new JSONObject().put("button_pressed", "btn02").toString()));
+            myUI1.addActionListenerToBTN01(e -> publishMessage(new JSONObject().put("agentid", me.getAgentid()).put("button_pressed", "btn01").toString()));
+            myUI1.addActionListenerToBTN02(e -> publishMessage(new JSONObject().put("agentid", me.getAgentid()).put("button_pressed", "btn02").toString()));
         });
 
     }
@@ -214,14 +214,15 @@ public class RLGAgent implements MqttCallbackExtended {
                 switch (key.toLowerCase()) {
                     // example {"line_display": ['Rot: 123','Blau: 90']}
                     case "line_display": {
-                        JSONArray cmdlist = cmds.getJSONArray(key);
+                        JSONArray cmdlist = cmds.getJSONArray("line_display");
+                        // the first two lines are fixed for the agent (wifi and remaining time or score)
                         for (int line = 0; line < cmdlist.length(); line++) {
-                            myLCD.setLine(lcdPage, line + 1, cmdlist.getString(line));
+                            myLCD.setLine(lcdPage, line + 3, cmdlist.getString(line));
                         }
                         break;
                     }
                     case "matrix_display": {
-                        JSONArray cmdlist = cmds.getJSONArray(key);
+                        JSONArray cmdlist = cmds.getJSONArray("matrix_display");
                         for (int line = 0; line < cmdlist.length(); line++) {
                             log.debug(cmdlist.getString(line));
                         }
@@ -252,7 +253,11 @@ public class RLGAgent implements MqttCallbackExtended {
                         break;
                     }
                     case "remaining": {
-                        myLCD.setRemaining(cmds.getLong(key));
+                        myLCD.setRemaining(cmds.getLong("remaining"));
+                        break;
+                    }
+                    case "score": {
+                        myLCD.setLine(lcdPage, 2, cmds.getString("score"));
                         break;
                     }
                     case "init": { // remove all subscriptions
@@ -296,10 +301,10 @@ public class RLGAgent implements MqttCallbackExtended {
         group_channels.clear();
     }
 
-    private void addLog(String text) {
-        myUI.ifPresent(myUI1 -> myUI1.addLog(text));
-        log.info(text);
-    }
+//    private void addLog(String text) {
+//        myUI.ifPresent(myUI1 -> myUI1.addLog(text));
+//        log.info(text);
+//    }
 //    private void publishMessage(String event) {
 //        publishMessage(event, Optional.empty());
 //    }
@@ -313,7 +318,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 msg.setPayload(payload.getBytes());
                 //payload.ifPresent(string -> msg.setPayload(string.getBytes()));
                 iMqttClient.get().publish(TOPIC_EVENT_FROM_ME, msg);
-                addLog(TOPIC_EVENT_FROM_ME);
+                log.info(TOPIC_EVENT_FROM_ME);
             } catch (MqttException mqe) {
                 log.warn(mqe);
             }
@@ -373,7 +378,7 @@ public class RLGAgent implements MqttCallbackExtended {
     public void sendStatus() {
         me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
         // todo: lcd anpassen
-        myLCD.setWifiQuality(me.getWifi());
+        myLCD.setWifi(me.getWifi_response_by_driver());
 
         publishMessage(new JSONObject().put("status", me.toJson()).toString());
     }

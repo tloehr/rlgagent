@@ -203,7 +203,7 @@ public class Tools {
      * @return 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
     public static int getWifiQuality(String driver_response) {
-        int wifiQuality = 0;
+        int wifiQuality;
         int wifi;
         // some wifi drivers show the link quality in percentage (e.g. 70/100) rather than dbm
         if (driver_response.contains("/")) { // link quality in percentage
@@ -211,7 +211,11 @@ public class Tools {
             int quality = Integer.parseInt(tokenizer.nextToken());
             wifi = quality / 2 - 100;
         } else { // link quality in dbm
-            wifi = Integer.parseInt(driver_response.replaceAll("[^0-9\\-]", ""));
+            try {
+                wifi = Integer.parseInt(driver_response.replaceAll("[^0-9\\-]", ""));
+            } catch (NumberFormatException nfe){
+                wifi = 0;
+            }
         }
 
         if (wifi >= 0) wifiQuality = 0;

@@ -2,14 +2,10 @@ package de.flashheart.rlgagent.hardware.abstraction;
 
 import de.flashheart.rlgagent.hardware.I2CLCD;
 import de.flashheart.rlgagent.misc.Configs;
-import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
-import org.codehaus.plexus.util.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,6 +36,7 @@ public class MyLCD implements Runnable {
     private static final long SLEEP_PER_CYCLE = 1000l;
     private long remaining, time_difference_since_last_cycle;
     private long last_cycle_started_at;
+    private Optional<String> score;
 
 
     private final ArrayList<LCDPage> pages;
@@ -51,13 +48,16 @@ public class MyLCD implements Runnable {
     private final Optional<MyUI> myUI;
     private final Configs configs;
     private int wifiQuality = 0; // 0 bis 6. 6 ist die beste
+    private String wifi_response_by_driver;
 
-    public MyLCD( Optional<MyUI> myUI, Configs configs, Optional<I2CLCD> i2CLCD) {
+    public MyLCD(Optional<MyUI> myUI, Configs configs, Optional<I2CLCD> i2CLCD) {
         this.cols = Integer.parseInt(configs.get(Configs.LCD_COLS));
-        this.rows =  Integer.parseInt(configs.get(Configs.LCD_ROWS));
+        this.rows = Integer.parseInt(configs.get(Configs.LCD_ROWS));
         this.myUI = myUI;
         this.configs = configs;
         this.i2CLCD = i2CLCD;
+        this.score = Optional.empty();
+        this.wifi_response_by_driver = "?";
 
         // create lines on the gui
         myUI.ifPresent(myUI1 -> {
@@ -87,6 +87,10 @@ public class MyLCD implements Runnable {
         } finally {
             lock.unlock();
         }
+    }
+
+    public void setScore(Optional<String> score) {
+        this.score = score;
     }
 
     public void selectPage(int active_page) {
@@ -138,7 +142,7 @@ public class MyLCD implements Runnable {
         // Schreibt alle Zeilen der aktiven Seite.
 
         for (int r = 0; r < rows; r++) {
-            String line = currentPage.getLine(r).isEmpty() ? StringUtils.repeat(" ", 16) : StringUtils.rightPad(currentPage.getLine(r), 16);
+            String line = currentPage.getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(currentPage.getLine(r), cols);
             log.trace("VISIBLE PAGE #" + active_page + " Line" + r + ": " + line);
             if (i2CLCD.isPresent()) {
                 i2CLCD.get().display_string(line, r);
@@ -165,6 +169,7 @@ public class MyLCD implements Runnable {
     public void setLine(int page, int line, String text) {
         if (page < 0 || page > pages.size() - 1) return;
         if (line < 1 || line > rows) return;
+
         pages.get(page).lines.set(line - 1, StringUtils.rightPad(StringUtils.left(text, cols), cols - 1));
     }
 
@@ -190,7 +195,7 @@ public class MyLCD implements Runnable {
     }
 
     public void setRemaining(long remaining) {
-        this.remaining = remaining;
+        this.remaining = remaining * 1000l;
     }
 
     @Override
@@ -224,20 +229,36 @@ public class MyLCD implements Runnable {
 
     private void updatePage0() {
         updateTimer();
-        //if (loopcounter % 10 == 0) updateWifiSignalStrength();
-        String time = "";
+
+        Optional<String> time = Optional.empty();
         if (remaining > 0) {
             LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(remaining),
                     TimeZone.getTimeZone("UTC").toZoneId());
 
-            time = "Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
+            time = Optional.of("Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)));
         }
-        setLine(0, 1, configs.get(Configs.MY_ID) + " wifi:" + Tools.WIFI[wifiQuality]);
-        setLine(0, 2, time);
+        setCenteredLine(0, 1, configs.get(Configs.MY_ID) + " wifi:" + wifi_response_by_driver);
+
+        if (time.isPresent() && score.isPresent()) {
+            // show score and remaining time alternately
+            if (loopcounter % 2 == 0) {
+                setCenteredLine(0, 2, time.get());
+            } else {
+                setCenteredLine(0, 2, score.get());
+            }
+        } else {
+            setCenteredLine(0, 2, score.orElse("") + time.orElse(""));
+        }
+
+
     }
 
     public void setWifiQuality(int wifiQuality) {
         this.wifiQuality = wifiQuality;
+    }
+
+    public void setWifi(String wifi_response_by_driver) {
+        this.wifi_response_by_driver = wifi_response_by_driver;
     }
 
     /**
