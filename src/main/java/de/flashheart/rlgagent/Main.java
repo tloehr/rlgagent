@@ -20,6 +20,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.eclipse.paho.client.mqttv3.MqttException;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -48,7 +49,7 @@ public class Main {
         agent = new RLGAgent(configs, myUI, gpioController, pinHandler, myLCD);
     }
 
-    private static void initBaseSystem(String[] args) throws IOException {
+    private static void initBaseSystem(String[] args) throws IOException, UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         Options opts = new Options();
         opts.addOption("h", "help", false, "show help");
         //opts.addOption("w", "workspace", true, "specficy workspace folder for config and log files. default (if omitted): " + Tools.getWorkingPath(PROJECT));
@@ -90,6 +91,7 @@ public class Main {
             }
         }));
 
+        UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
         myUI = Tools.isArm() ? Optional.empty() : Optional.of(new MyUI(configs.get(Configs.MY_ID)));
         myUI.ifPresent(myUI1 -> myUI1.setVisible(true));
     }

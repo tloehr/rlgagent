@@ -88,9 +88,9 @@ public class RLGAgent implements MqttCallbackExtended {
         myLCD.setLine(lcdPage, 2, "Action");
 
         initAgent();
-        initHeartbeatJob();
+        //initHeartbeatJob();
         initMqttConnectionJob();
-        waitForCommander();
+        //waitForCommander();
     }
 
     /**
@@ -99,12 +99,13 @@ public class RLGAgent implements MqttCallbackExtended {
     public void initMQttClient() {
         // the wifi quality might be of interest during that phase
         me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
-        myLCD.setWifiQuality(me.getWifi());
+        myLCD.setWifi(me.getWifi_response_by_driver());
+        waitForCommander();
 
         try {
             iMqttClient = Optional.ofNullable(new MqttClient(configs.get(Configs.MQTT_BROKER), configs.get(Configs.MYUUID), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
             MqttConnectOptions options = new MqttConnectOptions();
-            options.setAutomaticReconnect(true);
+            options.setAutomaticReconnect(false);
             options.setCleanSession(true);
             options.setConnectionTimeout(10);
 
@@ -115,16 +116,17 @@ public class RLGAgent implements MqttCallbackExtended {
 
             if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
                 log.info("Connected to the broker @{}", iMqttClient.get().getServerURI());
-                waitForCommander();
                 // stop the connection job
                 try {
+                    scheduler.interrupt(myConnectionJobKey);
                     scheduler.unscheduleJob(connectionTrigger.getKey());
                     scheduler.deleteJob(myConnectionJobKey);
                 } catch (SchedulerException e) {
                     log.warn(e);
                 }
+
                 // if the connection is lost, these subscriptions are lost too.
-                // we need to resubscribe
+                // we need to (re)subscribe
                 iMqttClient.get().subscribe(TOPIC_CMD_ME, (topic, receivedMessage) -> processCommand(receivedMessage));
                 iMqttClient.get().subscribe(TOPIC_CMD_ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
                 for (String channel : group_channels) {
@@ -132,6 +134,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 }
             }
         } catch (MqttException e) {
+            iMqttClient = Optional.empty();
             log.warn(e.getMessage());
         }
     }
@@ -187,6 +190,8 @@ public class RLGAgent implements MqttCallbackExtended {
      * @throws SchedulerException
      */
     private void initMqttConnectionJob() throws SchedulerException {
+        if (scheduler.checkExists(myConnectionJobKey)) return;
+        log.debug("initMqttConnectionJob()");
         JobDetail job = newJob(MqttConnectionJob.class)
                 .withIdentity(myConnectionJobKey)
                 .build();
@@ -206,11 +211,12 @@ public class RLGAgent implements MqttCallbackExtended {
      * @param receivedMessage
      */
     private void processCommand(MqttMessage receivedMessage) {
-        log.debug("received command {}", receivedMessage);
+        //log.debug("received command {}", receivedMessage);
 
         try {
             final JSONObject cmds = new JSONObject(new String(receivedMessage.getPayload()));
             cmds.keySet().forEach(key -> {
+                log.debug("handling command '{}' with {}", key, receivedMessage);
                 switch (key.toLowerCase()) {
                     // example {"line_display": ['Rot: 123','Blau: 90']}
                     case "line_display": {
@@ -257,7 +263,7 @@ public class RLGAgent implements MqttCallbackExtended {
                         break;
                     }
                     case "score": {
-                        myLCD.setLine(lcdPage, 2, cmds.getString("score"));
+                        myLCD.setScore(Optional.of(cmds.getString("score")));
                         break;
                     }
                     case "init": { // remove all subscriptions
@@ -301,14 +307,6 @@ public class RLGAgent implements MqttCallbackExtended {
         group_channels.clear();
     }
 
-//    private void addLog(String text) {
-//        myUI.ifPresent(myUI1 -> myUI1.addLog(text));
-//        log.info(text);
-//    }
-//    private void publishMessage(String event) {
-//        publishMessage(event, Optional.empty());
-//    }
-
     private void publishMessage(String payload) {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             try {
@@ -331,31 +329,27 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     private void waitForCommander() {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
+            myLCD.setNetwork_lost(false);
+
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,350;off,3700");
             pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,350;on,350;off,3350");
             pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,700;on,350;off,3000");
             pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1050;on,350;off,2650");
             pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1400;on,350;off,2300");
 
-
-//            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,400;on,0;off,2800");
-//            pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,400;on,400;off,2000;on,400");
-//            pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,800;on,400;off,1200;on,400;off,400");
-//            pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1200;on,400;off,400;on,400;off,800");
-//            pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1600;on,400;off,1200");
-
-            myLCD.setLine(lcdPage, 1, "waiting for");
-            myLCD.setLine(lcdPage, 2, "commander");
+            myLCD.setLine(lcdPage, 3, "waiting for");
+            myLCD.setLine(lcdPage, 4, "commander");
 
         } else {
+            myLCD.setNetwork_lost(true);
             for (String led : Configs.ALL_LEDS) {
                 pinHandler.setScheme(led, "off");
             }
             for (String siren : Configs.ALL_SIRENS) {
                 pinHandler.setScheme(siren, "off");
             }
-            myLCD.setLine(lcdPage, 1, "waiting for");
-            myLCD.setLine(lcdPage, 2, "mqtt broker");
+            myLCD.setLine(lcdPage, 3, "waiting for");
+            myLCD.setLine(lcdPage, 4, "mqtt broker");
 
             // network status is always indicated with a flashing WHITE led
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,500;off,500");
@@ -366,7 +360,6 @@ public class RLGAgent implements MqttCallbackExtended {
             if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "∞:on,1000;off,1000");
             if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:on,1000;off,1000");
             if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:on,1000;off,1000");
-
         }
 
     }
@@ -377,10 +370,8 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     public void sendStatus() {
         me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
-        // todo: lcd anpassen
         myLCD.setWifi(me.getWifi_response_by_driver());
-
-        publishMessage(new JSONObject().put("status", me.toJson()).toString());
+        //publishMessage(new JSONObject().put("status", me.toJson()).toString());
     }
 
 
@@ -389,7 +380,6 @@ public class RLGAgent implements MqttCallbackExtended {
     public void connectionLost(Throwable cause) {
         log.warn("connection to broker lost - {}", cause.getMessage());
         initMqttConnectionJob();
-        waitForCommander();
     }
 
     @Override
@@ -420,16 +410,19 @@ public class RLGAgent implements MqttCallbackExtended {
 
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
-        log.info("RE-Connected to the broker @{}", serverURI);
-        if (reconnect) {
-            // we have to REsubscribe after a REconnect
-            try {
-                iMqttClient.get().subscribe(TOPIC_CMD_ME, (topic, receivedMessage) -> processCommand(receivedMessage));
-                iMqttClient.get().subscribe(TOPIC_CMD_ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
-                waitForCommander();
-            } catch (MqttException e) {
-                log.error(e);
-            }
-        }
+        // this will not happen, as we disabled the autoreconnect on the options
+//        log.info("Connected to the broker @{}", iMqttClient.get().getServerURI());
+//        if (reconnect) {
+//
+//            log.info("RE-Connected to the broker @{}", serverURI);
+//            // we have to REsubscribe after a REconnect
+//            try {
+//                iMqttClient.get().subscribe(TOPIC_CMD_ME, (topic, receivedMessage) -> processCommand(receivedMessage));
+//                iMqttClient.get().subscribe(TOPIC_CMD_ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
+//                //waitForCommander();
+//            } catch (MqttException e) {
+//                log.error(e);
+//            }
+//        }
     }
 }

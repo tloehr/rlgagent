@@ -22,6 +22,7 @@ public class StatusJob implements Job, InterruptableJob {
 
     @Override
     public void interrupt() throws UnableToInterruptJobException {
+        log.info("job '{}' interrupted", name);
         // nothing to do here
     }
 }

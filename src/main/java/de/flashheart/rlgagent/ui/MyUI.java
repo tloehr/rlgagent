@@ -35,7 +35,7 @@ public class MyUI extends JFrame {
         setTitle(title);
         initLEDs();
         initLCD();
-        pack();
+        //
     }
 
     private void initLCD() {
@@ -139,9 +139,9 @@ public class MyUI extends JFrame {
         dialogPane = new JPanel();
         tabPanel = new JTabbedPane();
         content1 = new JPanel();
+        pnlLCD = new JPanel();
         content2 = new JPanel();
         scrlMatrix = new JScrollPane();
-        pnlLCD = new JPanel();
         buttonBar = new JPanel();
         btn01 = new JButton();
         btn02 = new JButton();
@@ -162,6 +162,13 @@ public class MyUI extends JFrame {
                 //======== content1 ========
                 {
                     content1.setLayout(new BorderLayout(2, 2));
+
+                    //======== pnlLCD ========
+                    {
+                        pnlLCD.setBackground(Color.cyan);
+                        pnlLCD.setLayout(new BoxLayout(pnlLCD, BoxLayout.PAGE_AXIS));
+                    }
+                    content1.add(pnlLCD, BorderLayout.SOUTH);
                 }
                 tabPanel.addTab("Main", content1);
 
@@ -169,15 +176,8 @@ public class MyUI extends JFrame {
                 {
                     content2.setLayout(new BoxLayout(content2, BoxLayout.PAGE_AXIS));
                     content2.add(scrlMatrix);
-
-                    //======== pnlLCD ========
-                    {
-                        pnlLCD.setBackground(Color.cyan);
-                        pnlLCD.setLayout(new BoxLayout(pnlLCD, BoxLayout.PAGE_AXIS));
-                    }
-                    content2.add(pnlLCD);
                 }
-                tabPanel.addTab("Displays", content2);
+                tabPanel.addTab("Matrix", content2);
             }
             dialogPane.add(tabPanel, BorderLayout.CENTER);
 
@@ -203,7 +203,7 @@ public class MyUI extends JFrame {
             dialogPane.add(buttonBar, BorderLayout.SOUTH);
         }
         contentPane.add(dialogPane, BorderLayout.CENTER);
-        pack();
+        setSize(310, 530);
         setLocationRelativeTo(getOwner());
         // JFormDesigner - End of component initialization  //GEN-END:initComponents
     }
@@ -212,9 +212,9 @@ public class MyUI extends JFrame {
     private JPanel dialogPane;
     private JTabbedPane tabPanel;
     private JPanel content1;
+    private JPanel pnlLCD;
     private JPanel content2;
     private JScrollPane scrlMatrix;
-    private JPanel pnlLCD;
     private JPanel buttonBar;
     private JButton btn01;
     private JButton btn02;

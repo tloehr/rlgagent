@@ -19,13 +19,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MyLCD implements Runnable {
     public static final char LCD_DEGREE_SYMBOL = 223;
     public static final char LCD_UMLAUT_A = 0xe4;
-    private final int WIFI_PERFECT = -30;
-    private final int WIFI_EXCELLENT = -50;
-    private final int WIFI_GOOD = -60;
-    private final int WIFI_FAIR = -67;
-    private final int WIFI_MINIMUM = -70;
-    private final int WIFI_UNSTABLE = -80;
-    private final int WIFI_BAD = -90;
 
     private final int CYCLES_PER_PAGE = 4;
     private static final long MILLIS_PER_CYCLE = 500l;
@@ -38,6 +31,7 @@ public class MyLCD implements Runnable {
     private long last_cycle_started_at;
     private Optional<String> score;
 
+    private boolean network_lost; // show emergency data to help debug network trouble
 
     private final ArrayList<LCDPage> pages;
     private int active_page;
@@ -47,7 +41,6 @@ public class MyLCD implements Runnable {
     private Optional<I2CLCD> i2CLCD;
     private final Optional<MyUI> myUI;
     private final Configs configs;
-    private int wifiQuality = 0; // 0 bis 6. 6 ist die beste
     private String wifi_response_by_driver;
 
     public MyLCD(Optional<MyUI> myUI, Configs configs, Optional<I2CLCD> i2CLCD) {
@@ -58,6 +51,7 @@ public class MyLCD implements Runnable {
         this.i2CLCD = i2CLCD;
         this.score = Optional.empty();
         this.wifi_response_by_driver = "?";
+        network_lost = true;
 
         // create lines on the gui
         myUI.ifPresent(myUI1 -> {
@@ -194,6 +188,10 @@ public class MyLCD implements Runnable {
         remaining = remaining - time_difference_since_last_cycle;
     }
 
+    public void setNetwork_lost(boolean network_lost) {
+        this.network_lost = network_lost;
+    }
+
     public void setRemaining(long remaining) {
         this.remaining = remaining * 1000l;
     }
@@ -208,12 +206,16 @@ public class MyLCD implements Runnable {
                         inc_page();
                     }
 
-                    if (active_page == 0) updatePage0();
+                    if (active_page == 0) {
+                        if (network_lost) network_debug_page();
+                        else updatePage0();
+                    }
 
                     if (pages.size() == 1 || active_page != prev_page) {
                         page_to_display();
                         prev_page = active_page;
                     }
+
                 } catch (Exception ex) {
                     log.error(ex);
                 } finally {
@@ -227,35 +229,32 @@ public class MyLCD implements Runnable {
         }
     }
 
+    private void network_debug_page() {
+        setCenteredLine(0, 1, configs.get(Configs.MY_ID) + " wifi:" + wifi_response_by_driver);
+        setCenteredLine(0, 2, "");
+        setCenteredLine(0, 3, "");
+        setCenteredLine(0, 4, "network debug mode");
+    }
+
     private void updatePage0() {
         updateTimer();
 
-        Optional<String> time = Optional.empty();
         if (remaining > 0) {
             LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(remaining),
                     TimeZone.getTimeZone("UTC").toZoneId());
 
-            time = Optional.of("Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)));
-        }
-        setCenteredLine(0, 1, configs.get(Configs.MY_ID) + " wifi:" + wifi_response_by_driver);
-
-        if (time.isPresent() && score.isPresent()) {
-            // show score and remaining time alternately
-            if (loopcounter % 2 == 0) {
-                setCenteredLine(0, 2, time.get());
-            } else {
-                setCenteredLine(0, 2, score.get());
-            }
+            String time = "Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
+            setCenteredLine(0, 1, time);
         } else {
-            setCenteredLine(0, 2, score.orElse("") + time.orElse(""));
+            setCenteredLine(0, 1, "");
         }
-
-
+        setCenteredLine(0, 2, score.orElse(""));
+        // line 3 and 4 can be used by the user
     }
 
-    public void setWifiQuality(int wifiQuality) {
-        this.wifiQuality = wifiQuality;
-    }
+//    public void setWifiQuality(int wifiQuality) {
+//        this.wifiQuality = wifiQuality;
+//    }
 
     public void setWifi(String wifi_response_by_driver) {
         this.wifi_response_by_driver = wifi_response_by_driver;

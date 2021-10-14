@@ -22,7 +22,7 @@ public class MqttConnectionJob implements Job, InterruptableJob {
 
     @Override
     public void interrupt() throws UnableToInterruptJobException {
-        log.info("{} interrupted", name);
+        log.info("job '{}' interrupted", name);
         // nothing to do here
     }
 }

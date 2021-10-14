@@ -6,6 +6,7 @@ new FormModel {
 		add( new FormWindow( "javax.swing.JFrame", new FormLayoutManager( class java.awt.BorderLayout ) ) {
 			name: "this"
 			"defaultCloseOperation": 3
+			"$sizePolicy": 1
 			add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.BorderLayout ) ) {
 				name: "dialogPane"
 				"border": new javax.swing.border.EmptyBorder( 12, 12, 12, 12 )
@@ -16,6 +17,14 @@ new FormModel {
 						"vgap": 2
 					} ) {
 						name: "content1"
+						add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class javax.swing.BoxLayout ) {
+							"axis": 3
+						} ) {
+							name: "pnlLCD"
+							"background": new java.awt.Color( 0, 255, 255, 255 )
+						}, new FormLayoutConstraints( class java.lang.String ) {
+							"value": "South"
+						} )
 					}, new FormLayoutConstraints( null ) {
 						"title": "Main"
 					} )
@@ -26,14 +35,8 @@ new FormModel {
 						add( new FormContainer( "javax.swing.JScrollPane", new FormLayoutManager( class javax.swing.JScrollPane ) ) {
 							name: "scrlMatrix"
 						} )
-						add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class javax.swing.BoxLayout ) {
-							"axis": 3
-						} ) {
-							name: "pnlLCD"
-							"background": new java.awt.Color( 0, 255, 255, 255 )
-						} )
 					}, new FormLayoutConstraints( null ) {
-						"title": "Displays"
+						"title": "Matrix"
 					} )
 				}, new FormLayoutConstraints( class java.lang.String ) {
 					"value": "Center"
@@ -63,7 +66,7 @@ new FormModel {
 			} )
 		}, new FormLayoutConstraints( null ) {
 			"location": new java.awt.Point( 0, 0 )
-			"size": new java.awt.Dimension( 545, 430 )
+			"size": new java.awt.Dimension( 310, 530 )
 		} )
 	}
 }
