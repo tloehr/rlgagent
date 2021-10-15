@@ -42,7 +42,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private final Configs configs;
     private final MyLCD myLCD;
     private Optional<IMqttClient> iMqttClient;
-    int lcdPage = 0;
+
     private final JobKey myStatusJobKey, myConnectionJobKey;
     private final Scheduler scheduler;
     private final Agent me;
@@ -84,8 +84,10 @@ public class RLGAgent implements MqttCallbackExtended {
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
 
         //lcdPage = myLCD.addPage();
-        myLCD.setLine(lcdPage, 1, "Ready 4");
-        myLCD.setLine(lcdPage, 2, "Action");
+        myLCD.setLine("pageß", 3, "Ready 4");
+        myLCD.setLine("page0", 4, "Action");
+
+        //todo: lcdPages vom Server erlauben.
 
         initAgent();
         //initHeartbeatJob();
@@ -218,13 +220,26 @@ public class RLGAgent implements MqttCallbackExtended {
             cmds.keySet().forEach(key -> {
                 log.debug("handling command '{}' with {}", key, receivedMessage);
                 switch (key.toLowerCase()) {
-                    // example {"line_display": ['Rot: 123','Blau: 90']}
+                    // example {"line_display":
+                    //              {
+                    //                  "handle":"page2",
+                    //                  "lines":["Rot: 123","Blau: 90"]
+                    //              }
+                    //          }
                     case "line_display": {
-                        JSONArray cmdlist = cmds.getJSONArray("line_display");
+                        JSONObject display_cmd = new JSONObject(cmds.getJSONObject("line_display"));
+                        String handle = display_cmd.getString("handle");
+                        JSONArray lines = cmds.getJSONArray("lines");
                         // the first two lines are fixed for the agent (wifi and remaining time or score)
-                        for (int line = 0; line < cmdlist.length(); line++) {
-                            myLCD.setLine(lcdPage, line + 3, cmdlist.getString(line));
+                        // page0 only allows user content on lines 3 and 4
+                        int offset = handle.equalsIgnoreCase("page0") ? 3 : 1;
+                        for (int line = 0; line < lines.length(); line++) {
+                            myLCD.setLine(handle, line + offset, lines.getString(line));
                         }
+                        break;
+                    }
+                    case "add_page": { // Adds a display page which will be addressed by this handle
+                        myLCD.addPage(cmds.getString("add_page"));
                         break;
                     }
                     case "matrix_display": {
@@ -268,6 +283,7 @@ public class RLGAgent implements MqttCallbackExtended {
                     }
                     case "init": { // remove all subscriptions
                         unsubscribe_from_extras();
+                        myLCD.init();
                         break;
                     }
                     case "subscribe_to": {
@@ -337,8 +353,8 @@ public class RLGAgent implements MqttCallbackExtended {
             pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1050;on,350;off,2650");
             pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1400;on,350;off,2300");
 
-            myLCD.setLine(lcdPage, 3, "waiting for");
-            myLCD.setLine(lcdPage, 4, "commander");
+            myLCD.setLine("page0", 3, "waiting for");
+            myLCD.setLine("page0", 4, "commander");
 
         } else {
             myLCD.setNetwork_lost(true);
@@ -348,8 +364,8 @@ public class RLGAgent implements MqttCallbackExtended {
             for (String siren : Configs.ALL_SIRENS) {
                 pinHandler.setScheme(siren, "off");
             }
-            myLCD.setLine(lcdPage, 3, "waiting for");
-            myLCD.setLine(lcdPage, 4, "mqtt broker");
+            myLCD.setLine("page0", 3, "waiting for");
+            myLCD.setLine("page0", 4, "mqtt broker");
 
             // network status is always indicated with a flashing WHITE led
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,500;off,500");
@@ -371,7 +387,7 @@ public class RLGAgent implements MqttCallbackExtended {
     public void sendStatus() {
         me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
         myLCD.setWifi(me.getWifi_response_by_driver());
-        //publishMessage(new JSONObject().put("status", me.toJson()).toString());
+        publishMessage(new JSONObject().put("status", me.toJson()).toString());
     }
 
 

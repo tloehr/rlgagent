@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
@@ -34,6 +35,7 @@ public class MyLCD implements Runnable {
     private boolean network_lost; // show emergency data to help debug network trouble
 
     private final ArrayList<LCDPage> pages;
+    private final HashMap<String, Integer> page_map;
     private int active_page;
     private long loopcounter = 0;
     private int prev_page = 0;
@@ -63,7 +65,8 @@ public class MyLCD implements Runnable {
         lock = new ReentrantLock();
         thread = new Thread(this);
         pages = new ArrayList<>();
-        pages.add(new LCDPage()); // there is always one page.
+        page_map = new HashMap<>();
+        init();
         thread.start();
     }
 
@@ -71,13 +74,14 @@ public class MyLCD implements Runnable {
         return rows;
     }
 
-    public void reset() {
+    public void init() {
         lock.lock();
         try {
             pages.clear();
+            page_map.clear();
             pages.add(new LCDPage()); // there is always one page.
+            page_map.put("page0", 0);
             active_page = 0;
-            clear(active_page);
         } finally {
             lock.unlock();
         }
@@ -87,38 +91,38 @@ public class MyLCD implements Runnable {
         this.score = score;
     }
 
-    public void selectPage(int active_page) {
-        if (active_page < 1 || active_page > pages.size()) return;
-        this.active_page = active_page;
-        page_to_display();
+    public void selectPage(String handle) {
+        if (!page_map.containsKey(handle)) return;
+
+        this.active_page = page_map.get(handle);
+        display_active_page();
     }
 
     /**
-     * Fügt eine neue Seite hinzu
+     * Adds a new page
      *
-     * @return nummer der neuen Seite
+     * @param handle to access the page later
      */
-    public int addPage() {
+    public void addPage(String handle) {
         lock.lock();
         try {
             pages.add(new LCDPage());
+            page_map.put(handle, pages.size() - 1);
         } finally {
             lock.unlock();
         }
-        return pages.size() - 1;
     }
 
-    /**
-     * löscht die aktuelle Seite. Eine Seite bleibt immer stehen.
-     */
-    public void deletePage(int page) {
-        if (pages.size() == 1) return;
+    public void deletePage(String handle) {
+        if (handle.equalsIgnoreCase("page0")) return;
+        if (!page_map.containsKey(handle)) return;
 
         lock.lock();
         try {
-            pages.remove(page - 1);
-            active_page = 1;
-            page_to_display();
+            pages.remove(page_map.get(handle));
+            page_map.remove(handle);
+            active_page = page_map.get("page0");
+            display_active_page();
         } finally {
             lock.unlock();
         }
@@ -131,7 +135,7 @@ public class MyLCD implements Runnable {
         if (active_page > pages.size() - 1) active_page = 0;
     }
 
-    private void page_to_display() {
+    private void display_active_page() {
         LCDPage currentPage = pages.get(active_page);
         // Schreibt alle Zeilen der aktiven Seite.
 
@@ -152,29 +156,27 @@ public class MyLCD implements Runnable {
 
     private void clearPage() {
         pages.get(active_page).clear();
-
     }
 
     /**
-     * @param page 1..pages.size()
-     * @param line 1..rows
+     * @param handle for the wanted page
+     * @param line   1..rows
      * @param text
      */
-    public void setLine(int page, int line, String text) {
-        if (page < 0 || page > pages.size() - 1) return;
+    public void setLine(String handle, int line, String text) {
+        if (!page_map.containsKey(handle)) return;
         if (line < 1 || line > rows) return;
 
-        pages.get(page).lines.set(line - 1, StringUtils.rightPad(StringUtils.left(text, cols), cols - 1));
+        pages.get(page_map.get(handle)).lines.set(line - 1, StringUtils.rightPad(StringUtils.left(text, cols), cols - 1));
     }
 
-    public void setCenteredLine(int page, int line, String text) {
-        setLine(page, line, StringUtils.center(StringUtils.left(text, cols), cols));
+    public void setCenteredLine(String handle, int line, String text) {
+        setLine(handle, line, StringUtils.center(StringUtils.left(text, cols), cols));
     }
 
-    public void clear(int page) {
-        if (page < 0 || page > pages.size() - 1) return;
+    public void clear(String handle) {
         for (int l = 1; l <= rows; l++) {
-            setLine(page, l, "");
+            setLine(handle, l, "");
         }
     }
 
@@ -212,7 +214,7 @@ public class MyLCD implements Runnable {
                     }
 
                     if (pages.size() == 1 || active_page != prev_page) {
-                        page_to_display();
+                        display_active_page();
                         prev_page = active_page;
                     }
 
@@ -230,10 +232,10 @@ public class MyLCD implements Runnable {
     }
 
     private void network_debug_page() {
-        setCenteredLine(0, 1, configs.get(Configs.MY_ID) + " wifi:" + wifi_response_by_driver);
-        setCenteredLine(0, 2, "");
-        setCenteredLine(0, 3, "");
-        setCenteredLine(0, 4, "network debug mode");
+        setCenteredLine("page0", 1, configs.get(Configs.MY_ID) + " wifi:" + wifi_response_by_driver);
+        setCenteredLine("page0", 2, "");
+        setCenteredLine("page0", 3, "");
+        setCenteredLine("page0", 4, "network debug mode");
     }
 
     private void updatePage0() {
@@ -244,11 +246,11 @@ public class MyLCD implements Runnable {
                     TimeZone.getTimeZone("UTC").toZoneId());
 
             String time = "Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
-            setCenteredLine(0, 1, time);
+            setCenteredLine("page0", 1, time);
         } else {
-            setCenteredLine(0, 1, "");
+            setCenteredLine("page0", 1, "");
         }
-        setCenteredLine(0, 2, score.orElse(""));
+        setCenteredLine("page0", 2, score.orElse(""));
         // line 3 and 4 can be used by the user
     }
 
@@ -271,7 +273,6 @@ public class MyLCD implements Runnable {
 
         public LCDPage() {
             this.lines = new ArrayList<>(rows);
-
             clear();
         }
 
