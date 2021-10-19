@@ -37,6 +37,7 @@ new FormModel {
 						} )
 					}, new FormLayoutConstraints( null ) {
 						"title": "Matrix"
+						"enabled": false
 					} )
 				}, new FormLayoutConstraints( class java.lang.String ) {
 					"value": "Center"
@@ -56,6 +57,8 @@ new FormModel {
 						"text": "BTN02"
 						"alignmentY": 0.0f
 						"font": #Font0
+						"enabled": false
+						"toolTipText": "reserved for later use"
 						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "theButtonActionPerformed", true ) )
 					} )
 				}, new FormLayoutConstraints( class java.lang.String ) {

@@ -197,6 +197,21 @@ public class Tools {
     }
 
 
+    public static void system_shutdown(String cmd) {
+        if (!Tools.isArm()) return;
+        try {
+
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command("bash", "-c", cmd);
+
+            Process process = processBuilder.start();
+
+            process.waitFor(); // as we are shutting down, there is nothing to wait for
+        } catch (IOException | InterruptedException io) {
+            log.error(io);
+        }
+    }
+
     /**
      * @param cmd shell command to get the signal strength from the wifi driver. can be in dbm or percentage like
      *            "70/100"
@@ -213,7 +228,7 @@ public class Tools {
         } else { // link quality in dbm
             try {
                 wifi = Integer.parseInt(driver_response.replaceAll("[^0-9\\-]", ""));
-            } catch (NumberFormatException nfe){
+            } catch (NumberFormatException nfe) {
                 wifi = 0;
             }
         }

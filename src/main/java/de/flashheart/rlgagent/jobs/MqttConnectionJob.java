@@ -13,7 +13,7 @@ public class MqttConnectionJob implements Job, InterruptableJob {
         try {
             log.debug(jobExecutionContext.getJobDetail().getKey() + " executed");
             RLGAgent rlgAgent = (RLGAgent) jobExecutionContext.getScheduler().getContext().get("rlgAgent");
-            rlgAgent.initMQttClient();
+            rlgAgent.connect_to_mqtt_broker();
         } catch (SchedulerException e) {
             log.fatal(e);
             System.exit(0);

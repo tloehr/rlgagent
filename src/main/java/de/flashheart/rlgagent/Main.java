@@ -84,11 +84,7 @@ public class Main {
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         pinHandler = new PinHandler();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                prepareShutdown();
-            } catch (MqttException e) {
-                System.err.println(e);
-            }
+            prepareShutdown();
         }));
 
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
@@ -161,11 +157,9 @@ public class Main {
         }
 
         myLCD = new MyLCD(myUI, configs, lcd_hardware);
-        myLCD.setLine(0, 1, PROJECT + " V" + configs.getBuildInfo("my.version"));
-        myLCD.setLine(0, 2, "build " + configs.getBuildInfo("buildNumber"));
     }
 
-    private static void prepareShutdown() throws MqttException {
+    public static void prepareShutdown() {
         log.info("Preparing Shutdown");
         configs.saveConfigs();
         pinHandler.off();

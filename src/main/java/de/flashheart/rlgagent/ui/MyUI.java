@@ -178,6 +178,7 @@ public class MyUI extends JFrame {
                     content2.add(scrlMatrix);
                 }
                 tabPanel.addTab("Matrix", content2);
+                tabPanel.setEnabledAt(1, false);
             }
             dialogPane.add(tabPanel, BorderLayout.CENTER);
 
@@ -197,6 +198,8 @@ public class MyUI extends JFrame {
                 btn02.setText("BTN02");
                 btn02.setAlignmentY(0.0F);
                 btn02.setFont(new Font(".SF NS Text", Font.BOLD, 20));
+                btn02.setEnabled(false);
+                btn02.setToolTipText("reserved for later use");
                 btn02.addActionListener(e -> theButtonActionPerformed(e));
                 buttonBar.add(btn02);
             }

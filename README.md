@@ -31,7 +31,7 @@ With
 In addition to the two standard topics, a commander can instruct agents to listen to more topics, so it can combine agent to more "logic groups".
 
 ### Commands
-Commands are MQTT messages received from the commander module. The details are sent in the payload part as JSON Objects.
+Commands are MQTT messages received from the commander module. Most of the commands contain parameters as JSON objects stored in the payloads.
 
 #### Signals
 Signals are "on/off" schemes for specified pins of the Raspberry Pi. We use a PCB hat, to connect 12V LED Stripes, relay driven 12V sirens and a 12 V buzzers to send out notifications.
@@ -72,11 +72,23 @@ Example for "turn all the LEDs off, and sound the buzzer quickly 2 times."
 `{"signal": {led_all: "off", buzzer: "2:on,75;off,75"}}`
 
 #### Displays
+##### Paged Displays
+Agents can handle LCD displays driven by the [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) controller chip. LCDs with line/col dimensions of 16x2 and 20x4 are supported. As You can see in the [JavaDoc for MyLCD](https://github.com/tloehr/rlgagent/blob/main/src/main/java/de/flashheart/rlgagent/hardware/abstraction/MyLCD.java), we organize the display output in pages which cycle in order by their addition. Refer to the MyLCD class for more details.
 
-##### Line Display
-Agents can handle LCD displays driven by the [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) controller chip. LCDs with line/col dimensions of 16x2 and 20x4 are supported.
+Example command: `{"set_page": {"handle":"page2", "content":["line1","line2","line3","line4"]}}`
 
-To change the display output, use the following command syntax: `{"line_display": ['Rot: 123','Blau: 90']}'`
+Please note that there is always a starting page called "page0". It cannot be removed, and it's first two lines are used by the system. Only the first two lines of the content is used and set to line 3 and 4 for "page0".
+
+`{"set_page": {"handle":"page0", "content":["line3","line4"]}}`
+
+Exceeding content (more lines than actual rows) is ignored. Invalid handles are also ignored.
+
+###### Adding a page
+We can add additional pages to the display output. If the page already exists, the command will be ignored.
+
+`{"add_page": "page3"}`
+
+Added pages are removed by the "init" command.
 
 ##### Matrix Displays
 Matrix displays based on stripes of WS2812 LEDs are planned but not yet implemented.
@@ -89,8 +101,10 @@ In order to reduce the amount of messages sent in a short time period, we can or
 
 The name of the groups is not preset. The commander can choose the group names as needed.
 
-`{"init": ""}`
-An agent receiving the above command, will unsubscribe from all existing additional subscriptions.
+#### Initializing an agent
+You can (re-)initialize an agent by sendind the `{"init": ""}` command.
+
+The agent will unsubscribe from all additional subscriptions and remove all but one pages from the display. Only "page0" remains with the usual content.
 
 ### Events
 The agent currently sends 2 different types of events.

@@ -87,8 +87,6 @@ public class RLGAgent implements MqttCallbackExtended {
         myLCD.setLine("pageß", 3, "Ready 4");
         myLCD.setLine("page0", 4, "Action");
 
-        //todo: lcdPages vom Server erlauben.
-
         initAgent();
         //initHeartbeatJob();
         initMqttConnectionJob();
@@ -96,13 +94,13 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * this method is called from the connection job - not directly
+     * tries to connect to the mqtt broker. cancels the quartz job when the connection has been established
      */
-    public void initMQttClient() {
+    public void connect_to_mqtt_broker() {
         // the wifi quality might be of interest during that phase
         me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
         myLCD.setWifi(me.getWifi_response_by_driver());
-        waitForCommander();
+        show_connection_status_as_signals();
 
         try {
             iMqttClient = Optional.ofNullable(new MqttClient(configs.get(Configs.MQTT_BROKER), configs.get(Configs.MYUUID), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
@@ -134,6 +132,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 for (String channel : group_channels) {
                     iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
                 }
+                show_connection_status_as_signals();
             }
         } catch (MqttException e) {
             iMqttClient = Optional.empty();
@@ -168,7 +167,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * tell commander every 60 seconds, that I am alive.
+     * starts a "i am alive" job that runs every 60 seconds
      *
      * @throws SchedulerException
      */
@@ -187,7 +186,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * tell commander every 60 seconds, that I am alive.
+     * start a job that tries to connect to the mqtt broker
      *
      * @throws SchedulerException
      */
@@ -226,10 +225,10 @@ public class RLGAgent implements MqttCallbackExtended {
                     //                  "lines":["Rot: 123","Blau: 90"]
                     //              }
                     //          }
-                    case "line_display": {
-                        JSONObject display_cmd = new JSONObject(cmds.getJSONObject("line_display"));
+                    case "set_page": {
+                        JSONObject display_cmd = cmds.getJSONObject("set_page");
                         String handle = display_cmd.getString("handle");
-                        JSONArray lines = cmds.getJSONArray("lines");
+                        JSONArray lines = display_cmd.getJSONArray("content");
                         // the first two lines are fixed for the agent (wifi and remaining time or score)
                         // page0 only allows user content on lines 3 and 4
                         int offset = handle.equalsIgnoreCase("page0") ? 3 : 1;
@@ -281,9 +280,15 @@ public class RLGAgent implements MqttCallbackExtended {
                         myLCD.setScore(Optional.of(cmds.getString("score")));
                         break;
                     }
+                    case "shutdown": {
+                        Tools.system_shutdown(cmds.getString("shutdown"));
+                        System.exit(0);
+                        break;
+                    }
                     case "init": { // remove all subscriptions
                         unsubscribe_from_extras();
                         myLCD.init();
+                        show_connection_status_as_signals();
                         break;
                     }
                     case "subscribe_to": {
@@ -343,7 +348,7 @@ public class RLGAgent implements MqttCallbackExtended {
      * switches the agent to the starting mode, when it doesnt know about a commander or a mqtt broker. Is called, when
      * the broker connection is lost.
      */
-    private void waitForCommander() {
+    private void show_connection_status_as_signals() {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             myLCD.setNetwork_lost(false);
 
