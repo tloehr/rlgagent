@@ -84,7 +84,7 @@ public class RLGAgent implements MqttCallbackExtended {
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
 
         //lcdPage = myLCD.addPage();
-        myLCD.setLine("pageß", 3, "Ready 4");
+        myLCD.setLine("page0", 3, "Ready 4");
         myLCD.setLine("page0", 4, "Action");
 
         initAgent();
@@ -359,7 +359,7 @@ public class RLGAgent implements MqttCallbackExtended {
             pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1400;on,350;off,2300");
 
             myLCD.setLine("page0", 3, "waiting for");
-            myLCD.setLine("page0", 4, "commander");
+            myLCD.setLine("page0", 4, "a game");
 
         } else {
             myLCD.setNetwork_lost(true);

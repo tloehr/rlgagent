@@ -53,11 +53,11 @@ The following devices are recognized:
 - sir2
 - sir3
 
-Two "group" devices can also be addressed.
+Two hardcoded device groups can also be addressed.
 - led_all - All LEDs
 - sir_all - All Sirens (Buzzer not included)
 
-A JSON which turns off the buzzer and then let it sound two times (75 ms) looks like this:
+A JSON which turns off the buzzer and then makes it wail two times (75 ms) looks like this:
 
 `{"signal": {buzzer: "off", "2:on,75;off,75"}}`
 
@@ -65,8 +65,7 @@ If we want to let all LEDs blink every second (until further notice), we would s
 
 `{"signal": {led_all: "∞:on,1000;off,1000"}}`
 
-We can combine several messages into one combined command. Because of the nature of the JSON Objects, only one device can be adressed in every message. But thats enough. I couldn't think of a scenario where we would want to send 2 different pin schemes to the same device. The first scheme would be overwritten immediately. 
-
+We can combine several messages into one combined command to reduce the number of sent messages. Because of the nature of the JSON Objects, only one device can be adressed in every message. But thats enough. I couldn't think of a scenario where we would want to send 2 different pin schemes to the same device. The first scheme would be overwritten immediately. 
 
 Example for "turn all the LEDs off, and sound the buzzer quickly 2 times."
 `{"signal": {led_all: "off", buzzer: "2:on,75;off,75"}}`

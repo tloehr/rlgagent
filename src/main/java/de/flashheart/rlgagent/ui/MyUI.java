@@ -42,41 +42,6 @@ public class MyUI extends JFrame {
         lineList = new ArrayList<>();
     }
 
-//    private void initLogger() {
-//        // keeps the log window under MAX_LOG_LINES lines to prevent out of memory exception
-//        txtLogger.getDocument().addDocumentListener(new DocumentListener() {
-//            @Override
-//            public void insertUpdate(DocumentEvent e) {
-//                SwingUtilities.invokeLater(() -> {
-//                    Element root = e.getDocument().getDefaultRootElement();
-//                    while (root.getElementCount() > MAX_LOG_LINES) {
-//                        Element firstLine = root.getElement(0);
-//                        try {
-//                            e.getDocument().remove(0, firstLine.getEndOffset());
-//                        } catch (BadLocationException ble) {
-//                            log.error(ble);
-//                        }
-//                    }
-//                });
-//            }
-//
-//            @Override
-//            public void removeUpdate(DocumentEvent e) {
-//            }
-//
-//            @Override
-//            public void changedUpdate(DocumentEvent e) {
-//            }
-//        });
-//    }
-//
-//    public void addLog(String text) {
-//        SwingUtilities.invokeLater(() -> {
-//            txtLogger.append(text + "\n");
-//            scrollPane1.getVerticalScrollBar().setValue(scrollPane1.getVerticalScrollBar().getMaximum());
-//        });
-//    }
-
     private void initLEDs() {
         pinMap = new HashMap<>();
         pinMap.put(Configs.OUT_LED_RED, new MyLED(Configs.OUT_LED_RED, Color.RED));
@@ -126,11 +91,6 @@ public class MyUI extends JFrame {
 
     public void addActionListenerToBTN02(ActionListener actionListener) {
         btn02.addActionListener(actionListener);
-    }
-
-
-    private void theButtonActionPerformed(ActionEvent e) {
-        // TODO add your code here
     }
 
 
@@ -191,7 +151,6 @@ public class MyUI extends JFrame {
                 btn01.setText("BTN01");
                 btn01.setAlignmentY(0.0F);
                 btn01.setFont(new Font(".SF NS Text", Font.BOLD, 20));
-                btn01.addActionListener(e -> theButtonActionPerformed(e));
                 buttonBar.add(btn01);
 
                 //---- btn02 ----
@@ -200,7 +159,6 @@ public class MyUI extends JFrame {
                 btn02.setFont(new Font(".SF NS Text", Font.BOLD, 20));
                 btn02.setEnabled(false);
                 btn02.setToolTipText("reserved for later use");
-                btn02.addActionListener(e -> theButtonActionPerformed(e));
                 buttonBar.add(btn02);
             }
             dialogPane.add(buttonBar, BorderLayout.SOUTH);

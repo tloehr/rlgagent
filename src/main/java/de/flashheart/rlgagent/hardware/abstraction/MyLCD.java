@@ -68,6 +68,7 @@ public class MyLCD implements Runnable {
         this.score = Optional.empty();
         this.wifi_response_by_driver = "?";
         network_lost = true;
+        this.remaining = -1l;
 
         // create lines on the gui
         myUI.ifPresent(myUI1 -> {
@@ -170,10 +171,10 @@ public class MyLCD implements Runnable {
         for (int r = 0; r < rows; r++) {
             String line = currentPage.getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(currentPage.getLine(r), cols);
             log.trace("VISIBLE PAGE #" + active_page + " Line" + r + ": " + line);
-            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
-                String pagenumber = Integer.toString(active_page);
-                line = StringUtils.overlay(line, pagenumber, line.length()-pagenumber.length(), line.length());
-            }
+//            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
+//                String pagenumber = Integer.toString(active_page);
+//                line = StringUtils.overlay(line, pagenumber, line.length()-pagenumber.length(), line.length());
+//            }
             if (i2CLCD.isPresent()) {
                 i2CLCD.get().display_string(line, r);
             }
@@ -255,7 +256,12 @@ public class MyLCD implements Runnable {
                 } finally {
                     lock.unlock();
                 }
-                Thread.sleep(MILLIS_PER_CYCLE);
+                if (pages.size() == 1){
+                    Thread.sleep(50l);
+                } else {
+                    Thread.sleep(MILLIS_PER_CYCLE);
+                }
+
                 loopcounter++;
             } catch (InterruptedException ie) {
                 log.error(ie);
@@ -286,9 +292,9 @@ public class MyLCD implements Runnable {
             String time = "Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
             setCenteredLine("page0", 1, time);
         } else {
-            setCenteredLine("page0", 1, "");
+            setCenteredLine("page0", 1, "--");
         }
-        setCenteredLine("page0", 2, score.orElse(""));
+        setLine("page0", 2, score.orElse(""));
         // line 3 and 4 can be used by the user
     }
 
