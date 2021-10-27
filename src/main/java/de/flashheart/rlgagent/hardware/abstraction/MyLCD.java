@@ -5,7 +5,6 @@ import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Level;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -19,7 +18,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
 /**
- *
+ * This class is handling the hardware of a Hitachie I2C LCD display and (at the same time) simulates the output on a desktop
+ * screen, if available. It organizes the display in pages which can be added during runtime by naming it with a
+ * string handle. There is always a page called "page0". Pages cycle through with a delaytime of cycles_per_page *
+ * MILLIS_PER_CYCLE (4*500ms by default) The CYCLES_PER_PAGE can be changed during runtime.
  */
 public class MyLCD implements Runnable {
     public static final char LCD_DEGREE_SYMBOL = 223;
@@ -49,10 +51,6 @@ public class MyLCD implements Runnable {
     private String wifi_response_by_driver;
 
     /**
-     * This class is handling the hardware of the display and (at the same time) simulates the output on a desktop
-     * screen, if available. It organizes the display in pages which can be added during runtime by naming it with a
-     * string handle. There is always a page called "page0". Pages cycle through with a delaytime of cycles_per_page *
-     * MILLIS_PER_CYCLE (4*500ms by default) The CYCLES_PER_PAGE can be changed during runtime.
      *
      * @param myUI    if we are running on a desktop, we will receive a handle to the gui. this gui is used to simulate
      *                the display behaviour on the screen
@@ -213,9 +211,12 @@ public class MyLCD implements Runnable {
         }
     }
 
-    private void updateTimer() {
-        // Entweder wir brauchen keinen Timer oder er ist abgelaufen
-        // Aber kümmert uns hier nicht, muss der Commander machen
+    /**
+     * the calculation of the timer is one of the few things the agent does on its own.
+     * It simply counts down a given timer (which has been broadcasted by the commander).
+     * When it runs out, the timer simply disappears from the display. That's it.
+     */
+    private void calculate_remaining_time() {
         if (remaining < 0) return;
         long now = System.currentTimeMillis();
         time_difference_since_last_cycle = now - last_cycle_started_at;
@@ -283,7 +284,7 @@ public class MyLCD implements Runnable {
      * page0 has 2 reserved lines for score and remaining gametime.
      */
     private void updatePage0() {
-        updateTimer();
+        calculate_remaining_time();
 
         if (remaining > 0) {
             LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(remaining),

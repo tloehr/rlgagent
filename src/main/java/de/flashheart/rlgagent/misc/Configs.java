@@ -90,7 +90,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(IN_BTN01, RaspiPin.GPIO_03.getName()); // 15
         configs.setProperty(IN_BTN02, RaspiPin.GPIO_04.getName()); // 16
 
-        configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan0|egrep \"Signal level\"|awk '{print $4}'");
+        configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1|egrep \"Signal level\"|awk '{print $4}'");
 
         // missionbox
 //        configs.setProperty(OUT_LED_WHITE, RaspiPin.GPIO_05.getName()); // 13
