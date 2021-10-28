@@ -153,6 +153,7 @@ public class MyLCD implements Runnable {
     }
 
     private void inc_page() {
+        if (pages.size() == 1) return;
         prev_page = active_page;
         active_page++;
         if (active_page > pages.size() - 1) active_page = 0;
@@ -258,7 +259,7 @@ public class MyLCD implements Runnable {
                     lock.unlock();
                 }
                 if (pages.size() == 1){
-                    Thread.sleep(50l);
+                    Thread.sleep(MILLIS_PER_CYCLE);
                 } else {
                     Thread.sleep(MILLIS_PER_CYCLE);
                 }

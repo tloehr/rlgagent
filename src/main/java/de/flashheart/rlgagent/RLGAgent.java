@@ -251,7 +251,7 @@ public class RLGAgent implements MqttCallbackExtended {
                     case "signal": {
                         final JSONObject signals = cmds.getJSONObject("signal");
 
-                        // JSON Key:Values are unordered by definition. So we need to look first for led_all and sir_all.
+                        // JSON Keys are unordered by definition. So we need to look first for led_all and sir_all.
                         Set<String> keys = signals.keySet();
                         if (keys.contains("led_all")) {
                             for (String led : Configs.ALL_LEDS) {
@@ -267,9 +267,7 @@ public class RLGAgent implements MqttCallbackExtended {
                         keys.remove("sir_all");
 
                         // cycle through the rest of the signals - one by one
-                        keys.forEach(signal_key -> {
-                            pinHandler.setScheme(signal_key, signals.getString(signal_key));
-                        });
+                        keys.forEach(signal_key -> pinHandler.setScheme(signal_key, signals.getString(signal_key)));
                         break;
                     }
                     case "remaining": {
