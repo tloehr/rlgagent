@@ -286,6 +286,7 @@ public class RLGAgent implements MqttCallbackExtended {
                     case "init": { // remove all subscriptions
                         unsubscribe_from_extras();
                         myLCD.init();
+                        //pinHandler.off();
                         show_connection_status_as_signals();
                         break;
                     }

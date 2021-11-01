@@ -80,6 +80,9 @@ public class PinHandler {
         setScheme(name, "0:");
     }
 
+    /**
+     * set all known pins to off
+     */
     public void off() {
         for (String name : pinMap.keySet()) {
             off(name);

@@ -33,7 +33,7 @@ public class MyLCD implements Runnable {
     private final int cols, rows;
     private final Thread thread;
 
-    private long remaining, time_difference_since_last_cycle;
+    private long remaining, additional_timer, time_difference_since_last_cycle;
     private long last_cycle_started_at;
     private Optional<String> score;
 
@@ -51,7 +51,6 @@ public class MyLCD implements Runnable {
     private String wifi_response_by_driver;
 
     /**
-     *
      * @param myUI    if we are running on a desktop, we will receive a handle to the gui. this gui is used to simulate
      *                the display behaviour on the screen
      * @param configs the configs object for reading settings
@@ -67,6 +66,7 @@ public class MyLCD implements Runnable {
         this.wifi_response_by_driver = "?";
         network_lost = true;
         this.remaining = -1l;
+        this.additional_timer = -1l;
 
         // create lines on the gui
         myUI.ifPresent(myUI1 -> {
@@ -199,6 +199,7 @@ public class MyLCD implements Runnable {
         if (!page_map.containsKey(handle)) return;
         if (line < 1 || line > rows) return;
 
+
         pages.get(page_map.get(handle)).lines.set(line - 1, StringUtils.rightPad(StringUtils.left(text, cols), cols - 1));
     }
 
@@ -214,15 +215,15 @@ public class MyLCD implements Runnable {
 
     /**
      * the calculation of the timer is one of the few things the agent does on its own.
-     * It simply counts down a given timer (which has been broadcasted by the commander).
+     * It simply counts down a given remaining timer (which has been broadcasted by the commander).
      * When it runs out, the timer simply disappears from the display. That's it.
      */
-    private void calculate_remaining_time() {
-        if (remaining < 0) return;
+    private void calculate_timer() {
         long now = System.currentTimeMillis();
         time_difference_since_last_cycle = now - last_cycle_started_at;
         last_cycle_started_at = now;
-        remaining = remaining - time_difference_since_last_cycle;
+        if (remaining > 0) remaining = remaining - time_difference_since_last_cycle;
+        if (additional_timer > 0) additional_timer = additional_timer - time_difference_since_last_cycle;
     }
 
     public void setNetwork_lost(boolean network_lost) {
@@ -258,7 +259,7 @@ public class MyLCD implements Runnable {
                 } finally {
                     lock.unlock();
                 }
-                if (pages.size() == 1){
+                if (pages.size() == 1) {
                     Thread.sleep(MILLIS_PER_CYCLE);
                 } else {
                     Thread.sleep(MILLIS_PER_CYCLE);
@@ -285,7 +286,7 @@ public class MyLCD implements Runnable {
      * page0 has 2 reserved lines for score and remaining gametime.
      */
     private void updatePage0() {
-        calculate_remaining_time();
+        calculate_timer();
 
         if (remaining > 0) {
             LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(remaining),
@@ -330,7 +331,13 @@ public class MyLCD implements Runnable {
         }
 
         public String getLine(int num) {
-            return lines.get(num);
+            String line = lines.get(num);
+            if (lines.get(num).indexOf("/tmr/") > 0 && additional_timer > 0) {
+                LocalDateTime timer = LocalDateTime.ofInstant(Instant.ofEpochMilli(additional_timer),
+                        TimeZone.getTimeZone("UTC").toZoneId());
+                line = StringUtils.replace(line, "/tmr/", timer.toString());
+            }
+            return line;
         }
 
         public void clear() {

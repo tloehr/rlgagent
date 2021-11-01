@@ -38,7 +38,11 @@ Signals are "on/off" schemes for specified pins of the Raspberry Pi. We use a PC
 
 Signal schemes are lists of **on** and **off** times (in milliseconds) for the specific raspi pin. Every list is preceded by the number of repeats. If a scheme should go on forever (until changed), the repeat_count can be replaced by the infinity sign ∞ (in fact, there is no infinity, it is Long.MAX_VALUE, but for our purpose this would take forever). A repeat_count of 0, turns off the signal. Like so: "0:" or the word "off" (which is also understood).
 
-The syntax of the scheme is: `<repeat_count>:[on|off],<period_in_ms>;[on|off],<period_in_ms>`
+The syntax of the scheme is:
+
+```
+<repeat_count>:[on|off],<period_in_ms>;[on|off],<period_in_ms>
+```
 
 The agent abstracts devices from their GPIO counterparts on the Raspi. The DEVICE-to-GPIO assignment is stored in the config.txt and can be changed, if You use a different connection approach as to use our PCB.
 
@@ -74,7 +78,13 @@ Example for "turn all the LEDs off, and sound the buzzer quickly 2 times."
 ##### Paged Displays
 Agents can handle LCD displays driven by the [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) controller chip. LCDs with line/col dimensions of 16x2 and 20x4 are supported. As You can see in the [JavaDoc for MyLCD](https://github.com/tloehr/rlgagent/blob/main/src/main/java/de/flashheart/rlgagent/hardware/abstraction/MyLCD.java), we organize the display output in pages which cycle in order by their addition. Refer to the MyLCD class for more details.
 
-Example command: `{"set_page": {"handle":"page2", "content":["line1","line2","line3","line4"]}}`
+Example command:
+```
+{
+    "set_page":
+        {"handle":"page2", "content":["line1","line2","line3","line4"]}
+}
+```
 
 Please note that there is always a starting page called "page0". It cannot be removed, and it's first two lines are used by the system. Only the first two lines of the content is used and set to line 3 and 4 for "page0".
 
@@ -108,4 +118,20 @@ The agent will unsubscribe from all additional subscriptions and remove all but 
 ### Events
 The agent currently sends 2 different types of events.
 1. Notifications about pressed buttons. The agent handles two buttons, but only button 1 is in use. The second button was implemented for later usage. Example: `{"button_pressed":"btn01"}`
-2. Status reports about the current state of the agent, to be considered by the commander module. example: `{"status":{"gameid":"g1","has_rfid":false,"agentid":"ag01","wifi":3,"has_line_display":true,"has_sirens":false,"has_sound":false,"has_leds":true,"has_matrix_display":false,"timestamp":"2021-10-11T15:30:49.345767+02:00[Europe/Berlin]"}}` 
+2. Status reports about the current state of the agent, to be considered by the commander module. example:
+```
+{
+    "status":{
+        "gameid":"g1",
+        "has_rfid":false,
+        "agentid":"ag01",
+        "wifi":3,
+        "has_line_display":true,
+        "has_sirens":false,
+        "has_sound":false,
+        "has_leds":true,
+        "has_matrix_display":false,
+        "timestamp":"2021-10-11T15:30:49.345767+02:00[Europe/Berlin]"
+    }
+}
+``` 
