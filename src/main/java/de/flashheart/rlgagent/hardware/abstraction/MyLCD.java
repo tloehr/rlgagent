@@ -2,18 +2,14 @@ package de.flashheart.rlgagent.hardware.abstraction;
 
 import de.flashheart.rlgagent.hardware.I2CLCD;
 import de.flashheart.rlgagent.misc.Configs;
+import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
-import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
@@ -33,7 +29,14 @@ public class MyLCD implements Runnable {
     private final int cols, rows;
     private final Thread thread;
 
-    private long remaining, additional_timer, time_difference_since_last_cycle;
+    // timers section
+    // it may seem odd, but for the agent all timers are just
+    // something that will show up on the display
+    // so we maintain them here
+    private long time_difference_since_last_cycle;
+    private HashMap<String, Long> timers;
+
+
     private long last_cycle_started_at;
     private Optional<String> score;
 
@@ -50,6 +53,7 @@ public class MyLCD implements Runnable {
     private final Configs configs;
     private String wifi_response_by_driver;
 
+
     /**
      * @param myUI    if we are running on a desktop, we will receive a handle to the gui. this gui is used to simulate
      *                the display behaviour on the screen
@@ -65,8 +69,7 @@ public class MyLCD implements Runnable {
         this.score = Optional.empty();
         this.wifi_response_by_driver = "?";
         network_lost = true;
-        this.remaining = -1l;
-        this.additional_timer = -1l;
+        timers = new HashMap<>();
 
         // create lines on the gui
         myUI.ifPresent(myUI1 -> {
@@ -94,7 +97,7 @@ public class MyLCD implements Runnable {
             pages.add(new LCDPage()); // there is always one page.
             page_map.put("page0", 0);
             active_page = 0;
-            remaining = 0l;
+            timers.clear();
             score = Optional.empty();
         } finally {
             lock.unlock();
@@ -175,7 +178,7 @@ public class MyLCD implements Runnable {
 //                line = StringUtils.overlay(line, pagenumber, line.length()-pagenumber.length(), line.length());
 //            }
             if (i2CLCD.isPresent()) {
-                i2CLCD.get().display_string(line, r);
+                i2CLCD.get().display_string(line, r + 1);
             }
             if (myUI.isPresent()) {
                 myUI.get().setLine(r, line);
@@ -199,7 +202,6 @@ public class MyLCD implements Runnable {
         if (!page_map.containsKey(handle)) return;
         if (line < 1 || line > rows) return;
 
-
         pages.get(page_map.get(handle)).lines.set(line - 1, StringUtils.rightPad(StringUtils.left(text, cols), cols - 1));
     }
 
@@ -214,25 +216,41 @@ public class MyLCD implements Runnable {
     }
 
     /**
-     * the calculation of the timer is one of the few things the agent does on its own.
-     * It simply counts down a given remaining timer (which has been broadcasted by the commander).
-     * When it runs out, the timer simply disappears from the display. That's it.
+     * the calculation of the timer is one of the few things the agent does on its own. It simply counts down a given
+     * remaining timer (which has been broadcasted by the commander). When it runs out, the timer simply disappears from
+     * the display. That's it.
      */
-    private void calculate_timer() {
+    private void calculate_timers() {
         long now = System.currentTimeMillis();
         time_difference_since_last_cycle = now - last_cycle_started_at;
         last_cycle_started_at = now;
-        if (remaining > 0) remaining = remaining - time_difference_since_last_cycle;
-        if (additional_timer > 0) additional_timer = additional_timer - time_difference_since_last_cycle;
+
+        // recalculate all timers
+        timers.keySet().forEach(key -> {
+            long timer = timers.get(key);
+            timer = timer - time_difference_since_last_cycle;
+            timers.put(key, timer);
+        });
+        // remove obsolete timers
+        timers.entrySet().removeIf(stringLongEntry -> stringLongEntry.getValue() <= 0);
+    }
+
+    public void setTimer(String key, long time) {
+        timers.put("${" + key + "}", time * 1000l);
     }
 
     public void setNetwork_lost(boolean network_lost) {
         this.network_lost = network_lost;
     }
 
-    public void setRemaining(long remaining) {
-        this.remaining = remaining * 1000l;
-    }
+//    public void setRemaining(long remaining) {
+//        this.remaining = remaining * 1000l;
+//    }
+//
+//    public void setAdditional_timer(long additional_timer) {
+//        this.additional_timer = additional_timer * 1000l;
+//    }
+
 
     @Override
     public void run() {
@@ -286,17 +304,17 @@ public class MyLCD implements Runnable {
      * page0 has 2 reserved lines for score and remaining gametime.
      */
     private void updatePage0() {
-        calculate_timer();
+        calculate_timers();
 
-        if (remaining > 0) {
-            LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(remaining),
-                    TimeZone.getTimeZone("UTC").toZoneId());
-
-            String time = "Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
-            setCenteredLine("page0", 1, time);
-        } else {
-            setCenteredLine("page0", 1, "--");
-        }
+//        if (remaining > 0) {
+//            LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(remaining),
+//                    TimeZone.getTimeZone("UTC").toZoneId());
+//
+//            String time = "Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
+//            setCenteredLine("page0", 1, time);
+//        } else {
+//            setCenteredLine("page0", 1, "--");
+//        }
         setLine("page0", 2, score.orElse(""));
         // line 3 and 4 can be used by the user
     }
@@ -331,13 +349,22 @@ public class MyLCD implements Runnable {
         }
 
         public String getLine(int num) {
-            String line = lines.get(num);
-            if (lines.get(num).indexOf("/tmr/") > 0 && additional_timer > 0) {
-                LocalDateTime timer = LocalDateTime.ofInstant(Instant.ofEpochMilli(additional_timer),
-                        TimeZone.getTimeZone("UTC").toZoneId());
-                line = StringUtils.replace(line, "/tmr/", timer.toString());
-            }
-            return line;
+            //final StringBuffer line = new StringBuffer();
+            // replace timers with their variables, if present
+
+            return Tools.replaceTimerVariables(lines.get(num), timers);
+
+//            timers.forEach((key, time) -> {
+//                String var = "$" + key;
+//                String replacement = "";
+//                if (lines.get(num).contains(var)) {
+//                    LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time),
+//                            TimeZone.getTimeZone("UTC").toZoneId());
+//                    replacement = StringUtils.replace(lines.get(num), var, ldtTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)));
+//                }
+//                line.append(StringUtils.replace(lines.get(num), var, replacement));
+//            });
+//            return line.toString();
         }
 
         public void clear() {
@@ -347,8 +374,6 @@ public class MyLCD implements Runnable {
                 setLine(r, "");
             }
         }
-
     }
-
 }
 

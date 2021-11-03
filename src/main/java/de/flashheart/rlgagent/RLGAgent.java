@@ -34,8 +34,8 @@ public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private final String TOPIC_EVENT_FROM_ME;
     private final String TOPIC_PREFIX;
-    private final String TOPIC_CMD_ME;
-    private final String TOPIC_CMD_ALL;
+    private final String TOPIC_CMD_4ME;
+    private final String TOPIC_CMD_4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
     private final PinHandler pinHandler;
@@ -76,8 +76,8 @@ public class RLGAgent implements MqttCallbackExtended {
 
         iMqttClient = Optional.empty();
         TOPIC_PREFIX = String.format("%s/cmd", configs.get(Configs.GAME_ID));
-        TOPIC_CMD_ME = String.format("%s/%s", TOPIC_PREFIX, configs.get(Configs.MY_ID));
-        TOPIC_CMD_ALL = String.format("%s/all", TOPIC_PREFIX);
+        TOPIC_CMD_4ME = String.format("%s/%s", TOPIC_PREFIX, configs.get(Configs.MY_ID));
+        TOPIC_CMD_4ALL = String.format("%s/all", TOPIC_PREFIX);
         TOPIC_EVENT_FROM_ME = String.format("%s/evt/%s", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
         group_channels = new HashSet();
         myStatusJobKey = new JobKey(StatusJob.name, "group1");
@@ -127,8 +127,8 @@ public class RLGAgent implements MqttCallbackExtended {
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
-                iMqttClient.get().subscribe(TOPIC_CMD_ME, (topic, receivedMessage) -> processCommand(receivedMessage));
-                iMqttClient.get().subscribe(TOPIC_CMD_ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
+                iMqttClient.get().subscribe(TOPIC_CMD_4ME, (topic, receivedMessage) -> processCommand(receivedMessage));
+                iMqttClient.get().subscribe(TOPIC_CMD_4ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
                 for (String channel : group_channels) {
                     iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
                 }
@@ -270,8 +270,15 @@ public class RLGAgent implements MqttCallbackExtended {
                         keys.forEach(signal_key -> pinHandler.setScheme(signal_key, signals.getString(signal_key)));
                         break;
                     }
-                    case "remaining": {
-                        myLCD.setRemaining(cmds.getLong("remaining"));
+//                    case "remaining": {
+//                        myLCD.setRemaining(cmds.getLong("remaining"));
+//                        break;
+//                    }
+                    case "timers": {
+                        JSONObject timers = cmds.getJSONObject("timers");
+                        timers.keySet().forEach(sKey -> {
+                            myLCD.setTimer(sKey, timers.getLong(sKey));
+                        });
                         break;
                     }
                     case "score": {

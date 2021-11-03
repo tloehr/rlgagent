@@ -7,9 +7,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.HashMap;
 import java.util.StringTokenizer;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Log4j2
 public class Tools {
@@ -220,17 +227,18 @@ public class Tools {
     public static int getWifiQuality(String driver_response) {
         int wifiQuality;
         int wifi;
+        //driver_response = "level=94";
         // some wifi drivers show the link quality in percentage (e.g. 70/100) rather than dbm
-        if (driver_response.contains("/")) { // link quality in percentage
-            StringTokenizer tokenizer = new StringTokenizer(driver_response, "/");
-            int quality = Integer.parseInt(tokenizer.nextToken());
-            wifi = quality / 2 - 100;
-        } else { // link quality in dbm
-            try {
+        try {
+            if (driver_response.contains("/")) { // link quality in percentage
+                StringTokenizer tokenizer = new StringTokenizer(driver_response, "/");
+                int quality = Integer.parseInt(tokenizer.nextToken());
+                wifi = quality / 2 - 100;
+            } else { // link quality in dbm
                 wifi = Integer.parseInt(driver_response.replaceAll("[^0-9\\-]", ""));
-            } catch (NumberFormatException nfe) {
-                wifi = 0;
             }
+        } catch (NumberFormatException nfe) {
+            wifi = 0;
         }
 
         if (wifi >= 0) wifiQuality = 0;
@@ -243,6 +251,32 @@ public class Tools {
         else wifiQuality = 0; //ugly
 
         return wifiQuality;
+    }
+
+    public static String replaceTimerVariables(String text, HashMap<String, Long> replacements) {
+        if (replacements.isEmpty()) return text;
+        // example text = "remaining time: ${remaining} and (another) time ${another} another $as {asnsd}";
+
+        // matches ${var} style words
+        // todo: concurrent modification ?
+        Pattern pattern = Pattern.compile("\\$\\{[a-zA-Z0-9]*\\}");
+        Matcher matcher = pattern.matcher(text);
+
+        StringBuilder builder = new StringBuilder();
+        int i = 0;
+        while (matcher.find()) {
+            builder.append(text, i, matcher.start());
+            if (replacements.containsKey(matcher.group(0))) {
+                long time = replacements.get(matcher.group(0));
+                LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time),
+                        TimeZone.getTimeZone("UTC").toZoneId());
+                String replacement = ldtTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
+                builder.append(replacement);
+            }
+            i = matcher.end();
+        }
+        builder.append(text.substring(i));
+        return builder.toString();
     }
 
 }
