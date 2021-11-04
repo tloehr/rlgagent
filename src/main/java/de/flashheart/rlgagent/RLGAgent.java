@@ -99,7 +99,7 @@ public class RLGAgent implements MqttCallbackExtended {
     public void connect_to_mqtt_broker() {
         // the wifi quality might be of interest during that phase
         me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
-        myLCD.setWifi(me.getWifi_response_by_driver());
+        myLCD.setVariable("wifi", me.getWifi_response_by_driver());
         show_connection_status_as_signals();
 
         try {
@@ -229,11 +229,8 @@ public class RLGAgent implements MqttCallbackExtended {
                         JSONObject display_cmd = cmds.getJSONObject("set_page");
                         String handle = display_cmd.getString("handle");
                         JSONArray lines = display_cmd.getJSONArray("content");
-                        // the first two lines are fixed for the agent (wifi and remaining time or score)
-                        // page0 only allows user content on lines 3 and 4
-                        int offset = handle.equalsIgnoreCase("page0") ? 3 : 1;
-                        for (int line = 0; line < lines.length(); line++) {
-                            myLCD.setLine(handle, line + offset, lines.getString(line));
+                        for (int line = 1; line <= lines.length(); line++) {
+                            myLCD.setLine(handle, line, lines.getString(line-1));
                         }
                         break;
                     }
@@ -270,19 +267,14 @@ public class RLGAgent implements MqttCallbackExtended {
                         keys.forEach(signal_key -> pinHandler.setScheme(signal_key, signals.getString(signal_key)));
                         break;
                     }
-//                    case "remaining": {
-//                        myLCD.setRemaining(cmds.getLong("remaining"));
-//                        break;
-//                    }
                     case "timers": {
                         JSONObject timers = cmds.getJSONObject("timers");
-                        timers.keySet().forEach(sKey -> {
-                            myLCD.setTimer(sKey, timers.getLong(sKey));
-                        });
+                        timers.keySet().forEach(sKey -> myLCD.setTimer(sKey, timers.getLong(sKey)));
                         break;
                     }
-                    case "score": {
-                        myLCD.setScore(Optional.of(cmds.getString("score")));
+                    case "vars": {
+                        JSONObject vars = cmds.getJSONObject("vars");
+                        vars.keySet().forEach(sKey -> myLCD.setVariable(sKey, vars.getString(sKey)));
                         break;
                     }
                     case "shutdown": {
@@ -293,6 +285,7 @@ public class RLGAgent implements MqttCallbackExtended {
                     case "init": { // remove all subscriptions
                         unsubscribe_from_extras();
                         myLCD.init();
+                        myLCD.setVariable("wifi", me.getWifi_response_by_driver());
                         //pinHandler.off();
                         show_connection_status_as_signals();
                         break;
@@ -397,7 +390,7 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     public void sendStatus() {
         me.setWifi_response_by_driver(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
-        myLCD.setWifi(me.getWifi_response_by_driver());
+        myLCD.setVariable("wifi", me.getWifi_response_by_driver());
         publishMessage(new JSONObject().put("status", me.toJson()).toString());
     }
 

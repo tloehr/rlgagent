@@ -7,14 +7,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.HashMap;
 import java.util.StringTokenizer;
-import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -253,12 +249,9 @@ public class Tools {
         return wifiQuality;
     }
 
-    public static String replaceTimerVariables(String text, HashMap<String, Long> replacements) {
-        if (replacements.isEmpty()) return text;
-        // example text = "remaining time: ${remaining} and (another) time ${another} another $as {asnsd}";
-
+    public static String replaceVariables(String text, HashMap<String, String> replacements) {
+        //if (replacements.isEmpty()) return text;
         // matches ${var} style words
-        // todo: concurrent modification ?
         Pattern pattern = Pattern.compile("\\$\\{[a-zA-Z0-9]*\\}");
         Matcher matcher = pattern.matcher(text);
 
@@ -266,13 +259,7 @@ public class Tools {
         int i = 0;
         while (matcher.find()) {
             builder.append(text, i, matcher.start());
-            if (replacements.containsKey(matcher.group(0))) {
-                long time = replacements.get(matcher.group(0));
-                LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time),
-                        TimeZone.getTimeZone("UTC").toZoneId());
-                String replacement = ldtTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
-                builder.append(replacement);
-            }
+            builder.append(replacements.getOrDefault(matcher.group(0), ""));
             i = matcher.end();
         }
         builder.append(text.substring(i));

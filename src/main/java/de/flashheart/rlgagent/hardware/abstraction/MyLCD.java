@@ -7,9 +7,14 @@ import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
@@ -35,15 +40,16 @@ public class MyLCD implements Runnable {
     // so we maintain them here
     private long time_difference_since_last_cycle;
     private HashMap<String, Long> timers;
+    private HashMap<String, String> variables; // replacement variables for text lines containing something like ${template}
 
 
     private long last_cycle_started_at;
-    private Optional<String> score;
+
 
     private boolean network_lost; // show emergency data to help debug network trouble
 
     private final ArrayList<LCDPage> pages;
-    private final HashMap<String, Integer> page_map;
+    private final HashMap<String, Integer> page_map; // assigns key to pagenumber
     private int active_page;
     private long loopcounter = 0;
     private int prev_page = 0;
@@ -51,7 +57,7 @@ public class MyLCD implements Runnable {
     private Optional<I2CLCD> i2CLCD;
     private final Optional<MyUI> myUI;
     private final Configs configs;
-    private String wifi_response_by_driver;
+    //private String wifi_response_by_driver;
 
 
     /**
@@ -66,10 +72,10 @@ public class MyLCD implements Runnable {
         this.myUI = myUI;
         this.configs = configs;
         this.i2CLCD = i2CLCD;
-        this.score = Optional.empty();
-        this.wifi_response_by_driver = "?";
         network_lost = true;
         timers = new HashMap<>();
+        variables = new HashMap<>();
+        variables.put("wifi", "");
 
         // create lines on the gui
         myUI.ifPresent(myUI1 -> {
@@ -98,14 +104,10 @@ public class MyLCD implements Runnable {
             page_map.put("page0", 0);
             active_page = 0;
             timers.clear();
-            score = Optional.empty();
+            variables.clear();
         } finally {
             lock.unlock();
         }
-    }
-
-    public void setScore(Optional<String> score) {
-        this.score = score;
     }
 
     /**
@@ -227,30 +229,30 @@ public class MyLCD implements Runnable {
 
         // recalculate all timers
         timers.keySet().forEach(key -> {
-            long timer = timers.get(key);
-            timer = timer - time_difference_since_last_cycle;
-            timers.put(key, timer);
+            long time = timers.get(key);
+            time = time - time_difference_since_last_cycle;
+            LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time), TimeZone.getTimeZone("UTC").toZoneId());
+            timers.put(key, time);
+            // timer for string replacement
+            if (time > 0) variables.put(key, ldtTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)));
+            else variables.remove(key);
         });
         // remove obsolete timers
         timers.entrySet().removeIf(stringLongEntry -> stringLongEntry.getValue() <= 0);
     }
 
     public void setTimer(String key, long time) {
-        timers.put("${" + key + "}", time * 1000l);
+        timers.put("${" + key + "}", (time + 1) * 1000l);
+    }
+
+
+    public void setVariable(String key, String var) {
+        variables.put("${" + key + "}", var);
     }
 
     public void setNetwork_lost(boolean network_lost) {
         this.network_lost = network_lost;
     }
-
-//    public void setRemaining(long remaining) {
-//        this.remaining = remaining * 1000l;
-//    }
-//
-//    public void setAdditional_timer(long additional_timer) {
-//        this.additional_timer = additional_timer * 1000l;
-//    }
-
 
     @Override
     public void run() {
@@ -262,12 +264,8 @@ public class MyLCD implements Runnable {
                         inc_page();
                     }
 
-                    if (active_page == 0) {
-                        if (network_lost) network_debug_page();
-                        else updatePage0();
-                    }
-
                     if (pages.size() == 1 || active_page != prev_page) {
+                        calculate_timers();
                         display_active_page();
                         prev_page = active_page;
                     }
@@ -277,46 +275,12 @@ public class MyLCD implements Runnable {
                 } finally {
                     lock.unlock();
                 }
-                if (pages.size() == 1) {
-                    Thread.sleep(MILLIS_PER_CYCLE);
-                } else {
-                    Thread.sleep(MILLIS_PER_CYCLE);
-                }
-
+                Thread.sleep(MILLIS_PER_CYCLE);
                 loopcounter++;
             } catch (InterruptedException ie) {
                 log.error(ie);
             }
         }
-    }
-
-    /**
-     * the network debug page shows the wifi signal strength. It replaces page0, if necessary
-     */
-    private void network_debug_page() {
-        setCenteredLine("page0", 1, configs.get(Configs.MY_ID) + " wifi:" + wifi_response_by_driver);
-        setCenteredLine("page0", 2, "");
-        setCenteredLine("page0", 3, "");
-        setCenteredLine("page0", 4, "network debug mode");
-    }
-
-    /**
-     * page0 has 2 reserved lines for score and remaining gametime.
-     */
-    private void updatePage0() {
-        calculate_timers();
-
-//        if (remaining > 0) {
-//            LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(remaining),
-//                    TimeZone.getTimeZone("UTC").toZoneId());
-//
-//            String time = "Time: " + remainingTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM));
-//            setCenteredLine("page0", 1, time);
-//        } else {
-//            setCenteredLine("page0", 1, "--");
-//        }
-        setLine("page0", 2, score.orElse(""));
-        // line 3 and 4 can be used by the user
     }
 
     /**
@@ -326,10 +290,6 @@ public class MyLCD implements Runnable {
      */
     public void setCycles_per_page(int cycles_per_page) {
         this.cycles_per_page = cycles_per_page;
-    }
-
-    public void setWifi(String wifi_response_by_driver) {
-        this.wifi_response_by_driver = wifi_response_by_driver;
     }
 
     /**
@@ -351,20 +311,7 @@ public class MyLCD implements Runnable {
         public String getLine(int num) {
             //final StringBuffer line = new StringBuffer();
             // replace timers with their variables, if present
-
-            return Tools.replaceTimerVariables(lines.get(num), timers);
-
-//            timers.forEach((key, time) -> {
-//                String var = "$" + key;
-//                String replacement = "";
-//                if (lines.get(num).contains(var)) {
-//                    LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time),
-//                            TimeZone.getTimeZone("UTC").toZoneId());
-//                    replacement = StringUtils.replace(lines.get(num), var, ldtTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)));
-//                }
-//                line.append(StringUtils.replace(lines.get(num), var, replacement));
-//            });
-//            return line.toString();
+            return Tools.replaceVariables(lines.get(num), variables);
         }
 
         public void clear() {
