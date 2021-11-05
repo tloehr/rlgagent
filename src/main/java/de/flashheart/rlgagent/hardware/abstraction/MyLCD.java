@@ -173,7 +173,7 @@ public class MyLCD implements Runnable {
         // Schreibt alle Zeilen der aktiven Seite.
 
         for (int r = 0; r < rows; r++) {
-            String line = currentPage.getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(currentPage.getLine(r), cols);
+            String line = currentPage.getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(currentPage.getLine(r), cols), cols - 1);
             log.trace("VISIBLE PAGE #" + active_page + " Line" + r + ": " + line);
 //            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
 //                String pagenumber = Integer.toString(active_page);
@@ -204,18 +204,18 @@ public class MyLCD implements Runnable {
         if (!page_map.containsKey(handle)) return;
         if (line < 1 || line > rows) return;
 
-        pages.get(page_map.get(handle)).lines.set(line - 1, StringUtils.rightPad(StringUtils.left(text, cols), cols - 1));
+        pages.get(page_map.get(handle)).lines.set(line - 1, text);
     }
 
-    public void setCenteredLine(String handle, int line, String text) {
-        setLine(handle, line, StringUtils.center(StringUtils.left(text, cols), cols));
-    }
-
-    public void clear(String handle) {
-        for (int l = 1; l <= rows; l++) {
-            setLine(handle, l, "");
-        }
-    }
+//    public void setCenteredLine(String handle, int line, String text) {
+//        setLine(handle, line, StringUtils.center(StringUtils.left(text, cols), cols));
+//    }
+//
+//    public void clear(String handle) {
+//        for (int l = 1; l <= rows; l++) {
+//            setLine(handle, l, "");
+//        }
+//    }
 
     /**
      * the calculation of the timer is one of the few things the agent does on its own. It simply counts down a given

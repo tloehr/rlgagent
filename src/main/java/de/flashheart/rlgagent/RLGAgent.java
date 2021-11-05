@@ -280,7 +280,7 @@ public class RLGAgent implements MqttCallbackExtended {
                         unsubscribe_from_extras();
                         myLCD.init();
                         myLCD.setVariable("wifi", me.getWifi_response_by_driver());
-                        //pinHandler.off();
+                        pinHandler.off();
                         show_connection_status_as_signals();
                         break;
                     }
