@@ -88,9 +88,7 @@ public class RLGAgent implements MqttCallbackExtended {
         myLCD.setLine("page0", 4, "Action");
 
         initAgent();
-        //initHeartbeatJob();
         initMqttConnectionJob();
-        //waitForCommander();
     }
 
     /**
@@ -171,19 +169,19 @@ public class RLGAgent implements MqttCallbackExtended {
      *
      * @throws SchedulerException
      */
-    private void initHeartbeatJob() throws SchedulerException {
-        JobDetail job = newJob(StatusJob.class)
-                .withIdentity(myStatusJobKey)
-                .build();
-
-        Trigger trigger = newTrigger()
-                .withIdentity(StatusJob.name + "-trigger", "group1")
-                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInMinutes(1)
-                        .repeatForever())
-                .build();
-        scheduler.scheduleJob(job, trigger);
-    }
+//    private void initHeartbeatJob() throws SchedulerException {
+//        JobDetail job = newJob(StatusJob.class)
+//                .withIdentity(myStatusJobKey)
+//                .build();
+//
+//        Trigger trigger = newTrigger()
+//                .withIdentity(StatusJob.name + "-trigger", "group1")
+//                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
+//                        .withIntervalInMinutes(1)
+//                        .repeatForever())
+//                .build();
+//        scheduler.scheduleJob(job, trigger);
+//    }
 
     /**
      * start a job that tries to connect to the mqtt broker
@@ -212,25 +210,17 @@ public class RLGAgent implements MqttCallbackExtended {
      * @param receivedMessage
      */
     private void processCommand(MqttMessage receivedMessage) {
-        //log.debug("received command {}", receivedMessage);
-
         try {
             final JSONObject cmds = new JSONObject(new String(receivedMessage.getPayload()));
             cmds.keySet().forEach(key -> {
                 log.debug("handling command '{}' with {}", key, receivedMessage);
                 switch (key.toLowerCase()) {
-                    // example {"line_display":
-                    //              {
-                    //                  "handle":"page2",
-                    //                  "lines":["Rot: 123","Blau: 90"]
-                    //              }
-                    //          }
                     case "set_page": {
                         JSONObject display_cmd = cmds.getJSONObject("set_page");
                         String handle = display_cmd.getString("handle");
                         JSONArray lines = display_cmd.getJSONArray("content");
                         for (int line = 1; line <= lines.length(); line++) {
-                            myLCD.setLine(handle, line, lines.getString(line-1));
+                            myLCD.setLine(handle, line, lines.getString(line - 1));
                         }
                         break;
                     }
@@ -267,6 +257,10 @@ public class RLGAgent implements MqttCallbackExtended {
                         keys.forEach(signal_key -> pinHandler.setScheme(signal_key, signals.getString(signal_key)));
                         break;
                     }
+                    case "status": {
+                        sendStatus();
+                        break;
+                    }
                     case "timers": {
                         JSONObject timers = cmds.getJSONObject("timers");
                         timers.keySet().forEach(sKey -> myLCD.setTimer(sKey, timers.getLong(sKey)));
@@ -278,7 +272,7 @@ public class RLGAgent implements MqttCallbackExtended {
                         break;
                     }
                     case "shutdown": {
-                        Tools.system_shutdown(cmds.getString("shutdown"));
+                        Tools.system_shutdown("/opt/rlgagent/shutdown.sh");
                         System.exit(0);
                         break;
                     }
@@ -430,19 +424,5 @@ public class RLGAgent implements MqttCallbackExtended {
 
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
-        // this will not happen, as we disabled the autoreconnect on the options
-//        log.info("Connected to the broker @{}", iMqttClient.get().getServerURI());
-//        if (reconnect) {
-//
-//            log.info("RE-Connected to the broker @{}", serverURI);
-//            // we have to REsubscribe after a REconnect
-//            try {
-//                iMqttClient.get().subscribe(TOPIC_CMD_ME, (topic, receivedMessage) -> processCommand(receivedMessage));
-//                iMqttClient.get().subscribe(TOPIC_CMD_ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
-//                //waitForCommander();
-//            } catch (MqttException e) {
-//                log.error(e);
-//            }
-//        }
     }
 }

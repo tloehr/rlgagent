@@ -21,6 +21,7 @@ import org.apache.logging.log4j.core.config.Configurator;
 import org.eclipse.paho.client.mqttv3.MqttException;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -88,7 +89,7 @@ public class Main {
         }));
 
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-        myUI = Tools.isArm() ? Optional.empty() : Optional.of(new MyUI(configs.get(Configs.MY_ID)));
+        myUI = GraphicsEnvironment.isHeadless() ? Optional.empty() : Optional.of(new MyUI(configs.get(Configs.MY_ID)));
         myUI.ifPresent(myUI1 -> myUI1.setVisible(true));
     }
 

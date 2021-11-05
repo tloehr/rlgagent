@@ -203,12 +203,9 @@ public class Tools {
     public static void system_shutdown(String cmd) {
         if (!Tools.isArm()) return;
         try {
-
             ProcessBuilder processBuilder = new ProcessBuilder();
             processBuilder.command("bash", "-c", cmd);
-
             Process process = processBuilder.start();
-
             process.waitFor(); // as we are shutting down, there is nothing to wait for
         } catch (IOException | InterruptedException io) {
             log.error(io);
