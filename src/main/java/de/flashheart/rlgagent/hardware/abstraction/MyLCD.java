@@ -187,8 +187,6 @@ public class MyLCD implements Runnable {
             }
 
         }
-
-
     }
 
     private void clearPage() {
@@ -206,16 +204,6 @@ public class MyLCD implements Runnable {
 
         pages.get(page_map.get(handle)).lines.set(line - 1, text);
     }
-
-//    public void setCenteredLine(String handle, int line, String text) {
-//        setLine(handle, line, StringUtils.center(StringUtils.left(text, cols), cols));
-//    }
-//
-//    public void clear(String handle) {
-//        for (int l = 1; l <= rows; l++) {
-//            setLine(handle, l, "");
-//        }
-//    }
 
     /**
      * the calculation of the timer is one of the few things the agent does on its own. It simply counts down a given
@@ -244,7 +232,6 @@ public class MyLCD implements Runnable {
     public void setTimer(String key, long time) {
         timers.put("${" + key + "}", (time + 1) * 1000l);
     }
-
 
     public void setVariable(String key, String var) {
         variables.put("${" + key + "}", var);

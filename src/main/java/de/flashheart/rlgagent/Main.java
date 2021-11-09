@@ -18,12 +18,13 @@ import org.apache.commons.cli.*;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.eclipse.paho.client.mqttv3.MqttException;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Optional;
+import java.util.Properties;
 
 @Log4j2
 /**
@@ -41,6 +42,7 @@ public class Main {
     private static Optional<MCP23017GpioProvider> mcp23017_1;
     private static Optional<I2CBus> i2CBus;
     private static Optional<I2CLCD> lcd_hardware;
+    private static Properties buildProperties;
 
 
     public static void main(String[] args) throws Exception {
@@ -87,6 +89,17 @@ public class Main {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             prepareShutdown();
         }));
+
+        buildProperties = new Properties();
+
+        try {
+            InputStream in2 = Main.class.getResourceAsStream("/build.properties");
+            buildProperties.load(in2);
+            in2.close();
+        } catch (IOException iOException) {
+            log.error(iOException);
+        }
+
 
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
         myUI = GraphicsEnvironment.isHeadless() ? Optional.empty() : Optional.of(new MyUI(configs.get(Configs.MY_ID)));

@@ -26,13 +26,6 @@ public class Configs extends AbstractConfigs {
     public static final String LCD_COLS = "lcd_cols";
     public static final String MCP23017_I2C_ADDRESS = "mcp23017_i2c_address";
     public static final String LOGLEVEL = "loglevel";
-    // to notify the commander about my capabilities
-    public static final String HAS_SIRENS = "has_sirens";
-    public static final String HAS_LEDS = "has_leds";
-    public static final String HAS_SOUND = "has_sound";
-    public static final String HAS_LINE_DISPLAY = "has_line_display";
-    public static final String HAS_MATRIX_DISPLAY = "has_matrix_display";
-    public static final String HAS_RFID = "has_rfid";
     public static final String[] ALL_LEDS = new String[]{OUT_LED_WHITE, OUT_LED_RED, OUT_LED_YELLOW, OUT_LED_GREEN, OUT_LED_BLUE};
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3};
     public static final String WIFI_CMD_LINE = "wifi_cmd";
@@ -57,18 +50,12 @@ public class Configs extends AbstractConfigs {
      */
     @Override
     public void loadDefaults() {
+        // todo: list of brokers - separate name and port - stick to one broker during a runtime.
         configs.setProperty(MQTT_BROKER, "tcp://mqtt:1883");
         configs.setProperty(GAME_ID, "g1");
         configs.setProperty(MY_ID, "ag01");
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
         configs.setProperty(MCP23017_I2C_ADDRESS, "0x20");
-
-        configs.setProperty(HAS_LINE_DISPLAY, "true");
-        configs.setProperty(HAS_SIRENS, "false");
-        configs.setProperty(HAS_LEDS, "true");
-        configs.setProperty(HAS_MATRIX_DISPLAY, "false");
-        configs.setProperty(HAS_RFID, "false");
-        configs.setProperty(HAS_SOUND, "false");
 
         configs.setProperty(LCD_COLS, "20");
         configs.setProperty(LCD_ROWS, "4");

@@ -62,13 +62,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 .put("agentid", configs.get(Configs.MY_ID))
                 .put("gameid", configs.get(Configs.GAME_ID))
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
-                .put("wifi_response_by_driver", wifiResponse)
-                .put(Configs.HAS_SIRENS, configs.get(Configs.HAS_SIRENS, "false"))
-                .put(Configs.HAS_LEDS, configs.get(Configs.HAS_LEDS, "false"))
-                .put(Configs.HAS_LINE_DISPLAY, configs.get(Configs.HAS_LINE_DISPLAY, "false"))
-                .put(Configs.HAS_MATRIX_DISPLAY, configs.get(Configs.HAS_MATRIX_DISPLAY, "false"))
-                .put(Configs.HAS_SOUND, configs.get(Configs.HAS_SOUND, "false"))
-                .put(Configs.HAS_RFID, configs.get(Configs.HAS_RFID, "false")));
+                .put("wifi_response_by_driver", wifiResponse));
 
         this.scheduler = StdSchedulerFactory.getDefaultScheduler();
         this.scheduler.getContext().put("rlgAgent", this);
