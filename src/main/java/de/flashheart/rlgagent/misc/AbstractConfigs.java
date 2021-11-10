@@ -19,7 +19,7 @@ public abstract class AbstractConfigs {
     protected final String CONFIGFILE;
 
     protected final SortedProperties configs;
-    protected final Properties buildContext;
+    protected final Properties buildProperties;
 
     public abstract String getProjectName();
 
@@ -29,9 +29,8 @@ public abstract class AbstractConfigs {
         CONFIGFILE = workingpath + File.separator + "config.txt";
 
         configs = new SortedProperties(); // Einstellungen, die verändert werden
-        buildContext = new Properties(); // inhalte der build.properties (von Maven)
+        buildProperties = new Properties(); // inhalte der build.properties (von Maven)
 
-        // configdatei einlesen
         loadDefaults(); // defaults from the inheriting classes
         loadConfigs();
         loadBuildContext();
@@ -44,14 +43,14 @@ public abstract class AbstractConfigs {
 
     private void loadBuildContext() throws IOException {
         InputStream in2 = AbstractConfigs.class.getResourceAsStream("/build.properties");
-        buildContext.load(in2);
+        buildProperties.load(in2);
         in2.close();
-        if (buildContext.containsKey("timestamp")) {
+        if (buildProperties.containsKey("timestamp")) {
             SimpleDateFormat sdfmt = new SimpleDateFormat("yyyyMMddHHmm");
 
             System.out.println(sdfmt.format(new Date())); // Mittwoch, 21. März 2007 09:14
-            Date buildDate = new Date(Long.parseLong(buildContext.getProperty("timestamp")));
-            buildContext.put("buildDate", sdfmt.format(buildDate));
+            Date buildDate = new Date(Long.parseLong(buildProperties.getProperty("timestamp")));
+            buildProperties.put("buildDate", sdfmt.format(buildDate));
         }
     }
 
@@ -73,8 +72,8 @@ public abstract class AbstractConfigs {
         saveConfigs();
     }
 
-    public String getBuildInfo(Object key) {
-        return buildContext.containsKey(key) ? buildContext.get(key).toString() : "null";
+    public String getBuildProperties(Object key) {
+        return buildProperties.containsKey(key) ? buildProperties.get(key).toString() : "null";
     }
 
     public boolean is(Object key) {

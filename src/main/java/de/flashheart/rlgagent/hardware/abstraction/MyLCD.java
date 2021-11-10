@@ -42,7 +42,6 @@ public class MyLCD implements Runnable {
     private HashMap<String, Long> timers;
     private HashMap<String, String> variables; // replacement variables for text lines containing something like ${template}
 
-
     private long last_cycle_started_at;
 
 
@@ -75,7 +74,6 @@ public class MyLCD implements Runnable {
         network_lost = true;
         timers = new HashMap<>();
         variables = new HashMap<>();
-        variables.put("wifi", "");
 
         // create lines on the gui
         myUI.ifPresent(myUI1 -> {
@@ -105,6 +103,11 @@ public class MyLCD implements Runnable {
             active_page = 0;
             timers.clear();
             variables.clear();
+            // set defaults for variables
+            setVariable("wifi","");
+            setVariable("agversion",configs.getBuildProperties("my.version"));
+            setVariable("agbuild",configs.getBuildProperties("buildNumber"));
+            setVariable("agbdate",configs.getBuildProperties("buildDate"));
         } finally {
             lock.unlock();
         }

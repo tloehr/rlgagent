@@ -6,7 +6,7 @@
 
     <groupId>de.flashheart</groupId>
     <artifactId>rlgagent</artifactId>
-    <version>0.9</version>
+    <version>0.1</version>
 
 
     <properties>

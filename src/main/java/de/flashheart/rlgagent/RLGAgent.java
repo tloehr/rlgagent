@@ -22,6 +22,7 @@ import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -48,6 +49,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private final Agent me;
     private SimpleTrigger connectionTrigger;
     private HashSet<String> group_channels; // to keep track of additional subscriptions
+    private Optional<String> MQTT_URI;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         this.myUI = myUI;
@@ -55,6 +57,7 @@ public class RLGAgent implements MqttCallbackExtended {
         this.pinHandler = pinHandler;
         this.configs = configs;
         this.myLCD = myLCD;
+        this.MQTT_URI = Optional.empty();
 
         String wifiResponse = Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE));
 
@@ -86,7 +89,12 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * tries to connect to the mqtt broker. cancels the quartz job when the connection has been established
+     * the agent uses a space separated list of brokers in the config file (key 'mqtt_broker'). it tries every
+     * entry in this list until a connection can be established.
+     * during a RUNTIME this broker is not changed again. even if the connection drops, the agent will try to
+     * reconnect to the same broker again.
+     *
+     * To reconnect to a different broker, the agent needs to restart.
      */
     public void connect_to_mqtt_broker() {
         // the wifi quality might be of interest during that phase
@@ -94,8 +102,32 @@ public class RLGAgent implements MqttCallbackExtended {
         myLCD.setVariable("wifi", me.getWifi_response_by_driver());
         show_connection_status_as_signals();
 
+        if (MQTT_URI.isPresent()) { // we already had a working broker. gonna stick with it.
+            log.debug("we already had a wordking broker. trying to REconnect to it");
+            try_mqtt_broker(MQTT_URI.get());
+        } else {
+            log.debug("searching for mqtt broker");
+            // try all the brokers on the space separated list.
+            Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+")).forEach(broker -> {
+
+                // try only if we haven't found a BROKER yet
+                if (!MQTT_URI.isPresent()) {
+                    try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
+                } else {
+                    log.debug("found a working broker already. skipping {}", broker);
+                }
+            });
+        }
+    }
+
+    /**
+     * belongs to connect_to_mqtt_broker()
+     * @param uri to try for connection
+     */
+    void try_mqtt_broker(String uri) {
+        log.debug("trying broker @{}", uri);
         try {
-            iMqttClient = Optional.ofNullable(new MqttClient(configs.get(Configs.MQTT_BROKER), configs.get(Configs.MYUUID), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
+            iMqttClient = Optional.of(new MqttClient(uri, configs.get(Configs.MYUUID), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(false);
             options.setCleanSession(true);
@@ -108,7 +140,8 @@ public class RLGAgent implements MqttCallbackExtended {
 
             if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
                 log.info("Connected to the broker @{}", iMqttClient.get().getServerURI());
-                // stop the connection job
+                MQTT_URI = Optional.of(uri); // we will stick with this URI from now on
+                // stop the connection job - we are done here
                 try {
                     scheduler.interrupt(myConnectionJobKey);
                     scheduler.unscheduleJob(connectionTrigger.getKey());
@@ -266,6 +299,7 @@ public class RLGAgent implements MqttCallbackExtended {
                         break;
                     }
                     case "shutdown": {
+                        Main.prepareShutdown();
                         Tools.system_shutdown("/opt/rlgagent/shutdown.sh");
                         System.exit(0);
                         break;
@@ -356,8 +390,10 @@ public class RLGAgent implements MqttCallbackExtended {
             for (String siren : Configs.ALL_SIRENS) {
                 pinHandler.setScheme(siren, "off");
             }
-            myLCD.setLine("page0", 3, "waiting for");
-            myLCD.setLine("page0", 4, "mqtt broker");
+            myLCD.setLine("page0", 1, "Welcome to the");
+            myLCD.setLine("page0", 2, "RLG-Agent v${agversion}b${agbuild}");
+            myLCD.setLine("page0", 3, "");
+            myLCD.setLine("page0", 4, "Searching for MQTT");
 
             // network status is always indicated with a flashing WHITE led
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,500;off,500");

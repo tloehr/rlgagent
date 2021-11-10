@@ -8,6 +8,7 @@ import java.io.IOException;
 
 public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
+    public static final String MQTT_PORT = "mqtt_broker";
     public static final String GAME_ID = "gameid"; // falls der Server mehr als ein Spiel hostet, muss er sie unterscheiden
     public static final String MY_ID = "myid"; // falls der Server mehr als ein Spiel hostet, muss er sie unterscheiden
     public static final String OUT_LED_WHITE = "led_wht";
@@ -50,8 +51,9 @@ public class Configs extends AbstractConfigs {
      */
     @Override
     public void loadDefaults() {
-        // todo: list of brokers - separate name and port - stick to one broker during a runtime.
-        configs.setProperty(MQTT_BROKER, "tcp://mqtt:1883");
+        configs.setProperty(MQTT_BROKER, "mqtta mqttb mqtt");
+        configs.setProperty(MQTT_PORT, "1883");
+        // configs.setProperty(MQTT_BROKER, String.format("tcp://%s:%s", "mqtt", "port"));
         configs.setProperty(GAME_ID, "g1");
         configs.setProperty(MY_ID, "ag01");
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
