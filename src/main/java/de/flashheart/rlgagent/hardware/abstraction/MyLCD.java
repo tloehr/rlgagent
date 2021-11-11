@@ -131,6 +131,7 @@ public class MyLCD implements Runnable {
      * @param handle to access the page
      */
     public void addPage(String handle) {
+        if (handle.equalsIgnoreCase("page0")) return;
         lock.lock();
         try {
             pages.add(new LCDPage());
@@ -145,16 +146,20 @@ public class MyLCD implements Runnable {
      *
      * @param handle of page to be deleted
      */
-    public void deletePage(String handle) {
+    public void delPage(String handle) {
         if (handle.equalsIgnoreCase("page0")) return;
         if (!page_map.containsKey(handle)) return;
-
         lock.lock();
         try {
-            pages.remove(page_map.get(handle));
-            page_map.remove(handle);
-            active_page = page_map.get("page0");
-            display_active_page();
+            // todo: das klappt nicht
+            try {
+                pages.remove(page_map.get(handle).intValue());
+                page_map.remove(handle);
+                active_page = page_map.get("page0");
+                display_active_page();
+            } catch (Exception e ){
+                log.error(e);
+            }
         } finally {
             lock.unlock();
         }

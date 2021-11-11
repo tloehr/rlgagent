@@ -89,11 +89,10 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * the agent uses a space separated list of brokers in the config file (key 'mqtt_broker'). it tries every
-     * entry in this list until a connection can be established.
-     * during a RUNTIME this broker is not changed again. even if the connection drops, the agent will try to
-     * reconnect to the same broker again.
-     *
+     * the agent uses a space separated list of brokers in the config file (key 'mqtt_broker'). it tries every entry in
+     * this list until a connection can be established. during a RUNTIME this broker is not changed again. even if the
+     * connection drops, the agent will try to reconnect to the same broker again.
+     * <p>
      * To reconnect to a different broker, the agent needs to restart.
      */
     public void connect_to_mqtt_broker() {
@@ -103,13 +102,12 @@ public class RLGAgent implements MqttCallbackExtended {
         show_connection_status_as_signals();
 
         if (MQTT_URI.isPresent()) { // we already had a working broker. gonna stick with it.
-            log.debug("we already had a wordking broker. trying to REconnect to it");
+            log.debug("we already had a working broker. trying to REconnect to it");
             try_mqtt_broker(MQTT_URI.get());
         } else {
             log.debug("searching for mqtt broker");
             // try all the brokers on the space separated list.
             Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+")).forEach(broker -> {
-
                 // try only if we haven't found a BROKER yet
                 if (!MQTT_URI.isPresent()) {
                     try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
@@ -122,6 +120,7 @@ public class RLGAgent implements MqttCallbackExtended {
 
     /**
      * belongs to connect_to_mqtt_broker()
+     *
      * @param uri to try for connection
      */
     void try_mqtt_broker(String uri) {
@@ -240,19 +239,26 @@ public class RLGAgent implements MqttCallbackExtended {
         try {
             final JSONObject cmds = new JSONObject(new String(receivedMessage.getPayload()));
             cmds.keySet().forEach(key -> {
-                log.debug("handling command '{}' with {}", key, receivedMessage);
+                log.debug("handling command '{}' with {}", key, cmds.get(key).toString());
                 switch (key.toLowerCase()) {
                     case "set_page": {
-                        JSONObject display_cmd = cmds.getJSONObject("set_page");
-                        String handle = display_cmd.getString("handle");
-                        JSONArray lines = display_cmd.getJSONArray("content");
-                        for (int line = 1; line <= lines.length(); line++) {
-                            myLCD.setLine(handle, line, lines.getString(line - 1));
-                        }
+                        JSONObject display_cmds = cmds.getJSONObject("set_page");
+                        display_cmds.keySet().forEach(page -> {
+                            JSONArray lines = display_cmds.getJSONArray(page);
+                            for (int line = 1; line <= lines.length(); line++) {
+                                myLCD.setLine(page, line, lines.getString(line - 1));
+                            }
+                        });
                         break;
                     }
                     case "add_page": { // Adds a display page which will be addressed by this handle
-                        myLCD.addPage(cmds.getString("add_page"));
+                        JSONArray cmdlist = cmds.getJSONArray("add_page");
+                        cmdlist.forEach(page -> myLCD.addPage(page.toString().trim()));
+                        break;
+                    }
+                    case "del_pages": { // deletes one or more display pages
+                        JSONArray cmdlist = cmds.getJSONArray("del_pages");
+                        cmdlist.forEach(page -> myLCD.delPage(page.toString().trim()));
                         break;
                     }
                     case "matrix_display": {

@@ -8,7 +8,7 @@ import java.io.IOException;
 
 public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
-    public static final String MQTT_PORT = "mqtt_broker";
+    public static final String MQTT_PORT = "mqtt_port";
     public static final String GAME_ID = "gameid"; // falls der Server mehr als ein Spiel hostet, muss er sie unterscheiden
     public static final String MY_ID = "myid"; // falls der Server mehr als ein Spiel hostet, muss er sie unterscheiden
     public static final String OUT_LED_WHITE = "led_wht";
