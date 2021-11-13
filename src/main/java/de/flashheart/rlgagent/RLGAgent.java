@@ -377,8 +377,6 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     private void show_connection_status_as_signals() {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
-            myLCD.setNetwork_lost(false);
-
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,350;off,3700");
             pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,350;on,350;off,3350");
             pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,700;on,350;off,3000");
@@ -389,7 +387,6 @@ public class RLGAgent implements MqttCallbackExtended {
             myLCD.setLine("page0", 4, "a game");
 
         } else {
-            myLCD.setNetwork_lost(true);
             for (String led : Configs.ALL_LEDS) {
                 pinHandler.setScheme(led, "off");
             }

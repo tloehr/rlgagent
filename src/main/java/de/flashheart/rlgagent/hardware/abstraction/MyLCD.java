@@ -6,6 +6,9 @@ import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.logging.log4j.Level;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -42,21 +45,17 @@ public class MyLCD implements Runnable {
     private HashMap<String, Long> timers;
     private HashMap<String, String> variables; // replacement variables for text lines containing something like ${template}
 
+
     private long last_cycle_started_at;
+    private ArrayList<LCDPage> pages;
 
-
-    private boolean network_lost; // show emergency data to help debug network trouble
-
-    private final ArrayList<LCDPage> pages;
-    private final HashMap<String, Integer> page_map; // assigns key to pagenumber
-    private int active_page;
+    private LCDPage active_page, prev_page;
+    private int page_counter = 1;
     private long loopcounter = 0;
-    private int prev_page = 0;
     private ReentrantLock lock;
     private Optional<I2CLCD> i2CLCD;
     private final Optional<MyUI> myUI;
     private final Configs configs;
-    //private String wifi_response_by_driver;
 
 
     /**
@@ -71,7 +70,6 @@ public class MyLCD implements Runnable {
         this.myUI = myUI;
         this.configs = configs;
         this.i2CLCD = i2CLCD;
-        network_lost = true;
         timers = new HashMap<>();
         variables = new HashMap<>();
 
@@ -85,7 +83,6 @@ public class MyLCD implements Runnable {
         lock = new ReentrantLock();
         thread = new Thread(this);
         pages = new ArrayList<>();
-        page_map = new HashMap<>();
         init();
         thread.start();
     }
@@ -96,18 +93,16 @@ public class MyLCD implements Runnable {
     public void init() {
         lock.lock();
         try {
-            pages.clear();
-            page_map.clear();
-            pages.add(new LCDPage()); // there is always one page.
-            page_map.put("page0", 0);
-            active_page = 0;
+            active_page = new LCDPage("page0", 0);
+            //page_map.put("page0", active_page);
+            pages.add(active_page);
             timers.clear();
             variables.clear();
             // set defaults for variables
-            setVariable("wifi","");
-            setVariable("agversion",configs.getBuildProperties("my.version"));
-            setVariable("agbuild",configs.getBuildProperties("buildNumber"));
-            setVariable("agbdate",configs.getBuildProperties("buildDate"));
+            setVariable("wifi", "");
+            setVariable("agversion", configs.getBuildProperties("my.version"));
+            setVariable("agbuild", configs.getBuildProperties("buildNumber"));
+            setVariable("agbdate", configs.getBuildProperties("buildDate"));
         } finally {
             lock.unlock();
         }
@@ -118,11 +113,8 @@ public class MyLCD implements Runnable {
      *
      * @param handle the page that should be visible
      */
-    public void selectPage(String handle) {
-        if (!page_map.containsKey(handle)) return;
-
-        this.active_page = page_map.get(handle);
-        display_active_page();
+    Optional<LCDPage> getPage(String handle) {
+        return pages.stream().filter(lcdPage -> lcdPage.getName().equalsIgnoreCase(handle)).findFirst();
     }
 
     /**
@@ -132,10 +124,12 @@ public class MyLCD implements Runnable {
      */
     public void addPage(String handle) {
         if (handle.equalsIgnoreCase("page0")) return;
+        if (containsPage(handle)) return;
         lock.lock();
         try {
-            pages.add(new LCDPage());
-            page_map.put(handle, pages.size() - 1);
+            page_counter++;
+            //page_map.put(handle, new LCDPage(page_counter));
+            pages.add(new LCDPage(handle, page_counter));
         } finally {
             lock.unlock();
         }
@@ -148,16 +142,14 @@ public class MyLCD implements Runnable {
      */
     public void delPage(String handle) {
         if (handle.equalsIgnoreCase("page0")) return;
-        if (!page_map.containsKey(handle)) return;
+        if (!containsPage(handle)) return;
         lock.lock();
         try {
-            // todo: das klappt nicht
             try {
-                pages.remove(page_map.get(handle).intValue());
-                page_map.remove(handle);
-                active_page = page_map.get("page0");
+                pages.removeIf(lcdPage -> lcdPage.getName().equalsIgnoreCase(handle));
+                active_page = pages.get(0);
                 display_active_page();
-            } catch (Exception e ){
+            } catch (Exception e) {
                 log.error(e);
             }
         } finally {
@@ -165,11 +157,15 @@ public class MyLCD implements Runnable {
         }
     }
 
-    private void inc_page() {
+    private void next_page() {
         if (pages.size() == 1) return;
+        int index = pages.indexOf(active_page);
+        index++;
+        if (index >= pages.size()) index = 0;
         prev_page = active_page;
-        active_page++;
-        if (active_page > pages.size() - 1) active_page = 0;
+        active_page = pages.get(index);
+        log.debug(prev_page.getIndex());
+        log.debug(active_page.getIndex());
     }
 
     /**
@@ -177,16 +173,13 @@ public class MyLCD implements Runnable {
      * currently active background page and writes it to the visible display (onto the destop screen AND the LCD)
      */
     private void display_active_page() {
-        LCDPage currentPage = pages.get(active_page);
-        // Schreibt alle Zeilen der aktiven Seite.
-
         for (int r = 0; r < rows; r++) {
-            String line = currentPage.getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(currentPage.getLine(r), cols), cols - 1);
+            String line = active_page.getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(active_page.getLine(r), cols), cols - 1);
             log.trace("VISIBLE PAGE #" + active_page + " Line" + r + ": " + line);
-//            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
-//                String pagenumber = Integer.toString(active_page);
-//                line = StringUtils.overlay(line, pagenumber, line.length()-pagenumber.length(), line.length());
-//            }
+            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
+                String pagenumber = Integer.toString(active_page.getIndex());
+                line = StringUtils.overlay(line, pagenumber, line.length() - pagenumber.length(), line.length());
+            }
             if (i2CLCD.isPresent()) {
                 i2CLCD.get().display_string(line, r + 1);
             }
@@ -198,7 +191,11 @@ public class MyLCD implements Runnable {
     }
 
     private void clearPage() {
-        pages.get(active_page).clear();
+        active_page.clear();
+    }
+
+    boolean containsPage(String handle) {
+        return pages.stream().filter(lcdPage -> lcdPage.getName().equalsIgnoreCase(handle)).count() > 0;
     }
 
     /**
@@ -207,10 +204,13 @@ public class MyLCD implements Runnable {
      * @param text
      */
     public void setLine(String handle, int line, String text) {
-        if (!page_map.containsKey(handle)) return;
+        //if (!containsPage(handle)) return;
         if (line < 1 || line > rows) return;
 
-        pages.get(page_map.get(handle)).lines.set(line - 1, text);
+        getPage(handle).ifPresent(lcdPage -> lcdPage.setLine(line - 1, text));
+
+
+        //pages.get(page_map.get(handle)).lines.set(line - 1, text);
     }
 
     /**
@@ -245,10 +245,6 @@ public class MyLCD implements Runnable {
         variables.put("${" + key + "}", var);
     }
 
-    public void setNetwork_lost(boolean network_lost) {
-        this.network_lost = network_lost;
-    }
-
     @Override
     public void run() {
         while (!thread.isInterrupted()) {
@@ -256,10 +252,10 @@ public class MyLCD implements Runnable {
                 lock.lock();
                 try {
                     if (loopcounter % cycles_per_page == 0) {
-                        inc_page();
+                        next_page();
                     }
 
-                    if (pages.size() == 1 || active_page != prev_page) {
+                    if (pages.size() == 1 || !active_page.equals(prev_page)) {
                         calculate_timers();
                         display_active_page();
                         prev_page = active_page;
@@ -290,13 +286,26 @@ public class MyLCD implements Runnable {
     /**
      * internal helper class to store the contents of a page
      */
-    private class LCDPage {
+    private class LCDPage implements Comparable<LCDPage> {
         // Start stepping through the array from the beginning
         private ArrayList<String> lines;
+        private final int index;
+        private final String name;
 
-        public LCDPage() {
+        public int getIndex() {
+            return index;
+        }
+
+
+        public LCDPage(String name, int index) {
+            this.name = name;
             this.lines = new ArrayList<>(rows);
             clear();
+            this.index = index;
+        }
+
+        public String getName() {
+            return name;
         }
 
         public void setLine(int num, String text) {
@@ -304,7 +313,6 @@ public class MyLCD implements Runnable {
         }
 
         public String getLine(int num) {
-            //final StringBuffer line = new StringBuffer();
             // replace timers with their variables, if present
             return Tools.replaceVariables(lines.get(num), variables);
         }
@@ -315,6 +323,24 @@ public class MyLCD implements Runnable {
                 lines.add("");
                 setLine(r, "");
             }
+        }
+
+        @Override
+        public int compareTo(LCDPage o) {
+            return Integer.compare(index, o.getIndex());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            LCDPage lcdPage = (LCDPage) o;
+            return new EqualsBuilder().append(getIndex(), lcdPage.getIndex()).isEquals();
+        }
+
+        @Override
+        public int hashCode() {
+            return new HashCodeBuilder(17, 37).append(getIndex()).toHashCode();
         }
     }
 }
