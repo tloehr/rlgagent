@@ -1,6 +1,5 @@
 package de.flashheart.rlgagent.hardware;
 
-import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
 import de.flashheart.rlgagent.misc.Tools;
 import lombok.Getter;
@@ -19,28 +18,22 @@ public class Agent {
     private String gameid;
     private LocalDateTime lastheartbeat;
     private int wifi;
-    private String wifi_response_by_driver;
+
 
     public Agent(JSONObject jsonObject) {
         this.agentid = jsonObject.getString("agentid");
         this.gameid = jsonObject.getString("gameid");
         this.lastheartbeat = JavaTimeConverter.from_iso8601(jsonObject.getString("timestamp"));
-        this.wifi_response_by_driver = jsonObject.getString("wifi_response_by_driver");
-        setWifi(Tools.getWifiQuality(wifi_response_by_driver));
+        this.wifi = jsonObject.getInt("wifi");
     }
 
     public JSONObject toJson() {
         return new JSONObject().put("agentid", agentid)
                 .put("gameid", gameid)
                 .put("timestamp", JavaTimeConverter.to_iso8601(lastheartbeat))
-                .put("wifi", wifi)
-                .put("wifi_response_by_driver", wifi_response_by_driver);
+                .put("wifi", wifi);
     }
 
-    public void setWifi_response_by_driver(String wifi_response_by_driver) {
-        this.wifi_response_by_driver = wifi_response_by_driver;
-        setWifi(Tools.getWifiQuality(wifi_response_by_driver));
-    }
 
     @Override
     public boolean equals(Object o) {

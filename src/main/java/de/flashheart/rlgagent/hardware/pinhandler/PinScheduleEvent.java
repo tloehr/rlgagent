@@ -10,11 +10,6 @@ public class PinScheduleEvent {
         else this.duration = Long.parseLong(duration);
     }
 
-    public PinScheduleEvent(String on, long duration) {
-            this.on = on.equalsIgnoreCase("on");
-            this.duration = duration;
-        }
-
     public boolean isOn() {
         return on;
     }

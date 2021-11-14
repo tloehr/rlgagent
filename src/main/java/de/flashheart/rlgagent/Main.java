@@ -164,8 +164,8 @@ public class Main {
     public static void prepareShutdown() {
         log.info("Preparing Shutdown");
         configs.saveConfigs();
-        pinHandler.off();
         agent.shutdown();
+        pinHandler.off();
     }
 
 }

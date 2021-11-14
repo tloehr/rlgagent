@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -213,11 +214,12 @@ public class Tools {
     }
 
     /**
-     * @param cmd shell command to get the signal strength from the wifi driver. can be in dbm or percentage like
+     * @param driver_response shell command to get the signal strength from the wifi driver. can be in dbm or percentage like
      *            "70/100"
-     * @return 3 - good, 2 - bad, 1 - ugly, 0 - dead
+     * @return 4 - excellent, 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
     public static int getWifiQuality(String driver_response) {
+        if (driver_response.equalsIgnoreCase("desktop")) return new Random().nextInt(5);
         int wifiQuality;
         int wifi;
         //driver_response = "level=94";
@@ -235,13 +237,13 @@ public class Tools {
         }
 
         if (wifi >= 0) wifiQuality = 0;
-        else if (wifi > WIFI_EXCELLENT) wifiQuality = 3; // good
-        else if (wifi > WIFI_GOOD) wifiQuality = 3;
-        else if (wifi > WIFI_FAIR) wifiQuality = 2; // fair
-        else if (wifi > WIFI_MINIMUM) wifiQuality = 2;
-        else if (wifi > WIFI_UNSTABLE) wifiQuality = 1; // bad
-        else if (wifi > WIFI_BAD) wifiQuality = 1;
-        else wifiQuality = 0; //ugly
+        else if (wifi > WIFI_EXCELLENT) wifiQuality = 4; // excellent
+        else if (wifi > WIFI_GOOD) wifiQuality = 4;
+        else if (wifi > WIFI_FAIR) wifiQuality = 3; // good
+        else if (wifi > WIFI_MINIMUM) wifiQuality = 3;  // good
+        else if (wifi > WIFI_UNSTABLE) wifiQuality = 2; // bad
+        else if (wifi > WIFI_BAD) wifiQuality = 1;  // ugly
+        else wifiQuality = 0; // dead
 
         return wifiQuality;
     }
