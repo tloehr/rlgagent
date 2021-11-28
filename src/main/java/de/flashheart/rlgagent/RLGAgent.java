@@ -62,7 +62,6 @@ public class RLGAgent implements MqttCallbackExtended {
         this.MQTT_URI = Optional.empty();
 
 
-
         me = new Agent(new JSONObject()
                 .put("agentid", configs.get(Configs.MY_ID))
                 .put("gameid", configs.get(Configs.GAME_ID))
@@ -105,7 +104,7 @@ public class RLGAgent implements MqttCallbackExtended {
             show_connection_status_as_signals();
         }
 
-        if (MQTT_URI.isPresent()) { // we already had a working broker. gonna stick with it.
+        if (MQTT_URI.isPresent()) { // we already had a working broker. going to stick with it.
             log.debug("we already had a working broker. trying to REconnect to it");
             try_mqtt_broker(MQTT_URI.get());
         } else {
@@ -160,11 +159,12 @@ public class RLGAgent implements MqttCallbackExtended {
                 for (String channel : group_channels) {
                     iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
                 }
-                show_connection_status_as_signals();
             }
         } catch (MqttException e) {
             iMqttClient = Optional.empty();
             log.warn(e.getMessage());
+        } finally {
+            show_connection_status_as_signals();
         }
     }
 
@@ -228,7 +228,7 @@ public class RLGAgent implements MqttCallbackExtended {
         connectionTrigger = newTrigger()
                 .withIdentity(MqttConnectionJob.name + "-trigger", "group1")
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(10)
+                        .withIntervalInSeconds(8)
                         .repeatForever())
                 .build();
         scheduler.scheduleJob(job, connectionTrigger);
@@ -381,38 +381,37 @@ public class RLGAgent implements MqttCallbackExtended {
      * the broker connection is lost.
      */
     private void show_connection_status_as_signals() {
+        String bscheme = "off";
+        int wifi = me.getWifi();
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,350;off,3700");
-            pinHandler.setScheme(Configs.OUT_LED_RED, "∞:off,350;on,350;off,3350");
-            pinHandler.setScheme(Configs.OUT_LED_YELLOW, "∞:off,700;on,350;off,3000");
-            pinHandler.setScheme(Configs.OUT_LED_GREEN, "∞:off,1050;on,350;off,2650");
-            pinHandler.setScheme(Configs.OUT_LED_BLUE, "∞:off,1400;on,350;off,2300");
+            myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
+            myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
+            myLCD.setLine("page0", 3, "CONNECTED TO");
+            myLCD.setLine("page0", 4, MQTT_URI.orElse("?? ERROR ?? WTF ??"));
 
-            myLCD.setLine("page0", 1, "Connected to broker");
-            myLCD.setLine("page0", 2, "@" + iMqttClient.get().getServerURI());
-            myLCD.setLine("page0", 3, "Waiting for");
-            myLCD.setLine("page0", 4, "commander");
+            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,1000;off,1000");
+            bscheme = "∞:on,1000;off,3000";
+        } else if (me.getWifi() <= 0) {
+            myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
+            myLCD.setLine("page0", 2, "");
+            myLCD.setLine("page0", 3, "");
+            myLCD.setLine("page0", 4, "NO WIFI");
+
+            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,250;off,750");
         } else {
-            for (String led : Configs.ALL_LEDS) {
-                pinHandler.setScheme(led, "off");
-            }
-            for (String siren : Configs.ALL_SIRENS) {
-                pinHandler.setScheme(siren, "off");
-            }
-            myLCD.setLine("page0", 1, "Welcome to the");
-            myLCD.setLine("page0", 2, "RLG-Agent v${agversion}b${agbuild}");
-            myLCD.setLine("page0", 3, "Searching for a");
+            myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
+            myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
+            myLCD.setLine("page0", 3, "Searching for");
             myLCD.setLine("page0", 4, "MQTT Broker");
 
-            // the wifi strength is reduced to good, fair, bad, none
-            int wifi = me.getWifi();
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,100;off,900");
-            String bscheme = "∞:on,500;off,1500";
-            if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, bscheme);
-            if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, bscheme);
-            if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, bscheme);
-            if (wifi > 3) pinHandler.setScheme(Configs.OUT_LED_BLUE, bscheme);
+            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,500;off,500");
+            bscheme = "∞:on,500;off,1500";
         }
+
+        if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, bscheme);
+        if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, bscheme);
+        if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, bscheme);
+        if (wifi > 3) pinHandler.setScheme(Configs.OUT_LED_BLUE, bscheme);
 
     }
 

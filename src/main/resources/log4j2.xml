@@ -8,7 +8,7 @@
 
     <Appenders>
 
-<!--        <File name="MyFile" fileName="${APP_LOG_ROOT}/rlgagent.log">-->
+        <!--        <File name="MyFile" fileName="${APP_LOG_ROOT}/rlgagent.log">-->
         <!--            <PatternLayout pattern="${LOG_PATTERN}"/>-->
         <!--        </File>-->
 
@@ -38,7 +38,7 @@
     </Appenders>
     <Loggers>
         <Root level="debug">
-<!--            <AppenderRef ref="MyFile"/>-->
+            <!--            <AppenderRef ref="MyFile"/>-->
             <AppenderRef ref="RollingFile"/>
             <AppenderRef ref="STDOUT"/>
         </Root>

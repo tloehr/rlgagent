@@ -27,7 +27,7 @@ public class Tools {
     private static final int WIFI_UNSTABLE = -80;
     private static final int WIFI_BAD = -90;
     private static final int NO_WIFI = -99;
-    public static final String[] WIFI = new String[]{"UGLY", "BAD", "FAIR", "GOOD"};
+    public static final String[] WIFI = new String[]{"UGLY", "BAD", "FAIR", "GOOD", "EXCELLENT", "DESKTOP"};
 
     // http://www.mkyong.com/java/how-to-detect-os-in-java-systemgetpropertyosname/
     public static boolean isArm() {
@@ -216,10 +216,10 @@ public class Tools {
     /**
      * @param driver_response shell command to get the signal strength from the wifi driver. can be in dbm or percentage like
      *            "70/100"
-     * @return 4 - excellent, 3 - good, 2 - bad, 1 - ugly, 0 - dead
+     * @return 5 - desktop, 4 - excellent, 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
     public static int getWifiQuality(String driver_response) {
-        if (driver_response.equalsIgnoreCase("desktop")) return new Random().nextInt(5);
+        if (driver_response.equalsIgnoreCase("desktop")) return 0;
         int wifiQuality;
         int wifi;
         //driver_response = "level=94";
