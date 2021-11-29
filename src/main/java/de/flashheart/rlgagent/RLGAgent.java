@@ -357,9 +357,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * switches the agent to the starting mode,
-     * when it doesn't know about a commander or a mqtt broker. Is also called, when
-     * the broker connection is lost.
+     * shows the current connection status via LED signals and LCD output
      */
     private void show_connection_status_as_signals() {
         String bscheme = "off";
