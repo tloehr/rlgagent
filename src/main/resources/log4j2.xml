@@ -26,21 +26,35 @@
         <RollingFile
                 name="RollingFile"
                 fileName="${APP_LOG_ROOT}/rlgagent.log"
-                filePattern="${APP_LOG_ROOT}/rlgagent.%i.log.gz"
+                filePattern="${APP_LOG_ROOT}/application.%d{dd-MMM}.log.gz"
                 ignoreExceptions="false">
             <PatternLayout pattern="${LOG_PATTERN}"/>
+            <!--            Rolling over every day-->
             <Policies>
-                <SizeBasedTriggeringPolicy size="1MB"/>
+                <TimeBasedTriggeringPolicy interval="1"/>
             </Policies>
             <DefaultRolloverStrategy max="5"/>
         </RollingFile>
+
+
+        <!--        <RollingFile-->
+        <!--                     name="RollingFile"-->
+        <!--                     fileName="${APP_LOG_ROOT}/rlgagent.log"-->
+        <!--                     filePattern="${APP_LOG_ROOT}/rlgagent.%i.log.gz"-->
+        <!--                     ignoreExceptions="false">-->
+        <!--                 <PatternLayout pattern="${LOG_PATTERN}"/>-->
+        <!--                 <Policies>-->
+        <!--                     <SizeBasedTriggeringPolicy size="1MB"/>-->
+        <!--                 </Policies>-->
+        <!--                 <DefaultRolloverStrategy max="5"/>-->
+        <!--             </RollingFile>-->
 
     </Appenders>
     <Loggers>
         <Root level="debug">
             <!--            <AppenderRef ref="MyFile"/>-->
             <AppenderRef ref="RollingFile"/>
-            <AppenderRef ref="STDOUT"/>
+            <!--            <AppenderRef ref="STDOUT"/>-->
         </Root>
     </Loggers>
 </Configuration>

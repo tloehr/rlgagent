@@ -46,9 +46,9 @@ public abstract class AbstractConfigs {
         buildProperties.load(in2);
         in2.close();
         if (buildProperties.containsKey("timestamp")) {
-            SimpleDateFormat sdfmt = new SimpleDateFormat("yyyyMMddHHmm");
+            SimpleDateFormat sdfmt = new SimpleDateFormat("yyMMddHHmm");
 
-            System.out.println(sdfmt.format(new Date())); // Mittwoch, 21. März 2007 09:14
+            //System.out.println(sdfmt.format(new Date())); // Mittwoch, 21. März 2007 09:14
             Date buildDate = new Date(Long.parseLong(buildProperties.getProperty("timestamp")));
             buildProperties.put("buildDate", sdfmt.format(buildDate));
         }

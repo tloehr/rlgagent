@@ -195,25 +195,6 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * starts a "i am alive" job that runs every 60 seconds
-     *
-     * @throws SchedulerException
-     */
-//    private void initHeartbeatJob() throws SchedulerException {
-//        JobDetail job = newJob(StatusJob.class)
-//                .withIdentity(myStatusJobKey)
-//                .build();
-//
-//        Trigger trigger = newTrigger()
-//                .withIdentity(StatusJob.name + "-trigger", "group1")
-//                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-//                        .withIntervalInMinutes(1)
-//                        .repeatForever())
-//                .build();
-//        scheduler.scheduleJob(job, trigger);
-//    }
-
-    /**
      * start a job that tries to connect to the mqtt broker
      *
      * @throws SchedulerException
@@ -314,12 +295,12 @@ public class RLGAgent implements MqttCallbackExtended {
                         System.exit(0);
                         break;
                     }
-                    case "init": { // remove all subscriptions
+                    case "init": {
                         unsubscribe_from_additional_subscriptions();
                         myLCD.init();
                         myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
                         pinHandler.off();
-                        show_connection_status_as_signals();
+                        //show_connection_status_as_signals();
                         break;
                     }
                     case "subscribe_to": {
@@ -383,8 +364,8 @@ public class RLGAgent implements MqttCallbackExtended {
     private void show_connection_status_as_signals() {
         String bscheme = "off";
         int wifi = me.getWifi();
+        myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
-            myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
             myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
             myLCD.setLine("page0", 3, "CONNECTED TO");
             myLCD.setLine("page0", 4, MQTT_URI.orElse("?? ERROR ?? WTF ??"));
@@ -392,14 +373,13 @@ public class RLGAgent implements MqttCallbackExtended {
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,1000;off,1000");
             bscheme = "∞:on,1000;off,3000";
         } else if (me.getWifi() <= 0) {
-            myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
             myLCD.setLine("page0", 2, "");
             myLCD.setLine("page0", 3, "");
             myLCD.setLine("page0", 4, "NO WIFI");
 
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,250;off,750");
         } else {
-            myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
+
             myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
             myLCD.setLine("page0", 3, "Searching for");
             myLCD.setLine("page0", 4, "MQTT Broker");

@@ -7,7 +7,11 @@ They are supposed to run on Raspberry Pi computers with several input and output
 
 ![agent-gui](src/main/resources/docs/agent-gui.png)
 
-We use the [Pi4J](https://pi4j.com/) toolkit to connect the hardware to our Java source code. The whole framework is about to change drastically with the version 2. But for now we stick to Version 1 which still relies on the deprecated [WiringPi](http://wiringpi.com/) project, as it runs very well. Please note, that the Pin numbering used in the config files are named according to the WiringPi scheme. 
+We use the [Pi4J](https://pi4j.com/) toolkit to connect the hardware to our Java source code. The whole framework is about to change drastically with the version 2. But for now we stick to Version 1 which still relies on the deprecated [WiringPi](http://wiringpi.com/) project, as it runs very well. Please note, that the Pin numbering used in the config files are named according to the WiringPi scheme.
+
+WiringPi is neither available in Raspbian nor as sourcecode in https://git.drogon.net/?p=wiringPi;a=summary
+Until we are moving on to pi4j 2.0 (which based on pigpio), we stick with a source code mirror for WiringPi on Github. Which works very well for us.
+
 ## Configs
 The agent creates a workspace folder at startup, IF it is missing. The default location is the **home directory of the particular user**.
 
@@ -19,7 +23,7 @@ The configuration is a standard Java properties file.
 Agents and the Commander communicate through messages handled by [MQTT](https://en.wikipedia.org/wiki/MQTT).
 
 ### Topics
-Every agent listens to two fixed topics, which are dynamically created like:
+Every agent listens to two fixed topic channels:
 
 1. `<game_id>/cmd/<agent_id>/#`
 2. `<game_id>/cmd/all/#`
@@ -28,7 +32,7 @@ With
 - `<game_id>` is a unique key for the current game. Every agent and commander must use the same game id to work together.
 - `agent_id` Every agent must have a unique id within the running group. Id conflicts are **NOT** detected and must be sorted out by the administrator at setup time, when the agent is first run.
 
-In addition to the two standard topics, a commander can instruct agents to listen to more topics, so it can combine agent to more "logic groups".
+In addition to these two default channels, a commander can instruct agents to listen to more topics, so it can combine agent to more "logic groups".
 
 ### Commands
 Commands are MQTT messages received from the commander module. Most of the commands contain parameters as JSON objects stored in the payloads.
