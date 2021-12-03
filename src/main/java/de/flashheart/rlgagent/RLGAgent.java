@@ -22,10 +22,7 @@ import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -52,6 +49,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private Optional<String> MQTT_URI;
 
     final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
+    final HashMap<String, String> predefined_schemes;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         this.myUI = myUI;
@@ -60,6 +58,8 @@ public class RLGAgent implements MqttCallbackExtended {
         this.configs = configs;
         this.myLCD = myLCD;
         this.MQTT_URI = Optional.empty();
+        predefined_schemes = new HashMap<>();
+        fillSchemes();
 
 
         me = new Agent(new JSONObject()
@@ -87,6 +87,23 @@ public class RLGAgent implements MqttCallbackExtended {
 
         initAgent();
         initMqttConnectionJob();
+    }
+
+    private void fillSchemes() {
+        // single signals
+        predefined_schemes.put("very_long", "1:on,5000;off,1");
+        predefined_schemes.put("long", "1:on,2500;off,1");
+        predefined_schemes.put("medium", "1:on,2500;off,1");
+        predefined_schemes.put("short", "1:on,500;off,1");
+
+        // recurring signals
+        predefined_schemes.put("slow", "∞:on,2000;off,1000");
+        predefined_schemes.put("normal", "∞:on,1000;off,1000");
+        predefined_schemes.put("fast", "∞:on,500;off,500");
+        predefined_schemes.put("very_fast", "∞:on,250;off,250");
+
+        // for sirens
+        predefined_schemes.put("double_buzz", "2:on,75;off,75");
     }
 
     /**
@@ -259,22 +276,30 @@ public class RLGAgent implements MqttCallbackExtended {
                         // JSON Keys are unordered by definition. So we need to look first for led_all and sir_all.
                         Set<String> keys = signals.keySet();
                         if (keys.contains("led_all")) {
-                            for (String led : Configs.ALL_LEDS) {
-                                pinHandler.setScheme(led, signals.getString("led_all"));
-                            }
+                            set_pins_to(Configs.ALL_LEDS, signals.getString("led_all"));
                         }
                         if (keys.contains("sir_all")) {
-                            for (String sirens : Configs.ALL_SIRENS) {
-                                pinHandler.setScheme(sirens, signals.getString("sir_all"));
-                            }
+                            set_pins_to(Configs.ALL_SIRENS, signals.getString("sir_all"));
                         }
                         keys.remove("led_all");
                         keys.remove("sir_all");
 
                         // cycle through the rest of the signals - one by one
-                        keys.forEach(signal_key -> pinHandler.setScheme(signal_key, signals.getString(signal_key)));
+                        keys.forEach(signal_key -> {
+                            String signal = signals.getString(signal_key);
+                            // predefined schemes always end all partner pins (leds or sirens)
+                            if (predefined_schemes.containsKey(signal)) {
+                                if (signal_key.startsWith("led")) {
+                                    set_pins_to(Configs.ALL_LEDS, "off");
+                                } else if (signal_key.startsWith("sir")) {
+                                    set_pins_to(Configs.ALL_SIRENS, "off");
+                                }
+                            }
+                            pinHandler.setScheme(signal_key, predefined_schemes.getOrDefault(signal, signal));
+                        });
                         break;
                     }
+
                     case "status": {
                         sendStatus();
                         break;
@@ -417,6 +442,12 @@ public class RLGAgent implements MqttCallbackExtended {
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         log.debug("{} - {}", topic, message);
+    }
+
+    private void set_pins_to(String[] pins, String scheme) {
+        for (String pin : pins) {
+            pinHandler.setScheme(pin, scheme);
+        }
     }
 
     @Override
