@@ -224,6 +224,8 @@ public class Tools {
         int wifi;
         //driver_response = "level=94";
         // some wifi drivers show the link quality in percentage (e.g. 70/100) rather than dbm
+        // sometimes when driver show level=100/100 use
+        // iwconfig wlan0|egrep "Signal level"|awk '{print $4}'|sed 's/[^0-9/]*//g'
         try {
             if (driver_response.contains("/")) { // link quality in percentage
                 StringTokenizer tokenizer = new StringTokenizer(driver_response, "/");

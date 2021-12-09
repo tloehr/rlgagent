@@ -49,7 +49,6 @@ public class RLGAgent implements MqttCallbackExtended {
     private Optional<String> MQTT_URI;
 
     final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
-    final HashMap<String, String> predefined_schemes;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         this.myUI = myUI;
@@ -58,9 +57,6 @@ public class RLGAgent implements MqttCallbackExtended {
         this.configs = configs;
         this.myLCD = myLCD;
         this.MQTT_URI = Optional.empty();
-        predefined_schemes = new HashMap<>();
-        fillSchemes();
-
 
         me = new Agent(new JSONObject()
                 .put("agentid", configs.get(Configs.MY_ID))
@@ -87,23 +83,6 @@ public class RLGAgent implements MqttCallbackExtended {
 
         initAgent();
         initMqttConnectionJob();
-    }
-
-    private void fillSchemes() {
-        // single signals
-        predefined_schemes.put("very_long", "1:on,5000;off,1");
-        predefined_schemes.put("long", "1:on,2500;off,1");
-        predefined_schemes.put("medium", "1:on,2500;off,1");
-        predefined_schemes.put("short", "1:on,500;off,1");
-
-        // recurring signals
-        predefined_schemes.put("slow", "∞:on,2000;off,1000");
-        predefined_schemes.put("normal", "∞:on,1000;off,1000");
-        predefined_schemes.put("fast", "∞:on,500;off,500");
-        predefined_schemes.put("very_fast", "∞:on,250;off,250");
-
-        // for sirens
-        predefined_schemes.put("double_buzz", "2:on,75;off,75");
     }
 
     /**
@@ -288,14 +267,14 @@ public class RLGAgent implements MqttCallbackExtended {
                         keys.forEach(signal_key -> {
                             String signal = signals.getString(signal_key);
                             // predefined schemes always end all partner pins (leds or sirens)
-                            if (predefined_schemes.containsKey(signal)) {
+                            if (configs.containsKey(signal)) {
                                 if (signal_key.startsWith("led")) {
                                     set_pins_to(Configs.ALL_LEDS, "off");
                                 } else if (signal_key.startsWith("sir")) {
                                     set_pins_to(Configs.ALL_SIRENS, "off");
                                 }
                             }
-                            pinHandler.setScheme(signal_key, predefined_schemes.getOrDefault(signal, signal));
+                            pinHandler.setScheme(signal_key, configs.get(signal, signal));
                         });
                         break;
                     }
@@ -387,10 +366,10 @@ public class RLGAgent implements MqttCallbackExtended {
     private void show_connection_status_as_signals() {
         String bscheme = "off";
         int wifi = me.getWifi();
-        myLCD.setLine("page0", 1, "RLG-Agent v${agversion}b${agbuild}");
+        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
-            myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
-            myLCD.setLine("page0", 3, "CONNECTED TO");
+            myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi].toLowerCase());
+            myLCD.setLine("page0", 3, "connected to");
             myLCD.setLine("page0", 4, MQTT_URI.orElse("?? ERROR ?? WTF ??"));
 
             pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,1000;off,1000");

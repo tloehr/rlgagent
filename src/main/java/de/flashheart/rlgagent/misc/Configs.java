@@ -81,6 +81,24 @@ public class Configs extends AbstractConfigs {
 
         configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1|egrep \"Signal level\"|awk '{print $4}'");
 
+        // predefined schemes belong to the config file
+        // so we can change the commander without necessarily having to update the agent, too
+        configs.setProperty("very_long", "1:on,5000;off,1");
+        configs.setProperty("long", "1:on,2500;off,1");
+        configs.setProperty("medium", "1:on,2500;off,1");
+        configs.setProperty("short", "1:on,500;off,1");
+
+        // recurring signals
+        configs.setProperty("slow", "∞:on,2000;off,1000");
+        configs.setProperty("normal", "∞:on,1000;off,1000");
+        configs.setProperty("fast", "∞:on,500;off,500");
+        configs.setProperty("very_fast", "∞:on,250;off,250");
+
+        // for sirens
+        configs.setProperty("single_buzz", "1:on,75;off,75");
+        configs.setProperty("double_buzz", "2:on,75;off,75");
+        configs.setProperty("triple_buzz", "3:on,75;off,75");
+
         // missionbox
 //        configs.setProperty(OUT_LED_WHITE, RaspiPin.GPIO_05.getName()); // 13
 //        configs.setProperty(OUT_LED_RED, RaspiPin.GPIO_06.getName()); // 12

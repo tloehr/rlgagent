@@ -96,6 +96,10 @@ public abstract class AbstractConfigs {
         return configs.getProperty(key, defaultValue);
     }
 
+    public boolean containsKey(String key) {
+        return configs.containsKey(key);
+    }
+
     public void saveConfigs() {
         try {
             File configFile = new File(CONFIGFILE);
