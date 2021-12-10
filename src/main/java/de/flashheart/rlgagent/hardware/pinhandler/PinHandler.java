@@ -2,6 +2,7 @@ package de.flashheart.rlgagent.hardware.pinhandler;
 
 
 import de.flashheart.rlgagent.hardware.abstraction.MyPin;
+import de.flashheart.rlgagent.misc.Configs;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.HashMap;
@@ -11,8 +12,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * This handler runs parallel to the main programm and handles all the blinking needs of the specific pins. It knows to handle collision between pins that must not be run at the same time.
- * Dieser Handler läuft parallel zum Hauptprogramm. Er steuert alles Relais und achtet auch auf widersprüchliche Befehle und Kollisionen (falls bestimmte Relais nicht gleichzeitig anziehen dürfen, gibt mittlerweile nicht mehr).
+ * This handler runs parallel to the main programm and handles all the blinking needs of the specific pins. It knows to
+ * handle collision between pins that must not be run at the same time. Dieser Handler läuft parallel zum Hauptprogramm.
+ * Er steuert alles Relais und achtet auch auf widersprüchliche Befehle und Kollisionen (falls bestimmte Relais nicht
+ * gleichzeitig anziehen dürfen, gibt mittlerweile nicht mehr).
  */
 @Log4j2
 public class PinHandler {
@@ -20,9 +23,11 @@ public class PinHandler {
     final ReentrantLock lock;
     final HashMap<String, GenericBlinkModel> pinMap;
     final HashMap<String, Future<String>> futures;
+    private final Configs configs;
     private ExecutorService executorService;
 
-    public PinHandler() {
+    public PinHandler(Configs configs) {
+        this.configs = configs;
         lock = new ReentrantLock();
         pinMap = new HashMap<>();
         futures = new HashMap<>();
@@ -44,10 +49,9 @@ public class PinHandler {
     }
 
     /**
-     * Setzt ein Blink Schema für diesen Pin. Die Syntax ist wie folgt:
-     * "<anzahl_wiederholung/>;(millis-on;millis-off)*", wobei ()* bedeutet, dass diese Sequenz so oft wie
-     * gewünscht wiederholt werden kann. Danach wird die Gesamtheit <anzahl_wiederholungen/> mal wiederholt
-     * wird. Unendliche Wiederholungen werden einfach durch Long.MAX_VALUE
+     * Setzt ein Blink Schema für diesen Pin. Die Syntax ist wie folgt: "<anzahl_wiederholung/>;(millis-on;millis-off)*",
+     * wobei ()* bedeutet, dass diese Sequenz so oft wie gewünscht wiederholt werden kann. Danach wird die Gesamtheit
+     * <anzahl_wiederholungen/> mal wiederholt wird. Unendliche Wiederholungen werden einfach durch Long.MAX_VALUE
      *
      * @param name
      * @param scheme
@@ -55,6 +59,7 @@ public class PinHandler {
     public void setScheme(String name, String scheme) {
         if (lock.isLocked()) log.warn("setScheme() is currently locked. Delay will occur. Why is this happening ?");
         if (scheme.equalsIgnoreCase("off")) scheme = "0:";
+        scheme = configs.get(scheme, scheme); // replace with predefines scheme or leave it as it was
         lock.lock();
         try {
             GenericBlinkModel genericBlinkModel = pinMap.get(name);

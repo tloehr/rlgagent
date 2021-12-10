@@ -84,7 +84,7 @@ public class Main {
 
         configs = new Configs();
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
-        pinHandler = new PinHandler();
+        pinHandler = new PinHandler(configs);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             prepareShutdown();
         }));
@@ -163,6 +163,7 @@ public class Main {
 
     public static void prepareShutdown() {
         log.info("Preparing Shutdown");
+
         configs.saveConfigs();
         agent.shutdown();
         pinHandler.off();

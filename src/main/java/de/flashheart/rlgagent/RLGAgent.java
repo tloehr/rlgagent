@@ -22,7 +22,10 @@ import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -242,13 +245,13 @@ public class RLGAgent implements MqttCallbackExtended {
                         cmdlist.forEach(page -> myLCD.delPage(page.toString().trim()));
                         break;
                     }
-                    case "matrix_display": {
-                        JSONArray cmdlist = cmds.getJSONArray("matrix_display");
-                        for (int line = 0; line < cmdlist.length(); line++) {
-                            log.debug(cmdlist.getString(line));
-                        }
-                        break;
-                    }
+//                    case "matrix_display": {
+//                        JSONArray cmdlist = cmds.getJSONArray("matrix_display");
+//                        for (int line = 0; line < cmdlist.length(); line++) {
+//                            log.debug(cmdlist.getString(line));
+//                        }
+//                        break;
+//                    }
                     case "signal": {
                         final JSONObject signals = cmds.getJSONObject("signal");
 
@@ -266,19 +269,10 @@ public class RLGAgent implements MqttCallbackExtended {
                         // cycle through the rest of the signals - one by one
                         keys.forEach(signal_key -> {
                             String signal = signals.getString(signal_key);
-                            // predefined schemes always end all partner pins (leds or sirens)
-                            if (configs.containsKey(signal)) {
-                                if (signal_key.startsWith("led")) {
-                                    set_pins_to(Configs.ALL_LEDS, "off");
-                                } else if (signal_key.startsWith("sir")) {
-                                    set_pins_to(Configs.ALL_SIRENS, "off");
-                                }
-                            }
-                            pinHandler.setScheme(signal_key, configs.get(signal, signal));
+                            pinHandler.setScheme(signal_key, signal);
                         });
                         break;
                     }
-
                     case "status": {
                         sendStatus();
                         break;
@@ -294,6 +288,10 @@ public class RLGAgent implements MqttCallbackExtended {
                         break;
                     }
                     case "shutdown": {
+                        myLCD.init();
+                        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+                        myLCD.setLine("page0", 2, "System");
+                        myLCD.setLine("page0", 3, "shutdown");
                         Main.prepareShutdown();
                         Tools.system_shutdown("/opt/rlgagent/shutdown.sh");
                         System.exit(0);
@@ -362,39 +360,34 @@ public class RLGAgent implements MqttCallbackExtended {
 
     /**
      * shows the current connection status via LED signals and LCD output
+     * <p>
+     * white - agent is running and trying to connect red - green - signal strength for wifi blue - mqtt is connected
      */
     private void show_connection_status_as_signals() {
-        String bscheme = "off";
         int wifi = me.getWifi();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-        if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
+        pinHandler.setScheme(Configs.OUT_LED_WHITE, "normal"); // white is always blinking
+        if (me.getWifi() <= 0) { // no wifi
+            myLCD.setLine("page0", 2, "");
+            myLCD.setLine("page0", 3, "");
+            myLCD.setLine("page0", 4, "NO WIFI");
+        } else if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) { // up and running
             myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi].toLowerCase());
             myLCD.setLine("page0", 3, "connected to");
             myLCD.setLine("page0", 4, MQTT_URI.orElse("?? ERROR ?? WTF ??"));
 
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,1000;off,1000");
-            bscheme = "∞:on,1000;off,3000";
-        } else if (me.getWifi() <= 0) {
-            myLCD.setLine("page0", 2, "");
-            myLCD.setLine("page0", 3, "");
-            myLCD.setLine("page0", 4, "NO WIFI");
-
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,250;off,750");
-        } else {
+            pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
+        } else { // wifi but no broker yet
 
             myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
             myLCD.setLine("page0", 3, "Searching for");
             myLCD.setLine("page0", 4, "MQTT Broker");
 
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "∞:on,500;off,500");
-            bscheme = "∞:on,500;off,1500";
+            if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "normal");
+            if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "normal");
+            if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");
+
         }
-
-        if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, bscheme);
-        if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, bscheme);
-        if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, bscheme);
-        if (wifi > 3) pinHandler.setScheme(Configs.OUT_LED_BLUE, bscheme);
-
     }
 
     /**
