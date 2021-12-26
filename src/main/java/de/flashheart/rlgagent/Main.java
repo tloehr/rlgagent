@@ -52,6 +52,12 @@ public class Main {
     }
 
     private static void initBaseSystem(String[] args) throws IOException, UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+
+        if (!System.getProperties().containsKey("workspace")) {
+            log.fatal("workspace directory parameter needs to be set via -Dworkspace=/path/you/want");
+            System.exit(1);
+        }
+
         Options opts = new Options();
         opts.addOption("h", "help", false, "show help");
         //opts.addOption("w", "workspace", true, "specficy workspace folder for config and log files. default (if omitted): " + Tools.getWorkingPath(PROJECT));

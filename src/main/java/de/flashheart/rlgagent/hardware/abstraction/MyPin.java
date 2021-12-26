@@ -20,13 +20,10 @@ import java.util.Optional;
 public class MyPin {
     private final Optional<GpioPinDigitalOutput> outputPin;
     private final String name;
-
     private final Optional<MyUI> myUI;
-    //    private MyLED guiControlLED; // Diese MyLED wird zwecks debugging mit geschaltet.
     private int note = -1;
     private Synthesizer synthesizer = null;
     private MidiChannel[] channels;
-
 
     public MyPin(String name, Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, Optional<MCP23017GpioProvider> gpioProvider, int instrument, int note) {
         this.name = name;

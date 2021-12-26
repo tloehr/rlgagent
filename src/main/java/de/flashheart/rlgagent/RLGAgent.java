@@ -257,6 +257,9 @@ public class RLGAgent implements MqttCallbackExtended {
 
                         // JSON Keys are unordered by definition. So we need to look first for led_all and sir_all.
                         Set<String> keys = signals.keySet();
+                        if (keys.contains("all")) {
+                            set_pins_to(Configs.ALL, signals.getString("all"));
+                        }
                         if (keys.contains("led_all")) {
                             set_pins_to(Configs.ALL_LEDS, signals.getString("led_all"));
                         }
@@ -265,6 +268,7 @@ public class RLGAgent implements MqttCallbackExtended {
                         }
                         keys.remove("led_all");
                         keys.remove("sir_all");
+                        keys.remove("all");
 
                         // cycle through the rest of the signals - one by one
                         keys.forEach(signal_key -> {
@@ -366,7 +370,14 @@ public class RLGAgent implements MqttCallbackExtended {
     private void show_connection_status_as_signals() {
         int wifi = me.getWifi();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+
         pinHandler.setScheme(Configs.OUT_LED_WHITE, "normal"); // white is always blinking
+        if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "normal");
+        if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "normal");
+        if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");
+        if (iMqttClient.isPresent() && iMqttClient.get().isConnected())
+            pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
+
         if (me.getWifi() <= 0) { // no wifi
             myLCD.setLine("page0", 2, "");
             myLCD.setLine("page0", 3, "");
@@ -375,18 +386,10 @@ public class RLGAgent implements MqttCallbackExtended {
             myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi].toLowerCase());
             myLCD.setLine("page0", 3, "connected to");
             myLCD.setLine("page0", 4, MQTT_URI.orElse("?? ERROR ?? WTF ??"));
-
-            pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
         } else { // wifi but no broker yet
-
             myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
             myLCD.setLine("page0", 3, "Searching for");
             myLCD.setLine("page0", 4, "MQTT Broker");
-
-            if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "normal");
-            if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "normal");
-            if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");
-
         }
     }
 

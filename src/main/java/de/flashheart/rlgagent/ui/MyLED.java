@@ -14,25 +14,25 @@ public class MyLED extends JLabel {
     public final Icon icon22ledOrangeOff = new ImageIcon(getClass().getResource("/artwork/22x22/leddarkorange.png"));
     public final Icon icon22ledPurpleOff = new ImageIcon(getClass().getResource("/artwork/22x22/leddarkpurple.png"));
     public final Icon icon22ledPurpleOn = new ImageIcon(getClass().getResource("/artwork/22x22/ledpurple.png"));
-    public final Icon icon22ledBlueOff = new ImageIcon(getClass().getResource("/artwork/48x48/led-blue-off.png"));
-    public final Icon icon22ledBlueOn = new ImageIcon(getClass().getResource("/artwork/48x48/led-blue-on.png"));
-    public final Icon icon22ledGreenOff = new ImageIcon(getClass().getResource("/artwork/48x48/led-green-off.png"));
-    public final Icon icon22ledGreenOn = new ImageIcon(getClass().getResource("/artwork/48x48/led-green-on.png"));
-    public final Icon icon22ledYellowOff = new ImageIcon(getClass().getResource("/artwork/48x48/led-yellow-off.png"));
-    public final Icon icon22ledYellowOn = new ImageIcon(getClass().getResource("/artwork/48x48/led-yellow-on.png"));
-    public final Icon icon22ledRedOff = new ImageIcon(getClass().getResource("/artwork/48x48/led-red-off.png"));
-    public final Icon icon22ledRedOn = new ImageIcon(getClass().getResource("/artwork/48x48/led-red-on.png"));
-    public final Icon icon22ledWhiteOff = new ImageIcon(getClass().getResource("/artwork/48x48/led-white-off.png"));
-    public final Icon icon22ledWhiteOn = new ImageIcon(getClass().getResource("/artwork/48x48/led-white-on.png"));
-    public final Icon iconSpeakerOn = new ImageIcon(getClass().getResource("/artwork/48x48/speaker-on.png"));
-    public final Icon iconSpeakerOff = new ImageIcon(getClass().getResource("/artwork/48x48/speaker-off.png"));
+    public final Icon icon22ledBlueOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-blue-off.png"));
+    public final Icon icon22ledBlueOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-blue-on.png"));
+    public final Icon icon22ledGreenOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-green-off.png"));
+    public final Icon icon22ledGreenOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-green-on.png"));
+    public final Icon icon22ledYellowOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-yellow-off.png"));
+    public final Icon icon22ledYellowOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-yellow-on.png"));
+    public final Icon icon22ledRedOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-red-off.png"));
+    public final Icon icon22ledRedOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-red-on.png"));
+    public final Icon icon22ledWhiteOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-white-off.png"));
+    public final Icon icon22ledWhiteOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-white-on.png"));
+    public final Icon iconSpeakerOn = new ImageIcon(getClass().getResource("/artwork/22x22/speaker-on.png"));
+    public final Icon iconSpeakerOff = new ImageIcon(getClass().getResource("/artwork/22x22/speaker-off.png"));
 
     private Color color;
     private boolean state;
 
-    public MyLED() {
-        this(null, Color.WHITE);
-    }
+//    public MyLED() {
+//        this(null, Color.WHITE);
+//    }
 
     public MyLED(String text, Color color) {
         super(text);
@@ -40,6 +40,7 @@ public class MyLED extends JLabel {
         super.setText(text);
         setColor(color);
         setState(false);
+        setSize(getWidth(), 22);
     }
 
     @Override

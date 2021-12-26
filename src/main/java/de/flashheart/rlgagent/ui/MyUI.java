@@ -35,7 +35,6 @@ public class MyUI extends JFrame {
         setTitle(title);
         initLEDs();
         initLCD();
-        //
     }
 
     private void initLCD() {
@@ -53,19 +52,37 @@ public class MyUI extends JFrame {
         pinMap.put(Configs.OUT_SIREN2, new MyLED(Configs.OUT_SIREN2, Color.DARK_GRAY));
         pinMap.put(Configs.OUT_SIREN3, new MyLED(Configs.OUT_SIREN3, Color.DARK_GRAY));
         pinMap.put(Configs.OUT_BUZZER, new MyLED(Configs.OUT_BUZZER, Color.DARK_GRAY));
-        JPanel pinPanel= new JPanel();
+
+        JPanel page = new JPanel();
+        page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
+
+        JPanel leds= new JPanel();
+        leds.setLayout(new BoxLayout(leds, BoxLayout.PAGE_AXIS));
+        JPanel sirens= new JPanel();
+        sirens.setLayout(new BoxLayout(sirens, BoxLayout.PAGE_AXIS));
+
+        page.add(leds);
+        page.add(sirens);
+
         //pinPanel.setLayout(new BoxLayout(pinPanel, BoxLayout.PAGE_AXIS));
-        pinPanel.setLayout(new GridLayout(5, 2, 5, 5));
-        pinPanel.add(pinMap.get(Configs.OUT_LED_WHITE));
-        pinPanel.add(pinMap.get(Configs.OUT_SIREN1));
-        pinPanel.add(pinMap.get(Configs.OUT_LED_RED));
-        pinPanel.add(pinMap.get(Configs.OUT_SIREN2));
-        pinPanel.add(pinMap.get(Configs.OUT_LED_YELLOW));
-        pinPanel.add(pinMap.get(Configs.OUT_SIREN3));
-        pinPanel.add(pinMap.get(Configs.OUT_LED_GREEN));
-        pinPanel.add(pinMap.get(Configs.OUT_BUZZER));
-        pinPanel.add(pinMap.get(Configs.OUT_LED_BLUE));
-        content1.add(pinPanel, BorderLayout.CENTER);
+        //pinPanel.setLayout(new GridLayout(5, 2, 5, 5));
+
+
+
+        leds.add(pinMap.get(Configs.OUT_LED_WHITE));
+
+        leds.add(pinMap.get(Configs.OUT_LED_RED));
+
+        leds.add(pinMap.get(Configs.OUT_LED_YELLOW));
+
+        leds.add(pinMap.get(Configs.OUT_LED_GREEN));
+
+        leds.add(pinMap.get(Configs.OUT_LED_BLUE));
+        sirens.add(pinMap.get(Configs.OUT_SIREN1));
+        sirens.add(pinMap.get(Configs.OUT_SIREN2));
+        sirens.add(pinMap.get(Configs.OUT_SIREN3));
+        sirens.add(pinMap.get(Configs.OUT_BUZZER));
+        content1.add(page, BorderLayout.CENTER);
     }
 
     public void setState(String name, boolean on) {
@@ -164,7 +181,7 @@ public class MyUI extends JFrame {
             dialogPane.add(buttonBar, BorderLayout.SOUTH);
         }
         contentPane.add(dialogPane, BorderLayout.CENTER);
-        setSize(310, 530);
+        setSize(230, 325);
         setLocationRelativeTo(getOwner());
         // JFormDesigner - End of component initialization  //GEN-END:initComponents
     }

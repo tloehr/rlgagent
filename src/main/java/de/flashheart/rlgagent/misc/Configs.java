@@ -2,6 +2,7 @@ package de.flashheart.rlgagent.misc;
 
 import com.pi4j.io.gpio.RaspiPin;
 import de.flashheart.rlgagent.Main;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ public class Configs extends AbstractConfigs {
     public static final String LOGLEVEL = "loglevel";
     public static final String[] ALL_LEDS = new String[]{OUT_LED_WHITE, OUT_LED_RED, OUT_LED_YELLOW, OUT_LED_GREEN, OUT_LED_BLUE};
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3};
+    public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
 
 
