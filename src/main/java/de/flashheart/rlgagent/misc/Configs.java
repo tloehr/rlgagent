@@ -87,7 +87,7 @@ public class Configs extends AbstractConfigs {
         // so we can change the commander without necessarily having to update the agent, too
         configs.setProperty("very_long", "1:on,5000;off,1");
         configs.setProperty("long", "1:on,2500;off,1");
-        configs.setProperty("medium", "1:on,2500;off,1");
+        configs.setProperty("medium", "1:on,1000;off,1");
         configs.setProperty("short", "1:on,500;off,1");
 
         // recurring signals

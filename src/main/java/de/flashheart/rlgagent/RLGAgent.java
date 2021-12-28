@@ -371,7 +371,7 @@ public class RLGAgent implements MqttCallbackExtended {
         int wifi = me.getWifi();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
 
-        pinHandler.setScheme(Configs.OUT_LED_WHITE, "normal"); // white is always blinking
+        pinHandler.setScheme(Configs.OUT_LED_WHITE, "normal"); // white is always flashing
         if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "normal");
         if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "normal");
         if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");

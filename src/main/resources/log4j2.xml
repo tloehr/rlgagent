@@ -27,7 +27,7 @@
 
     </Appenders>
     <Loggers>
-        <Root level="debug">
+        <Root level="${sys:loglevel:-DEBUG}">
             <AppenderRef ref="RollingFile"/>
             <AppenderRef ref="STDOUT"/>
         </Root>
