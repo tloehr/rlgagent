@@ -109,14 +109,11 @@ public class RLGAgent implements MqttCallbackExtended {
         } else {
             log.debug("searching for mqtt broker");
             // try all the brokers on the space separated list.
-            Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+")).forEach(broker -> {
-                // try only if we haven't found a BROKER yet
-                if (!MQTT_URI.isPresent()) {
-                    try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
-                } else {
-                    log.debug("found a working broker already. skipping {}", broker);
+            for (String broker : Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"))){
+                if (try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)))){
+                    break;
                 }
-            });
+            }
         }
     }
 
@@ -124,8 +121,10 @@ public class RLGAgent implements MqttCallbackExtended {
      * belongs to connect_to_mqtt_broker()
      *
      * @param uri to try for connection
+     * @return true when connection was successful, false otherwise
      */
-    void try_mqtt_broker(String uri) {
+    boolean try_mqtt_broker(String uri) {
+        boolean success = false;
         log.debug("trying broker @{}", uri);
         try {
             iMqttClient = Optional.of(new MqttClient(uri, configs.get(Configs.MYUUID), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
@@ -158,13 +157,16 @@ public class RLGAgent implements MqttCallbackExtended {
                 for (String channel : group_channels) {
                     iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
                 }
+                success = true;
             }
         } catch (MqttException e) {
             iMqttClient = Optional.empty();
             log.warn(e.getMessage());
+            success = false;
         } finally {
             show_connection_status_as_signals();
         }
+        return success;
     }
 
     private void initAgent() {
@@ -406,7 +408,6 @@ public class RLGAgent implements MqttCallbackExtended {
         publishMessage(new JSONObject().put("status", me.toJson()).toString());
     }
 
-
     @SneakyThrows
     @Override
     public void connectionLost(Throwable cause) {
@@ -432,6 +433,9 @@ public class RLGAgent implements MqttCallbackExtended {
 
     public void shutdown() {
         try {
+            myLCD.init();
+            myLCD.setLine("page0", 2, "agent");
+            myLCD.setLine("page0", 3, "shutdown");
             scheduler.shutdown();
         } catch (SchedulerException e) {
             e.printStackTrace();
