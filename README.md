@@ -1,43 +1,112 @@
-# RLG Agent
-This project is part of the RLG (Real Life Gaming) System. Its purpose is to bring known (and hopefully) new game modes to the paintball / airsoft / LARP fields.
+RLG Agent
+=========
+* [Configs](#configs)
+* [MQTT](#mqtt)
+* [Commands](#commands)
+   * [Initializing an agent](#initializing-an-agent)
+   * [Signals](#signals)
+      * [Standard Signal Schemes](#standard-signal-schemes)
+   * [Paged Displays](#paged-displays)
+      * [Setting the page content](#setting-the-page-content)
+      * [Variables and template expressions](#variables-and-template-expressions)
+         * [Preset variables](#preset-variables)
+         * [Dynamic variables](#dynamic-variables)
+         * [Timers](#timers)
+      * [Adding a page](#adding-a-page)
+      * [Deleting a page](#deleting-a-page)
+   * [Matrix Displays (WIP - not implemented)](#matrix-displays-wip---not-implemented)
+   * [Additional Subscriptions](#additional-subscriptions)
+   * [Events](#events)
+---
+# Preface
+The purpose of the **RLGS** (Real Life Gaming System) is to realize games for **tactical sports** like paintball, airsoft, Nerf or Laser Tag. We try to adapt well known multiplayer modes from games like Battlefield, Call of Duty, FarCry, Planetside 2 oder Counterstrike.
 
-Agents do **not know** anything about the current state of a game situation, they completely rely on the command messages sent by the [RLG Commander](https://github.com/tloehr/rlgcommander). The latter keeps track about the states of all the agents during a running game.
+The RLGS concept consists of one [commander](https://github.com/tloehr/rlgcommander) and multiple game items on the field, called agents (this project). 
 
-They are supposed to run on Raspberry Pi computers with several input and output devices connected to them. Like LED stripes, sirens (switched by relay boards), pushbuttons, LCD Displays etc. But its also possible to run them on a standard desktop computer. In this case, they fire up a Swing GUI to simulate the aforementioned devices on the screen or via the sound card. 
+Agents do **not know anything** about why they are flashing LEDs, sounding sirens or why somebody presses their buttons. They completely rely on the commander to tell them what to do, that the signals are meaningful to the players on the field. The commander is the only one who keeps track about the game situation.
+
+# Hard- and Software
+Agents are supposed to run on Raspberry Pi computers with several input and output devices connected to them. Like LED stripes, sirens (switched by relay boards), push buttons, LCDs etc. But it is also possible to run them on a standard desktop computers (Mac, Windows, Linux). In this case, they fire up a Swing GUI to simulate the aforementioned devices on the screen or via the sound card. 
 
 ![agent-gui](src/main/resources/docs/agent-gui.png)
 
-We use the [Pi4J](https://pi4j.com/) toolkit to connect the hardware to our Java source code. The whole framework is about to change drastically with the version 2. But for now we stick to Version 1 which still relies on the deprecated [WiringPi](http://wiringpi.com/) project, as it runs very well. Please note, that the Pin numbering used in the config files are named according to the WiringPi scheme.
+We use the [Pi4J](https://pi4j.com/) framework to connect the hardware to our Java source code. The whole framework is about to change drastically with the version 2. But for now we stick to Version 1 which still relies on the now deprecated [WiringPi](http://wiringpi.com/) project, as it runs very well. Please note, that the Pin numbering used in the config files are named according to the WiringPi scheme.
 
-WiringPi is neither available in Raspbian nor as sourcecode in https://git.drogon.net/?p=wiringPi;a=summary
-Until we are moving on to pi4j 2.0 (which based on pigpio), we stick with a source code mirror for WiringPi on Github. Which works very well for us.
+WiringPi is not available in Raspbian anymore or as sourcecode in https://git.drogon.net/?p=wiringPi;a=summary
+Until we are moving on to pi4j 2.0 (which based on pigpio), we stick with a source code mirror for WiringPi on GitHub. Which works very well for us.
 
 ## Configs
-The agent creates a workspace folder at startup, IF it is missing. The default location is the **home directory of the particular user**.
+The agent creates a workspace folder startup (if missing)The default location is the **home directory of the particular user**. Inside this folder resides the **config.txt** file, which is a standard Java properties file.  
 
-The configuration is a standard Java properties file.  
+```
+#Settings rlgagent
+#Tue Dec 28 16:59:47 CET 2021
+btn01=GPIO 22
+btn02=GPIO 23
+buzzer=GPIO 12
+double_buzz=2\:on,75;off,75
+gameid=g1
+has_large_display=false
+has_lcd=true
+has_leds=true
+has_line_display=true
+has_rfid=false
+has_sirens=false
+has_sound=false
+lcd_cols=20
+lcd_rows=4
+led_blu=GPIO 6
+led_grn=GPIO 5
+led_wht=GPIO 27
+led_ylw=GPIO 24
+long=1\:on,2500;off,1
+mcp23017_i2c_address=0x20
+medium=1\:on,2500;off,1
+mqtt_broker=mqtta mqttb mqtt
+mqtt_port=1883
+mqtt_url=tcp\://mqtt\:1883
+normal=\u221E\:on,1000;off,1000
+single_buzz=1\:on,75;off,75
+sir1=GPIO 4
+sir3=GPIO 25
+siren_buzzer=GPIO 12
+slow=\u221E\:on,2000;off,1000
+triple_buzz=3\:on,75;off,75
+uuid=10ffee3d-7041-40a5-820d-74348c11ebcb
+very_fast=\u221E\:on,250;off,250
+very_long=1\:on,5000;off,1
+wifi_cmd=iwconfig wlan0|egrep "Signal level"|awk '{print $4}'
+```
 
-![agent-gui](src/main/resources/docs/config-txt.png)
-
-## MQTT
+# MQTT
 Agents and the Commander communicate through messages handled by [MQTT](https://en.wikipedia.org/wiki/MQTT).
 
-### Topics
 Every agent listens to two fixed topic channels:
 
 1. `<game_id>/cmd/<agent_id>/#`
 2. `<game_id>/cmd/all/#`
 
 With 
-- `<game_id>` is a unique key for the current game. Every agent and commander must use the same game id to work together.
-- `agent_id` Every agent must have a unique id within the running group. Id conflicts are **NOT** detected and must be sorted out by the administrator at setup time, when the agent is first run.
+- `<game_id>` is a unique key for the current game. Every agent and commander must use the same game id to work together. We will use this prefix just in case we are sharing a MQTT broker with others.
+- `agent_id` Every agent must have a unique id within the running group. Id conflicts are **NOT** detected and must be sorted out by the administrator at setup time, when the agent is first run. Set the id in the config.txt file of the agent (e.g. myid=ag01)
 
-In addition to these two default channels, a commander can instruct agents to listen to more topics, so it can combine agent to more "logic groups".
+In addition to these two default channels, a commander can instruct agents to listen to more topics, so it can combine agent into functional groups like "sirens", "leds", "spawns" etc. These groups are purely defined by the game mode in the commander. Again, the agent itself doesn't have any notion about these topics. It simply listens as being told.
 
-### Commands
-Commands are MQTT messages received from the commander module. Most of the commands contain parameters as JSON objects stored in the payloads.
+# Commands
+Commands are messages received from the commander (obviously). Most of the commands contain parameters as JSON objects stored in the payloads.
 
-#### Signals
+## Initializing an agent
+When the agent receives the init command it will:
+- unsubscribe from additional topics (not the base ones mentioned [above](#topics))
+- remove all pages from the [display](#paged-displays), besides **"page0"**
+- stops all signals (LEDs, buzzers, sirens)
+
+```
+{ "init": ""}
+```
+There is no payload for the init command.
+
+## Signals
 Signals are "on/off" schemes for specified pins of the Raspberry Pi. We use a PCB hat, to connect 12V LED Stripes, relay driven 12V sirens and a 12 V buzzers to send out notifications.
 
 Signal schemes are lists of **on** and **off** times (in milliseconds) for the specific raspi pin. Every list is preceded by the number of repeats. If a scheme should go on forever (until changed), the repeat_count can be replaced by the infinity sign ∞ (in fact, there is no infinity, it is Long.MAX_VALUE, but for our purpose this would take forever). A repeat_count of 0, turns off the signal. Like so: "0:" or the word "off" (which is also understood).
@@ -48,7 +117,7 @@ The syntax of the scheme is:
 <repeat_count>:[on|off],<period_in_ms>;[on|off],<period_in_ms>
 ```
 
-The agent abstracts devices from their GPIO counterparts on the Raspi. The DEVICE-to-GPIO assignment is stored in the config.txt and can be changed, if You use a different connection approach as to use our PCB.
+The agent abstracts devices from their GPIO counterparts on the Raspi. The DEVICE-to-GPIO assignment is stored in the config.txt and can be changed, if You don't use our [PCB](https://easyeda.com/tloehr/rlg-mainboard-v11_copy).
 
 The following devices are recognized:
 - buzzer
@@ -61,11 +130,12 @@ The following devices are recognized:
 - sir2
 - sir3
 
-Two hardcoded device groups can also be addressed.
+Three hardcoded device groups can also be addressed:
+- all - All pins.
 - led_all - All LEDs
 - sir_all - All Sirens (Buzzer not included)
 
-A JSON which turns off the buzzer and then makes it wail two times (75 ms) looks like this:
+A JSON which turns off the buzzer and then makes it sound two times (75 ms) looks like this:
 
 `{"signal": {buzzer: "off", "2:on,75;off,75"}}`
 
@@ -73,40 +143,138 @@ If we want to let all LEDs blink every second (until further notice), we would s
 
 `{"signal": {led_all: "∞:on,1000;off,1000"}}`
 
-We can combine several messages into one combined command to reduce the number of sent messages. Because of the nature of the JSON Objects, only one device can be adressed in every message. But thats enough. I couldn't think of a scenario where we would want to send 2 different pin schemes to the same device. The first scheme would be overwritten immediately. 
+We can combine multiple commands into one message. The following example makes all agent repeatedly flash all of their LEDs shortly and then pause for 2,5 seconds. The attached display shows in page 0 the default text. 
 
-Example for "turn all the LEDs off, and sound the buzzer quickly 2 times."
-`{"signal": {led_all: "off", buzzer: "2:on,75;off,75"}}`
-
-#### Displays
-##### Paged Displays
-Agents can handle LCD displays driven by the [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) controller chip. LCDs with line/col dimensions of 16x2 and 20x4 are supported. As You can see in the [JavaDoc for MyLCD](https://github.com/tloehr/rlgagent/blob/main/src/main/java/de/flashheart/rlgagent/hardware/abstraction/MyLCD.java), we organize the display output in pages which cycle in order by their addition. Refer to the MyLCD class for more details.
-
-Example command:
 ```
+topic: g1/cmd/all
 {
-    "set_page":
-        {"handle":"page2", "content":["line1","line2","line3","line4"]}
+    "signal": {"led_all":"∞:on,250;off,2500"},
+    "page_content": {
+        "page0": [
+                    "Waiting for a game",
+                    "cmdr 1.0.1.55",
+                    "agnt ${agversion}.${agbuild}",
+                    "RLGS2 @flashheart.de"
+                 ]
+    }
 }
 ```
 
-Please note that there is always a starting page called "page0". It cannot be removed, and it's first two lines are used by the system. Only the first two lines of the content is used and set to line 3 and 4 for "page0".
+You may have noted, that there are some template expressions in the display string like ${agversion}. You will find some detailed explanations in the [Displays](#paged-displays) section of this document.
 
-`{"set_page": {"handle":"page0", "content":["line3","line4"]}}`
+### Standard Signal Schemes
+By default, an agent recognizes some standard schemes which are translated locally.
 
-Exceeding content (more lines than actual rows) is ignored. Invalid handles are also ignored.
+Single signals
+- **very_long** &#8594; "1:on,5000;off,1"
+- **long** &#8594; "1:on,2500;off,1"
+- **medium** &#8594; "1:on,1000;off,1"
+- **short** &#8594; "1:on,500;off,1"
 
-###### Adding a page
+Recurring signals
+- **slow** &#8594; "∞:on,2000;off,1000"
+- **normal** &#8594; "∞:on,1000;off,1000"
+- **fast** &#8594; "∞:on,500;off,500"
+- **very_fast** &#8594; "∞:on,250;off,250"
+
+Repeated Signals (used mainly for the buzzer - hence the naming)
+- **single_buzz** &#8594; "1:on,75;off,75"
+- **double_buzz** &#8594; "2:on,75;off,75"
+- **triple_buzz** &#8594; "3:on,75;off,75"
+
+## Paged Displays
+Agents can handle LCDs driven by the [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) controller chip. LCDs with line/col dimensions of 16x2 and 20x4 are supported. As You can see in the [JavaDoc for MyLCD](https://github.com/tloehr/rlgagent/blob/main/src/main/java/de/flashheart/rlgagent/hardware/abstraction/MyLCD.java), we organize the display output in pages which cycle in order by their addition. Refer to the MyLCD class for more details. Every page is identified by a string handle. Please note that there is always a starting page called **"page0"**, which cannot be removed.
+
+### Setting the page content
+Example display command:
+```
+topic: g1/cmd/all
+{
+    "page_content": {
+        "page0": [
+            "FarCry Assault/Rush",
+            "Bombtime: 00:15",
+            "Respawn-Time: 00:12",
+            "Spielzeit: 01:40"
+        ],
+        "page1": [
+            "line1",
+            "agnt ${agversion}.${agbuild}",
+            "line3",
+            "line4"
+        ]
+    }
+}
+```
+
+The content of multiple pages can be set with one message. Content exceeding the supported display dimension (e.g. 20x4) will be ignored. Superfluous lines are discarded, exceeding lines are truncated. 
+
+### Variables and template expressions
+Template expressions are replaced with their corresponding values. These values can be prefixed by the agent or set dynamically by the commander. [Timers](#timers) are a special case of values. In the above example we used template expressions already.
+
+#### Preset variables
+- **wifi** &#8594; the current Wi-Fi signal strength
+- **agversion** current software version of the agent
+- **agbuild** current software build of the agent
+- **agbdate** current software builddate of the agent 
+
+#### Dynamic variables
+The commander can set any variable to a specific value to fill out the page templates on the display. The following message:
+                                                                                                                    
+```
+{
+    "vars": {
+        "var1": "winners",
+        "var2": "loosers"
+    }
+}
+```
+
+combined with a display line: `"we have ${var1} and ${var2}"` will result in `"we have winners and loosers"`
+
+#### Timers
+Timers are also variables, but they have to be [Long](https://docs.oracle.com/javase/8/docs/api/java/lang/Long.html) values. The agent interprets those values as **remaining time in seconds** and starts to count them down after reception. The corresponding template is replaced by the time in the format `"hh:ss"` and disappears when the time **reaches zero**. 
+
+```
+{
+    "timers": {
+        "remaining": "61"
+    }
+}
+```
+
+The above message will start a timer at 1 minute 1 second. The following Display line: `"timer: ${remaining}` will show up on the LCD as `timer: 01:01` - and counting 
+
+### Adding a page
 We can add additional pages to the display output. If the page already exists, the command will be ignored.
 
-`{"add_page": "page3"}`
+```
+{
+    "add_pages": [
+            "score_page",
+            "spawn_page"
+    ]
+}
+```
 
 Added pages are removed by the "init" command.
 
-##### Matrix Displays
+### Deleting a page
+
+```
+{
+    "del_pages": [
+            "score_page",
+            "spawn_page"
+    ]
+}
+```
+
+## Matrix Displays (WIP - not implemented)
+
 Matrix displays based on stripes of WS2812 LEDs are planned but not yet implemented.
 
-#### Additional Subscriptions
+## Additional Subscriptions
 In order to reduce the amount of messages sent in a short time period, we can order agents to subscribe to additional functional channels, like "sirens", "leds" etc.
 
 `{"subscribe_to": "sirens"}`
@@ -114,12 +282,8 @@ In order to reduce the amount of messages sent in a short time period, we can or
 
 The name of the groups is not preset. The commander can choose the group names as needed.
 
-#### Initializing an agent
-You can (re-)initialize an agent by sendind the `{"init": ""}` command.
 
-The agent will unsubscribe from all additional subscriptions and remove all but one pages from the display. Only "page0" remains with the usual content.
-
-### Events
+# Events
 The agent currently sends 2 different types of events.
 1. Notifications about pressed buttons. The agent handles two buttons, but only button 1 is in use. The second button was implemented for later usage. Example: `{"button_pressed":"btn01"}`
 2. Status reports about the current state of the agent, to be considered by the commander module. example:
