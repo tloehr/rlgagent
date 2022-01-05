@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Level;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
@@ -231,10 +232,11 @@ public class MyLCD implements Runnable {
         timers.keySet().forEach(key -> {
             long time = timers.get(key);
             time = time - time_difference_since_last_cycle;
-            LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time), TimeZone.getTimeZone("UTC").toZoneId());
+            //LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time), TimeZone.getTimeZone("UTC").toZoneId());
             timers.put(key, time);
             // timer for string replacement
-            if (time > 0) variables.put(key, ldtTime.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)));
+            if (time > 0)
+                variables.put(key, LocalTime.ofSecondOfDay(time / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
             else variables.remove(key);
         });
         // remove obsolete timers
@@ -242,7 +244,7 @@ public class MyLCD implements Runnable {
     }
 
     public void setTimer(String key, long time) {
-        timers.put("${" + key + "}", (time + 1) * 1000l);
+        timers.put("${" + key + "}", time * 1000l);
     }
 
     public void setVariable(String key, String var) {
@@ -291,7 +293,7 @@ public class MyLCD implements Runnable {
     /**
      * internal helper class to store the contents of a page
      */
-    private class LCDPage  {
+    private class LCDPage {
         // Start stepping through the array from the beginning
         private ArrayList<String> lines;
         private final String name;
