@@ -6,7 +6,6 @@ import de.flashheart.rlgagent.hardware.Agent;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
 import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
 import de.flashheart.rlgagent.jobs.MqttConnectionJob;
-import de.flashheart.rlgagent.jobs.StatusJob;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
 import de.flashheart.rlgagent.misc.Tools;
@@ -33,6 +32,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 @Log4j2
 public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
+    private static final int MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS = 8;
     private final String TOPIC_EVENT_FROM_ME;
     private final String TOPIC_PREFIX;
     private final String TOPIC_CMD_4ME;
@@ -42,9 +42,10 @@ public class RLGAgent implements MqttCallbackExtended {
     private final PinHandler pinHandler;
     private final Configs configs;
     private final MyLCD myLCD;
+    private final String TOPIC_SUBSCRIPTION;
     private Optional<IMqttClient> iMqttClient;
 
-    private final JobKey myStatusJobKey, myConnectionJobKey;
+    private final JobKey myConnectionJobKey;
     private final Scheduler scheduler;
     private final Agent me;
     private SimpleTrigger connectionTrigger;
@@ -75,9 +76,10 @@ public class RLGAgent implements MqttCallbackExtended {
         TOPIC_PREFIX = String.format("%s/cmd", configs.get(Configs.GAME_ID));
         TOPIC_CMD_4ME = String.format("%s/%s", TOPIC_PREFIX, configs.get(Configs.MY_ID));
         TOPIC_CMD_4ALL = String.format("%s/all", TOPIC_PREFIX);
+        TOPIC_SUBSCRIPTION = String.format("%s/sub/%s", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
         TOPIC_EVENT_FROM_ME = String.format("%s/evt/%s", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
         group_channels = new HashSet();
-        myStatusJobKey = new JobKey(StatusJob.name, "group1");
+        // myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
 
         //lcdPage = myLCD.addPage();
@@ -98,10 +100,7 @@ public class RLGAgent implements MqttCallbackExtended {
     public void connect_to_mqtt_broker() {
         // the wifi quality might be of interest during that phase
         int wifi = Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
-        if (wifi != me.getWifi()) {
-            me.setWifi(wifi);
-            show_connection_status_as_signals();
-        }
+        if (wifi != me.getWifi()) me.setWifi(wifi);
 
         if (MQTT_URI.isPresent()) { // we already had a working broker. going to stick with it.
             log.debug("we already had a working broker. trying to REconnect to it");
@@ -109,12 +108,13 @@ public class RLGAgent implements MqttCallbackExtended {
         } else {
             log.debug("searching for mqtt broker");
             // try all the brokers on the space separated list.
-            for (String broker : Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"))){
-                if (try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)))){
+            for (String broker : Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"))) {
+                if (try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)))) {
                     break;
                 }
             }
         }
+        show_connection_status_as_signals();
     }
 
     /**
@@ -154,19 +154,35 @@ public class RLGAgent implements MqttCallbackExtended {
                 // we need to (re)subscribe
                 iMqttClient.get().subscribe(TOPIC_CMD_4ME, (topic, receivedMessage) -> processCommand(receivedMessage));
                 iMqttClient.get().subscribe(TOPIC_CMD_4ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
-                for (String channel : group_channels) {
-                    iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
-                }
+                iMqttClient.get().subscribe(TOPIC_SUBSCRIPTION, (topic, receivedMessage) -> processSubscription(receivedMessage));
+
+//                for (String channel : group_channels) {
+//                    iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
+//                }
                 success = true;
             }
         } catch (MqttException e) {
             iMqttClient = Optional.empty();
             log.warn(e.getMessage());
             success = false;
-        } finally {
-            show_connection_status_as_signals();
         }
         return success;
+    }
+
+    private void processSubscription(MqttMessage receivedMessage) {
+        final JSONArray subs = new JSONArray(new String(receivedMessage.getPayload()));
+        subs.toList().forEach(sub -> {
+            try {
+                String additional_channel = String.format("%s/%s", TOPIC_PREFIX, sub.toString());
+                if (!group_channels.contains(additional_channel)) {
+                    iMqttClient.get().subscribe(additional_channel, (topic, msg) -> processCommand(msg));
+                    group_channels.add(additional_channel);
+                    log.debug("subscribing to {}", additional_channel);
+                }
+            } catch (MqttException e) {
+                log.warn(e);
+            }
+        });
     }
 
     private void initAgent() {
@@ -210,7 +226,7 @@ public class RLGAgent implements MqttCallbackExtended {
         connectionTrigger = newTrigger()
                 .withIdentity(MqttConnectionJob.name + "-trigger", "group1")
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(8)
+                        .withIntervalInSeconds(MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS)
                         .repeatForever())
                 .build();
         scheduler.scheduleJob(job, connectionTrigger);
@@ -311,20 +327,6 @@ public class RLGAgent implements MqttCallbackExtended {
                         //show_connection_status_as_signals();
                         break;
                     }
-                    case "subscribe_to": {
-                        try {
-                            String additional_channel = String.format("%s/%s", TOPIC_PREFIX, cmds.getString(key));
-                            if (!group_channels.contains(additional_channel)) {
-                                iMqttClient.get().subscribe(additional_channel, (topic, msg) -> processCommand(msg));
-                                group_channels.add(additional_channel);
-                                log.debug("subscribing to {}", additional_channel);
-                            }
-                        } catch (MqttException e) {
-                            log.warn(e);
-                        }
-
-                        break;
-                    }
                     default: {
                         log.warn("unknown command - ignoring");
                         break;
@@ -379,7 +381,6 @@ public class RLGAgent implements MqttCallbackExtended {
         if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected())
             pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
-
         if (me.getWifi() <= 0) { // no wifi
             myLCD.setLine("page0", 2, "");
             myLCD.setLine("page0", 3, "");
@@ -412,6 +413,7 @@ public class RLGAgent implements MqttCallbackExtended {
     @Override
     public void connectionLost(Throwable cause) {
         log.warn("connection to broker lost - {}", cause.getMessage());
+        cause.printStackTrace();
         initMqttConnectionJob();
     }
 
@@ -433,9 +435,9 @@ public class RLGAgent implements MqttCallbackExtended {
 
     public void shutdown() {
         try {
-            myLCD.init();
-            myLCD.setLine("page0", 2, "agent");
-            myLCD.setLine("page0", 3, "shutdown");
+//            myLCD.init();
+//            myLCD.setLine("page0", 2, "agent");
+//            myLCD.setLine("page0", 3, "shutdown");
             scheduler.shutdown();
         } catch (SchedulerException e) {
             e.printStackTrace();

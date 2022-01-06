@@ -8,15 +8,11 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
-import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
@@ -231,23 +227,23 @@ public class MyLCD implements Runnable {
         // recalculate all timers
         timers.keySet().forEach(key -> {
             long time = timers.get(key);
-            time = time - time_difference_since_last_cycle;
-            //LocalDateTime ldtTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time), TimeZone.getTimeZone("UTC").toZoneId());
-            timers.put(key, time);
-            // timer for string replacement
-            if (time > 0)
-                variables.put(key, LocalTime.ofSecondOfDay(time / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
-            else variables.remove(key);
+            if (time > 0) {
+                time = time - time_difference_since_last_cycle;
+                timers.put(key, time);
+                if (time > 0)
+                    setVariable(key, LocalTime.ofSecondOfDay(time / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
+                else setVariable(key, "");
+            }
         });
-        // remove obsolete timers
-        timers.entrySet().removeIf(stringLongEntry -> stringLongEntry.getValue() <= 0);
     }
 
     public void setTimer(String key, long time) {
-        timers.put("${" + key + "}", time * 1000l);
+        log.debug("setting timer {} to {}", key, time);
+        timers.put(key, time * 1000l);
     }
 
     public void setVariable(String key, String var) {
+        log.debug("setting var {} to {}", key, var);
         variables.put("${" + key + "}", var);
     }
 
@@ -257,16 +253,17 @@ public class MyLCD implements Runnable {
             try {
                 lock.lock();
                 try {
-                    if (pages.size() > 1 && loopcounter % cycles_per_page == 0) {
+                    // pages.size() > 1 &&
+                    if (loopcounter % cycles_per_page == 0) {
                         next_page();
                         calculate_timers();
                         display_active_page();
                     }
 
-                    if (pages.size() == 1) {
-                        calculate_timers();
-                        display_active_page();
-                    }
+//                    if (pages.size() == 1) {
+//                        calculate_timers();
+//                        display_active_page();
+//                    }
 
                 } catch (Exception ex) {
                     log.error(ex);
@@ -313,7 +310,7 @@ public class MyLCD implements Runnable {
         }
 
         public String getLine(int num) {
-            // replace timers with their variables, if present
+            /* replace timers with their variables, if present */
             return Tools.replaceVariables(lines.get(num), variables);
         }
 

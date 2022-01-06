@@ -10,10 +10,8 @@ import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
-import java.util.Random;
+import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Log4j2
 public class Tools {
@@ -214,12 +212,12 @@ public class Tools {
     }
 
     /**
-     * @param driver_response shell command to get the signal strength from the wifi driver. can be in dbm or percentage like
-     *            "70/100"
+     * @param driver_response shell command to get the signal strength from the wifi driver. can be in dbm or percentage
+     *                        like "70/100"
      * @return 5 - desktop, 4 - excellent, 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
     public static int getWifiQuality(String driver_response) {
-        if (driver_response.equalsIgnoreCase("desktop")) return 0;
+        if (driver_response.equalsIgnoreCase("desktop")) return 5;
         int wifiQuality;
         int wifi;
         //driver_response = "level=94";
@@ -253,18 +251,24 @@ public class Tools {
     public static String replaceVariables(String text, HashMap<String, String> replacements) {
         //if (replacements.isEmpty()) return text;
         // matches ${var} style words
-        Pattern pattern = Pattern.compile("\\$\\{[a-zA-Z0-9]*\\}");
-        Matcher matcher = pattern.matcher(text);
-
-        StringBuilder builder = new StringBuilder();
-        int i = 0;
-        while (matcher.find()) {
-            builder.append(text, i, matcher.start());
-            builder.append(replacements.getOrDefault(matcher.group(0), ""));
-            i = matcher.end();
+        log.debug("var replacement with {}. before {}", replacements.toString(), text);
+        for (Map.Entry<String, String> entry : replacements.entrySet()) {
+            text = text.replace(entry.getKey(), entry.getValue());
         }
-        builder.append(text.substring(i));
-        return builder.toString();
+        log.debug("and after: {}", text);
+//        Pattern pattern = Pattern.compile("\\$\\{[a-zA-Z0-9]*\\}");
+//        Matcher matcher = pattern.matcher(text);
+//
+//        StringBuilder builder = new StringBuilder();
+//        int i = 0;
+//        while (matcher.find()) {
+//            builder.append(text, i, matcher.start());
+//            builder.append(replacements.getOrDefault(matcher.group(0), ""));
+//            i = matcher.end();
+//        }
+//        builder.append(text.substring(i));
+//        return builder.toString();
+        return text;
     }
 
 }

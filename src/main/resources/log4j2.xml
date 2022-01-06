@@ -15,7 +15,7 @@
         <RollingFile
                 name="RollingFile"
                 fileName="${APP_LOG_ROOT}/rlgagent.log"
-                filePattern="${APP_LOG_ROOT}/application.%d{dd-MMM}.log.gz"
+                filePattern="${APP_LOG_ROOT}/rlgagent.%d{yyyy-MM-dd}.log.gz"
                 ignoreExceptions="false">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <!--            Rolling over every day-->
