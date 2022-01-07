@@ -118,9 +118,9 @@ public class MyLCD implements Runnable {
      */
     public void addPage(String handle) {
         if (handle.equalsIgnoreCase("page0")) return;
-        if (containsPage(handle)) return;
-        log.debug("adding page {}", handle);
+        if (pageExists(handle)) return;
         lock.lock();
+        log.debug("adding page {}", handle);
         try {
             pages.add(new LCDPage(handle));
         } finally {
@@ -135,7 +135,7 @@ public class MyLCD implements Runnable {
      */
     public void delPage(String handle) {
         if (handle.equalsIgnoreCase("page0")) return;
-        if (!containsPage(handle)) return;
+        if (!pageExists(handle)) return;
         log.debug("deleting page {}", handle);
         lock.lock();
         try {
@@ -195,23 +195,19 @@ public class MyLCD implements Runnable {
         pages.get(visible_page_index).clear();
     }
 
-    boolean containsPage(String handle) {
+    boolean pageExists(String handle) {
         return pages.stream().filter(lcdPage -> lcdPage.getName().equalsIgnoreCase(handle)).count() > 0;
     }
 
     /**
-     * @param handle for the wanted page
+     * @param handle for the wanted page. Will be created if necessary.
      * @param line   1..rows
      * @param text
      */
     public void setLine(String handle, int line, String text) {
-        //if (!containsPage(handle)) return;
+        if (!pageExists(handle)) addPage(handle);
         if (line < 1 || line > rows) return;
-
         getPage(handle).ifPresent(lcdPage -> lcdPage.setLine(line - 1, text));
-
-
-        //pages.get(page_map.get(handle)).lines.set(line - 1, text);
     }
 
     /**

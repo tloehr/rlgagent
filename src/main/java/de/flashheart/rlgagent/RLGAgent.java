@@ -33,16 +33,13 @@ import static org.quartz.TriggerBuilder.newTrigger;
 public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private static final int MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS = 8;
-    private final String TOPIC_EVENT_FROM_ME;
-    private final String TOPIC_PREFIX;
-    private final String TOPIC_CMD_4ME;
-    private final String TOPIC_CMD_4ALL;
+    private final String TOPIC_GAMEID = "g1"; // maybe for multiple games in a later version
+    private final String EVT, PREFIX, PAGED, SIGNAL, INIT, SHUTDOWN, TIMERS, VARS;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
     private final PinHandler pinHandler;
     private final Configs configs;
     private final MyLCD myLCD;
-    private final String TOPIC_SUBSCRIPTION;
     private Optional<IMqttClient> iMqttClient;
 
     private final JobKey myConnectionJobKey;
@@ -64,7 +61,6 @@ public class RLGAgent implements MqttCallbackExtended {
 
         me = new Agent(new JSONObject()
                 .put("agentid", configs.get(Configs.MY_ID))
-                .put("gameid", configs.get(Configs.GAME_ID))
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                 .put("wifi", Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)))));
 
@@ -73,11 +69,27 @@ public class RLGAgent implements MqttCallbackExtended {
         this.scheduler.start();
 
         iMqttClient = Optional.empty();
-        TOPIC_PREFIX = String.format("%s/cmd", configs.get(Configs.GAME_ID));
-        TOPIC_CMD_4ME = String.format("%s/%s", TOPIC_PREFIX, configs.get(Configs.MY_ID));
-        TOPIC_CMD_4ALL = String.format("%s/all", TOPIC_PREFIX);
-        TOPIC_SUBSCRIPTION = String.format("%s/sub/%s", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
-        TOPIC_EVENT_FROM_ME = String.format("%s/evt/%s", configs.get(Configs.GAME_ID), configs.get(Configs.MY_ID));
+        /**
+         * channel structure
+         * rlg/g1/paged/ag01
+         * rlg/g1/signal/ag01
+         * rlg/g1/timers/ag01
+         * rlg/g1/vars/ag01
+         * rlg/g1/evt/ag01
+         * rlg/g1/init "all"
+         * rlg/g1/shutdown "all"
+         */
+        String myid = configs.get(Configs.MY_ID);
+        PREFIX = String.format("%s/%s", configs.get(Configs.MQTT_ROOT), TOPIC_GAMEID);
+        EVT = String.format("%s/evt/%s", PREFIX, myid);
+        PAGED = String.format("%s/paged/%s", PREFIX, myid);
+        SIGNAL = String.format("%s/signal/%s", PREFIX, myid);
+        TIMERS = String.format("%s/timers/%s", PREFIX, myid);
+        VARS = String.format("%s/vars/%s", PREFIX, myid);
+        INIT = String.format("%s/init", PREFIX);
+        SHUTDOWN = String.format("%s/shutdown", PREFIX);
+
+
         group_channels = new HashSet();
         // myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
@@ -152,13 +164,12 @@ public class RLGAgent implements MqttCallbackExtended {
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
-                iMqttClient.get().subscribe(TOPIC_CMD_4ME, (topic, receivedMessage) -> processCommand(receivedMessage));
-                iMqttClient.get().subscribe(TOPIC_CMD_4ALL, (topic, receivedMessage) -> processCommand(receivedMessage));
-                iMqttClient.get().subscribe(TOPIC_SUBSCRIPTION, (topic, receivedMessage) -> processSubscription(receivedMessage));
-
-//                for (String channel : group_channels) {
-//                    iMqttClient.get().subscribe(channel, (topic, receivedMessage) -> processCommand(receivedMessage));
-//                }
+                iMqttClient.get().subscribe(PAGED, (topic, receivedMessage) -> procPaged(receivedMessage));
+                iMqttClient.get().subscribe(SIGNAL, (topic, receivedMessage) -> procSignals(receivedMessage));
+                iMqttClient.get().subscribe(TIMERS, (topic, receivedMessage) -> procTimers(receivedMessage));
+                iMqttClient.get().subscribe(VARS, (topic, receivedMessage) -> procVars(receivedMessage));
+                iMqttClient.get().subscribe(INIT, (topic, receivedMessage) -> procInit(receivedMessage));
+                iMqttClient.get().subscribe(SHUTDOWN, (topic, receivedMessage) -> procShutdown());
                 success = true;
             }
         } catch (MqttException e) {
@@ -169,21 +180,79 @@ public class RLGAgent implements MqttCallbackExtended {
         return success;
     }
 
-    private void processSubscription(MqttMessage receivedMessage) {
-        final JSONArray subs = new JSONArray(new String(receivedMessage.getPayload()));
-        subs.toList().forEach(sub -> {
-            try {
-                String additional_channel = String.format("%s/%s", TOPIC_PREFIX, sub.toString());
-                if (!group_channels.contains(additional_channel)) {
-                    iMqttClient.get().subscribe(additional_channel, (topic, msg) -> processCommand(msg));
-                    group_channels.add(additional_channel);
-                    log.debug("subscribing to {}", additional_channel);
-                }
-            } catch (MqttException e) {
-                log.warn(e);
+    private void procShutdown() {
+        myLCD.init();
+        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+        myLCD.setLine("page0", 2, "System");
+        myLCD.setLine("page0", 3, "shutdown");
+        Main.prepareShutdown();
+        Tools.system_shutdown("/opt/rlgagent/shutdown.sh");
+        System.exit(0);
+    }
+
+    private void procInit(MqttMessage receivedMessage) {
+        myLCD.init();
+        myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
+        pinHandler.off();
+    }
+
+    private void procTimers(MqttMessage receivedMessage) {
+        final JSONObject timers = new JSONObject(new String(receivedMessage.getPayload()));
+        timers.keySet().forEach(sKey -> myLCD.setTimer(sKey, timers.getLong(sKey)));
+    }
+
+    private void procVars(MqttMessage receivedMessage) {
+        final JSONObject vars = new JSONObject(new String(receivedMessage.getPayload()));
+        vars.keySet().forEach(sKey -> myLCD.setVariable(sKey, vars.getString(sKey)));
+    }
+
+    private void procSignals(MqttMessage receivedMessage) {
+        final JSONObject signals = new JSONObject(new String(receivedMessage.getPayload()));
+        Set<String> keys = signals.keySet();
+        if (keys.contains("all")) {
+            set_pins_to(Configs.ALL, signals.getString("all"));
+        }
+        if (keys.contains("led_all")) {
+            set_pins_to(Configs.ALL_LEDS, signals.getString("led_all"));
+        }
+        if (keys.contains("sir_all")) {
+            set_pins_to(Configs.ALL_SIRENS, signals.getString("sir_all"));
+        }
+        keys.remove("led_all");
+        keys.remove("sir_all");
+        keys.remove("all");
+
+        keys.forEach(signal_key -> {
+            String signal = signals.getString(signal_key);
+            pinHandler.setScheme(signal_key, signal);
+        });
+    }
+
+    private void procPaged(MqttMessage receivedMessage) {
+        final JSONObject pages = new JSONObject(new String(receivedMessage.getPayload()));
+        pages.keySet().forEach(page -> {
+            JSONArray lines = pages.getJSONArray(page);
+            for (int line = 1; line <= lines.length(); line++) {
+                myLCD.setLine(page, line, lines.getString(line - 1));
             }
         });
     }
+
+//    private void processSubscription(MqttMessage receivedMessage) {
+//        final JSONArray subs = new JSONArray(new String(receivedMessage.getPayload()));
+//        subs.toList().forEach(sub -> {
+//            try {
+//                String additional_channel = String.format("%s/%s", PREFIX, sub.toString());
+//                if (!group_channels.contains(additional_channel)) {
+//                    iMqttClient.get().subscribe(additional_channel, (topic, msg) -> processCommand(msg));
+//                    group_channels.add(additional_channel);
+//                    log.debug("subscribing to {}", additional_channel);
+//                }
+//            } catch (MqttException e) {
+//                log.warn(e);
+//            }
+//        });
+//    }
 
     private void initAgent() {
         // Hardware Buttons
@@ -243,26 +312,26 @@ public class RLGAgent implements MqttCallbackExtended {
             cmds.keySet().forEach(key -> {
                 log.debug("handling command '{}' with {}", key, cmds.get(key).toString());
                 switch (key.toLowerCase()) {
-                    case "page_content": {
-                        JSONObject display_cmds = cmds.getJSONObject("page_content");
-                        display_cmds.keySet().forEach(page -> {
-                            JSONArray lines = display_cmds.getJSONArray(page);
-                            for (int line = 1; line <= lines.length(); line++) {
-                                myLCD.setLine(page, line, lines.getString(line - 1));
-                            }
-                        });
-                        break;
-                    }
-                    case "add_pages": { // Adds a display page which will be addressed by this handle
-                        JSONArray cmdlist = cmds.getJSONArray("add_pages");
-                        cmdlist.forEach(page -> myLCD.addPage(page.toString().trim()));
-                        break;
-                    }
-                    case "del_pages": { // deletes one or more display pages
-                        JSONArray cmdlist = cmds.getJSONArray("del_pages");
-                        cmdlist.forEach(page -> myLCD.delPage(page.toString().trim()));
-                        break;
-                    }
+//                    case "page_content": {
+//                        JSONObject display_cmds = cmds.getJSONObject("page_content");
+//                        display_cmds.keySet().forEach(page -> {
+//                            JSONArray lines = display_cmds.getJSONArray(page);
+//                            for (int line = 1; line <= lines.length(); line++) {
+//                                myLCD.setLine(page, line, lines.getString(line - 1));
+//                            }
+//                        });
+//                        break;
+//                    }
+//                    case "add_pages": { // Adds a display page which will be addressed by this handle
+//                        JSONArray cmdlist = cmds.getJSONArray("add_pages");
+//                        cmdlist.forEach(page -> myLCD.addPage(page.toString().trim()));
+//                        break;
+//                    }
+//                    case "del_pages": { // deletes one or more display pages
+//                        JSONArray cmdlist = cmds.getJSONArray("del_pages");
+//                        cmdlist.forEach(page -> myLCD.delPage(page.toString().trim()));
+//                        break;
+//                    }
 //                    case "matrix_display": {
 //                        JSONArray cmdlist = cmds.getJSONArray("matrix_display");
 //                        for (int line = 0; line < cmdlist.length(); line++) {
@@ -270,63 +339,63 @@ public class RLGAgent implements MqttCallbackExtended {
 //                        }
 //                        break;
 //                    }
-                    case "signal": {
-                        final JSONObject signals = cmds.getJSONObject("signal");
-
-                        // JSON Keys are unordered by definition. So we need to look first for led_all and sir_all.
-                        Set<String> keys = signals.keySet();
-                        if (keys.contains("all")) {
-                            set_pins_to(Configs.ALL, signals.getString("all"));
-                        }
-                        if (keys.contains("led_all")) {
-                            set_pins_to(Configs.ALL_LEDS, signals.getString("led_all"));
-                        }
-                        if (keys.contains("sir_all")) {
-                            set_pins_to(Configs.ALL_SIRENS, signals.getString("sir_all"));
-                        }
-                        keys.remove("led_all");
-                        keys.remove("sir_all");
-                        keys.remove("all");
-
-                        // cycle through the rest of the signals - one by one
-                        keys.forEach(signal_key -> {
-                            String signal = signals.getString(signal_key);
-                            pinHandler.setScheme(signal_key, signal);
-                        });
-                        break;
-                    }
+//                    case "signal": {
+//                        final JSONObject signals = cmds.getJSONObject("signal");
+//
+//                        // JSON Keys are unordered by definition. So we need to look first for led_all and sir_all.
+//                        Set<String> keys = signals.keySet();
+//                        if (keys.contains("all")) {
+//                            set_pins_to(Configs.ALL, signals.getString("all"));
+//                        }
+//                        if (keys.contains("led_all")) {
+//                            set_pins_to(Configs.ALL_LEDS, signals.getString("led_all"));
+//                        }
+//                        if (keys.contains("sir_all")) {
+//                            set_pins_to(Configs.ALL_SIRENS, signals.getString("sir_all"));
+//                        }
+//                        keys.remove("led_all");
+//                        keys.remove("sir_all");
+//                        keys.remove("all");
+//
+//                        // cycle through the rest of the signals - one by one
+//                        keys.forEach(signal_key -> {
+//                            String signal = signals.getString(signal_key);
+//                            pinHandler.setScheme(signal_key, signal);
+//                        });
+//                        break;
+//                    }
                     case "status": {
                         sendStatus();
                         break;
                     }
-                    case "timers": {
-                        JSONObject timers = cmds.getJSONObject("timers");
-                        timers.keySet().forEach(sKey -> myLCD.setTimer(sKey, timers.getLong(sKey)));
-                        break;
-                    }
-                    case "vars": {
-                        JSONObject vars = cmds.getJSONObject("vars");
-                        vars.keySet().forEach(sKey -> myLCD.setVariable(sKey, vars.getString(sKey)));
-                        break;
-                    }
-                    case "shutdown": {
-                        myLCD.init();
-                        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-                        myLCD.setLine("page0", 2, "System");
-                        myLCD.setLine("page0", 3, "shutdown");
-                        Main.prepareShutdown();
-                        Tools.system_shutdown("/opt/rlgagent/shutdown.sh");
-                        System.exit(0);
-                        break;
-                    }
-                    case "init": {
-                        unsubscribe_from_additional_subscriptions();
-                        myLCD.init();
-                        myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
-                        pinHandler.off();
-                        //show_connection_status_as_signals();
-                        break;
-                    }
+//                    case "timers": {
+//                        JSONObject timers = cmds.getJSONObject("timers");
+//                        timers.keySet().forEach(sKey -> myLCD.setTimer(sKey, timers.getLong(sKey)));
+//                        break;
+//                    }
+//                    case "vars": {
+//                        JSONObject vars = cmds.getJSONObject("vars");
+//                        vars.keySet().forEach(sKey -> myLCD.setVariable(sKey, vars.getString(sKey)));
+//                        break;
+//                    }
+//                    case "shutdown": {
+//                        myLCD.init();
+//                        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+//                        myLCD.setLine("page0", 2, "System");
+//                        myLCD.setLine("page0", 3, "shutdown");
+//                        Main.prepareShutdown();
+//                        Tools.system_shutdown("/opt/rlgagent/shutdown.sh");
+//                        System.exit(0);
+//                        break;
+//                    }
+//                    case "init": {
+//                        unsubscribe_from_additional_subscriptions();
+//                        myLCD.init();
+//                        myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
+//                        pinHandler.off();
+//                        //show_connection_status_as_signals();
+//                        break;
+//                    }
                     default: {
                         log.warn("unknown command - ignoring");
                         break;
@@ -337,6 +406,7 @@ public class RLGAgent implements MqttCallbackExtended {
             log.warn(e);
         }
     }
+
 
     private void unsubscribe_from_additional_subscriptions() {
         log.debug("unsubscribing from all additional subscriptions");
@@ -358,8 +428,8 @@ public class RLGAgent implements MqttCallbackExtended {
                 msg.setRetained(true);
                 msg.setPayload(payload.getBytes());
                 //payload.ifPresent(string -> msg.setPayload(string.getBytes()));
-                iMqttClient.get().publish(TOPIC_EVENT_FROM_ME, msg);
-                log.info(TOPIC_EVENT_FROM_ME);
+                iMqttClient.get().publish(EVT, msg);
+                log.info(EVT);
             } catch (MqttException mqe) {
                 log.warn(mqe);
             }

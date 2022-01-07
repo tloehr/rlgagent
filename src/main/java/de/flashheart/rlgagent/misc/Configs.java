@@ -10,7 +10,7 @@ import java.io.IOException;
 public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
     public static final String MQTT_PORT = "mqtt_port";
-    public static final String GAME_ID = "gameid";
+    public static final String MQTT_ROOT = "mqtt_root";
     public static final String MY_ID = "myid";
     public static final String OUT_LED_WHITE = "led_wht";
     public static final String OUT_LED_RED = "led_red";
@@ -56,7 +56,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(MQTT_BROKER, "mqtta mqttb mqtt");
         configs.setProperty(MQTT_PORT, "1883");
         // configs.setProperty(MQTT_BROKER, String.format("tcp://%s:%s", "mqtt", "port"));
-        configs.setProperty(GAME_ID, "g1");
+        configs.setProperty(MQTT_ROOT, "rlg");
         configs.setProperty(MY_ID, "ag01");
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
         configs.setProperty(MCP23017_I2C_ADDRESS, "0x20");
