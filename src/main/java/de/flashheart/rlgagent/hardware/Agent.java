@@ -1,7 +1,6 @@
 package de.flashheart.rlgagent.hardware;
 
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
-import de.flashheart.rlgagent.misc.Tools;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -34,6 +33,9 @@ public class Agent {
                 .put("wifi", wifi);
     }
 
+    public String getMqttClientId(){
+        return "mqtt-"+agentid;
+    }
 
     @Override
     public boolean equals(Object o) {

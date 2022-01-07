@@ -217,7 +217,7 @@ public class Tools {
      * @return 5 - desktop, 4 - excellent, 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
     public static int getWifiQuality(String driver_response) {
-        if (driver_response.equalsIgnoreCase("desktop")) return 5;
+        if (driver_response.equalsIgnoreCase("desktop")) return 4;
         int wifiQuality;
         int wifi;
         //driver_response = "level=94";
@@ -251,11 +251,11 @@ public class Tools {
     public static String replaceVariables(String text, HashMap<String, String> replacements) {
         //if (replacements.isEmpty()) return text;
         // matches ${var} style words
-        log.debug("var replacement with {}. before {}", replacements.toString(), text);
+        log.trace("var replacement with {}. before {}", replacements.toString(), text);
         for (Map.Entry<String, String> entry : replacements.entrySet()) {
             text = text.replace(entry.getKey(), entry.getValue());
         }
-        log.debug("and after: {}", text);
+        log.trace("and after: {}", text);
 //        Pattern pattern = Pattern.compile("\\$\\{[a-zA-Z0-9]*\\}");
 //        Matcher matcher = pattern.matcher(text);
 //

@@ -61,6 +61,7 @@ public class RLGAgent implements MqttCallbackExtended {
 
         me = new Agent(new JSONObject()
                 .put("agentid", configs.get(Configs.MY_ID))
+                .put("gameid", TOPIC_GAMEID)
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                 .put("wifi", Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)))));
 
@@ -139,10 +140,10 @@ public class RLGAgent implements MqttCallbackExtended {
         boolean success = false;
         log.debug("trying broker @{}", uri);
         try {
-            iMqttClient = Optional.of(new MqttClient(uri, configs.get(Configs.MYUUID), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
+            iMqttClient = Optional.of(new MqttClient(uri, me.getMqttClientId(), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(false);
-            options.setCleanSession(true);
+            options.setCleanSession(false);
             options.setConnectionTimeout(10);
 
             if (iMqttClient.isPresent()) {
@@ -164,12 +165,14 @@ public class RLGAgent implements MqttCallbackExtended {
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
+                log.debug("Subscribing to {} {} {} {} {} {}", INIT, PAGED, SIGNAL, TIMERS, VARS, SHUTDOWN);
+                iMqttClient.get().subscribe(INIT, (topic, receivedMessage) -> procInit(receivedMessage));
                 iMqttClient.get().subscribe(PAGED, (topic, receivedMessage) -> procPaged(receivedMessage));
                 iMqttClient.get().subscribe(SIGNAL, (topic, receivedMessage) -> procSignals(receivedMessage));
                 iMqttClient.get().subscribe(TIMERS, (topic, receivedMessage) -> procTimers(receivedMessage));
                 iMqttClient.get().subscribe(VARS, (topic, receivedMessage) -> procVars(receivedMessage));
-                iMqttClient.get().subscribe(INIT, (topic, receivedMessage) -> procInit(receivedMessage));
                 iMqttClient.get().subscribe(SHUTDOWN, (topic, receivedMessage) -> procShutdown());
+                log.debug("Subscription done", INIT, PAGED, SIGNAL, TIMERS, VARS, SHUTDOWN);
                 success = true;
             }
         } catch (MqttException e) {
@@ -181,6 +184,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     private void procShutdown() {
+        log.debug("received SHUTDOWN");
         myLCD.init();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
         myLCD.setLine("page0", 2, "System");
@@ -191,8 +195,11 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     private void procInit(MqttMessage receivedMessage) {
+        log.debug("received INIT");
         myLCD.init();
         myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
+        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+        myLCD.setLine("page0", 2, "WIFI: ${wifi}");
         pinHandler.off();
     }
 
@@ -229,6 +236,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     private void procPaged(MqttMessage receivedMessage) {
+        log.debug("processing PAGED with {}", receivedMessage);
         final JSONObject pages = new JSONObject(new String(receivedMessage.getPayload()));
         pages.keySet().forEach(page -> {
             JSONArray lines = pages.getJSONArray(page);
@@ -238,21 +246,6 @@ public class RLGAgent implements MqttCallbackExtended {
         });
     }
 
-//    private void processSubscription(MqttMessage receivedMessage) {
-//        final JSONArray subs = new JSONArray(new String(receivedMessage.getPayload()));
-//        subs.toList().forEach(sub -> {
-//            try {
-//                String additional_channel = String.format("%s/%s", PREFIX, sub.toString());
-//                if (!group_channels.contains(additional_channel)) {
-//                    iMqttClient.get().subscribe(additional_channel, (topic, msg) -> processCommand(msg));
-//                    group_channels.add(additional_channel);
-//                    log.debug("subscribing to {}", additional_channel);
-//                }
-//            } catch (MqttException e) {
-//                log.warn(e);
-//            }
-//        });
-//    }
 
     private void initAgent() {
         // Hardware Buttons
@@ -443,27 +436,29 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     private void show_connection_status_as_signals() {
         int wifi = me.getWifi();
-        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
 
         pinHandler.setScheme(Configs.OUT_LED_WHITE, "normal"); // white is always flashing
         if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "normal");
         if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "normal");
         if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");
-        if (iMqttClient.isPresent() && iMqttClient.get().isConnected())
+//        if (iMqttClient.isPresent() && iMqttClient.get().isConnected())
+//            pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
+
+        if (!iMqttClient.isPresent() || !iMqttClient.get().isConnected()) {
+            myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+            if (me.getWifi() <= 0) { // no wifi
+                myLCD.setLine("page0", 2, "");
+                myLCD.setLine("page0", 3, "");
+                myLCD.setLine("page0", 4, "NO WIFI");
+            } else { // wifi but no broker yet
+                myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
+                myLCD.setLine("page0", 3, "Searching for");
+                myLCD.setLine("page0", 4, "MQTT Broker");
+            }
+        } else {
             pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
-        if (me.getWifi() <= 0) { // no wifi
-            myLCD.setLine("page0", 2, "");
-            myLCD.setLine("page0", 3, "");
-            myLCD.setLine("page0", 4, "NO WIFI");
-        } else if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) { // up and running
-            myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi].toLowerCase());
-            myLCD.setLine("page0", 3, "connected to");
-            myLCD.setLine("page0", 4, MQTT_URI.orElse("?? ERROR ?? WTF ??"));
-        } else { // wifi but no broker yet
-            myLCD.setLine("page0", 2, "WIFI: " + Tools.WIFI[wifi]);
-            myLCD.setLine("page0", 3, "Searching for");
-            myLCD.setLine("page0", 4, "MQTT Broker");
         }
+
     }
 
     /**
@@ -488,7 +483,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     @Override
-    public void messageArrived(String topic, MqttMessage message) throws Exception {
+    public void messageArrived(String topic, MqttMessage message) {
         log.debug("{} - {}", topic, message);
     }
 
