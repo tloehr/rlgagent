@@ -75,7 +75,7 @@ public class PinBlinkModel implements GenericBlinkModel {
 
         onOffScheme.clear();
 
-        log.debug("new scheme for pin: " + pin.getName() + " : " + scheme);
+        log.trace("new scheme for pin: " + pin.getName() + " : " + scheme);
 
         // zuerst wiederholungen vom muster trennen
         String[] splitFirstTurn = scheme.trim().split(":");
@@ -92,7 +92,7 @@ public class PinBlinkModel implements GenericBlinkModel {
             }
         }
 
-        log.debug(scheme);
+        log.trace(scheme);
     }
 
 }

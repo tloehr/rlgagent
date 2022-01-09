@@ -177,10 +177,10 @@ public class MyLCD implements Runnable {
         for (int r = 0; r < rows; r++) {
             String line = pages.get(visible_page_index).getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(pages.get(visible_page_index).getLine(r), cols), cols - 1);
             log.trace("VISIBLE PAGE #" + visible_page_index + " Line" + r + ": " + line);
-            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
-                String pagenumber = Integer.toString(visible_page_index);
-                line = StringUtils.overlay(line, pagenumber, line.length() - pagenumber.length(), line.length());
-            }
+//            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
+//                String pagenumber = Integer.toString(visible_page_index);
+//                line = StringUtils.overlay(line, pagenumber, line.length() - pagenumber.length(), line.length());
+//            }
             if (i2CLCD.isPresent()) {
                 i2CLCD.get().display_string(line, r + 1);
             }
