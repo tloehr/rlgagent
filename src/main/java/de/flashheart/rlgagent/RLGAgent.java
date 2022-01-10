@@ -21,10 +21,8 @@ import org.quartz.impl.StdSchedulerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -34,8 +32,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private static final int MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS = 8;
     private static final long MINIMUM_UPTIME_B4_SHUTDOWN = 60000;
-    private final String GAMEID = "g1"; // maybe for multiple games in a later version
-    private final String EVENTS, PREFIX, CMD4ME, CMD4GAMEID, CMD4ALL;
+    private final String EVENTS, CMD4ME, CMD4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
     private final PinHandler pinHandler;
@@ -47,7 +44,6 @@ public class RLGAgent implements MqttCallbackExtended {
     private final Scheduler scheduler;
     private final Agent me;
     private SimpleTrigger connectionTrigger;
-    private HashSet<String> group_channels; // to keep track of additional subscriptions
     private Optional<String> MQTT_URI;
 
 
@@ -63,7 +59,6 @@ public class RLGAgent implements MqttCallbackExtended {
 
         me = new Agent(new JSONObject()
                 .put("agentid", configs.get(Configs.MY_ID))
-                .put("gameid", GAMEID)
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                 .put("wifi", Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)))));
 
@@ -75,26 +70,25 @@ public class RLGAgent implements MqttCallbackExtended {
         /**
          * channel structure
          * inbound
-         * rlg/<gameid/>/<agentid/>/<cmd/>
-         * rlg/<gameid/>/all/<cmd/>
+         * rlg/cmd/<agentid/>/<cmd/>
+         * rlg/cmd/all/<cmd/>
          *
          * outbound
-         * rlg/<gameid/>/evt/<src/>
+         * rlg/evt/<agentid/>/<src/>
          *
          * <cmd/> => paged|signals|timers|vars|init|shutdown
          * <src/> => btn1|btn2|btn3|stat
          */
 
         // rlg/<gameid/>
-        PREFIX = String.format("%s/%s", configs.get(Configs.MQTT_ROOT), GAMEID);
+        //PREFIX = String.format("%s/%s", configs.get(Configs.MQTT_ROOT), GAMEID);
         // inbound
-        CMD4ME = String.format("%s/%s/", PREFIX, configs.get(Configs.MY_ID));
-        CMD4GAMEID = String.format("%s/%s/", PREFIX, "all");
-        CMD4ALL = String.format("%s/all/", configs.get(Configs.MQTT_ROOT));
-        // outbound
-        EVENTS = String.format("%s/evt/%s/", PREFIX, configs.get(Configs.MY_ID));
+        CMD4ALL = String.format("%s/cmd/all/#", configs.get(Configs.MQTT_ROOT), me.getAgentid());
+        CMD4ME = String.format("%s/cmd/%s/#", configs.get(Configs.MQTT_ROOT), me.getAgentid());
 
-        group_channels = new HashSet();
+        // outbound
+        EVENTS = String.format("%s/evt/%s/", configs.get(Configs.MQTT_ROOT), me.getAgentid());
+
         // myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
 
@@ -168,9 +162,8 @@ public class RLGAgent implements MqttCallbackExtended {
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
-                iMqttClient.get().subscribe(CMD4ALL + "#", (topic, receivedMessage) -> proc(topic, receivedMessage));
-                iMqttClient.get().subscribe(CMD4GAMEID + "#", (topic, receivedMessage) -> proc(topic, receivedMessage));
-                iMqttClient.get().subscribe(CMD4ME + "#", (topic, receivedMessage) -> proc(topic, receivedMessage));
+                iMqttClient.get().subscribe(CMD4ALL, (topic, receivedMessage) -> proc(topic, receivedMessage));
+                iMqttClient.get().subscribe(CMD4ME, (topic, receivedMessage) -> proc(topic, receivedMessage));
 
                 success = true;
             }
@@ -183,7 +176,26 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     private void proc(String topic, MqttMessage receivedMessage) {
-        String cmd = topic.substring(topic.lastIndexOf('/') + 1);
+        List<String> tokens = Collections.list(new StringTokenizer(topic, "/")).stream().map(token -> (String) token).collect(Collectors.toList());
+        if (tokens.size() < 4 || tokens.size() > 5) return;
+
+        // rlg/cmd/<gameid/>/<agentid/>/<cmd/>
+        // rlg/cmd/<gameid/>/all/<cmd/>
+        // for tokensize == 5
+
+        boolean message_is_for_me = false;
+        String gameid, agentid, cmd;
+        cmd = tokens.get(tokens.size() - 1);
+        if (topic.startsWith("rlg/cmd/all")) {
+            message_is_for_me = true;
+        } else {
+            gameid = tokens.get(tokens.size() - 3);
+            agentid = tokens.get(tokens.size() - 2);
+            message_is_for_me = agentid.equals("all") || agentid.equals(me.getAgentid());
+        }
+
+        if (!message_is_for_me) return;
+
         log.debug("received {} from {} cmd {}", receivedMessage, topic, cmd);
         try {
             if (cmd.equalsIgnoreCase("init")) {

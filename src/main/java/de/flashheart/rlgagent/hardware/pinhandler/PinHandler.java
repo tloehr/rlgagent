@@ -57,7 +57,7 @@ public class PinHandler {
      * @param scheme
      */
     public void setScheme(String name, String scheme) {
-        if (lock.isLocked()) log.warn("setScheme() is currently locked. Delay will occur. Why is this happening ?");
+        if (lock.isLocked()) log.warn("setScheme() is currently locked. Delay will occur.");
         if (scheme.equalsIgnoreCase("off")) scheme = "0:";
         scheme = configs.get(scheme, scheme); // replace with predefines scheme or leave it as it was
         lock.lock();
