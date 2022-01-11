@@ -6,7 +6,6 @@ import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Level;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -249,17 +248,17 @@ public class MyLCD implements Runnable {
             try {
                 lock.lock();
                 try {
-                    // pages.size() > 1 &&
-                    if (loopcounter % cycles_per_page == 0) {
+
+                    if (pages.size() > 1 && loopcounter % cycles_per_page == 0) {
                         next_page();
                         calculate_timers();
                         display_active_page();
                     }
 
-//                    if (pages.size() == 1) {
-//                        calculate_timers();
-//                        display_active_page();
-//                    }
+                    if (pages.size() == 1) {
+                        calculate_timers();
+                        display_active_page();
+                    }
 
                 } catch (Exception ex) {
                     log.error(ex);

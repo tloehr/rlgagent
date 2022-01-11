@@ -17,6 +17,7 @@ public abstract class AbstractConfigs {
     public static final String MYUUID = "uuid";
 
     protected final String CONFIGFILE;
+    protected final String WORKSPACE;
 
     protected final SortedProperties configs;
     protected final Properties buildProperties;
@@ -25,8 +26,14 @@ public abstract class AbstractConfigs {
 
     public abstract void loadDefaults();
 
-    protected AbstractConfigs(String workingpath) throws IOException {
-        CONFIGFILE = workingpath + File.separator + "config.txt";
+
+    public String getWORKSPACE() {
+        return WORKSPACE;
+    }
+
+    protected AbstractConfigs(String workspace) throws IOException {
+        WORKSPACE = workspace;
+        CONFIGFILE = WORKSPACE + File.separator + "config.txt";
 
         configs = new SortedProperties(); // Einstellungen, die verändert werden
         buildProperties = new Properties(); // inhalte der build.properties (von Maven)

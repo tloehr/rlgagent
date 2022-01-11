@@ -58,7 +58,7 @@ public class RLGAgent implements MqttCallbackExtended {
         this.MQTT_URI = Optional.empty();
 
         me = new Agent(new JSONObject()
-                .put("agentid", configs.get(Configs.MY_ID))
+                .put("agentid", configs.getAgentname())
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                 .put("wifi", Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)))));
 
@@ -111,20 +111,22 @@ public class RLGAgent implements MqttCallbackExtended {
         // the wifi quality might be of interest during that phase
         int wifi = Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
         if (wifi != me.getWifi()) me.setWifi(wifi);
+        boolean success = false;
 
         if (MQTT_URI.isPresent()) { // we already had a working broker. going to stick with it.
             log.debug("we already had a working broker. trying to REconnect to it");
-            try_mqtt_broker(MQTT_URI.get());
+            success = try_mqtt_broker(MQTT_URI.get());
         } else {
             log.debug("searching for mqtt broker");
             // try all the brokers on the space separated list.
             for (String broker : Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"))) {
-                if (try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)))) {
-                    break;
-                }
+                success = try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
+                if (success) break;
             }
         }
-        show_connection_status_as_signals();
+
+        if (!success) show_connection_status_as_signals();
+
     }
 
     /**
@@ -137,7 +139,7 @@ public class RLGAgent implements MqttCallbackExtended {
         boolean success = false;
         log.debug("trying broker @{}", uri);
         try {
-            iMqttClient = Optional.of(new MqttClient(uri, me.getMqttClientId(), new MqttDefaultFilePersistence(System.getProperty("workspace"))));
+            iMqttClient = Optional.of(new MqttClient(uri, me.getMqttClientId(), new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
             options.setCleanSession(false);
@@ -159,6 +161,8 @@ public class RLGAgent implements MqttCallbackExtended {
                 } catch (SchedulerException e) {
                     log.warn(e);
                 }
+
+                pinHandler.off();
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
@@ -376,8 +380,6 @@ public class RLGAgent implements MqttCallbackExtended {
                 myLCD.setLine("page0", 2, "Searching for");
                 myLCD.setLine("page0", 3, "MQTT Broker");
             }
-        } else {
-            pinHandler.setScheme(Configs.OUT_LED_BLUE, "very_fast");
         }
     }
 

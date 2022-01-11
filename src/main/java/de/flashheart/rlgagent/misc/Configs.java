@@ -5,13 +5,13 @@ import de.flashheart.rlgagent.Main;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 
+import java.io.File;
 import java.io.IOException;
 
 public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
     public static final String MQTT_PORT = "mqtt_port";
     public static final String MQTT_ROOT = "mqtt_root";
-    public static final String MY_ID = "myid";
     public static final String OUT_LED_WHITE = "led_wht";
     public static final String OUT_LED_RED = "led_red";
     public static final String OUT_LED_BLUE = "led_blu";
@@ -32,14 +32,15 @@ public class Configs extends AbstractConfigs {
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3};
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
+    private final String agentname;
 
-
-    public Configs() throws IOException {
-        this(System.getProperty("workspace"));
+    public Configs(String agentname) throws IOException {
+        super(System.getProperty("user.home")+ File.separator+agentname);
+        this.agentname = agentname;
     }
 
-    public Configs(String workingpath) throws IOException {
-        super(workingpath);
+    public String getAgentname() {
+        return agentname;
     }
 
     @Override
@@ -53,11 +54,11 @@ public class Configs extends AbstractConfigs {
      */
     @Override
     public void loadDefaults() {
-        configs.setProperty(MQTT_BROKER, "mqtta mqttb mqtt");
+        configs.setProperty(MQTT_BROKER, "localhost");
         configs.setProperty(MQTT_PORT, "1883");
         // configs.setProperty(MQTT_BROKER, String.format("tcp://%s:%s", "mqtt", "port"));
         configs.setProperty(MQTT_ROOT, "rlg");
-        configs.setProperty(MY_ID, "ag01");
+
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
         configs.setProperty(MCP23017_I2C_ADDRESS, "0x20");
 

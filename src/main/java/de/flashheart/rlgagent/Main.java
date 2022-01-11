@@ -22,9 +22,7 @@ import org.apache.logging.log4j.core.config.Configurator;
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Optional;
-import java.util.Properties;
 
 @Log4j2
 /**
@@ -53,14 +51,13 @@ public class Main {
 
     private static void initBaseSystem(String[] args) throws IOException, UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
 
-        if (!System.getProperties().containsKey("workspace")) {
-            log.fatal("workspace directory parameter needs to be set via -Dworkspace=/path/you/want");
+        if (!System.getProperties().containsKey("agentname")) {
+            log.fatal("agent name needs to be set via -Dagentname=ag01");
             System.exit(1);
         }
 
         Options opts = new Options();
         opts.addOption("h", "help", false, "show help");
-        //opts.addOption("w", "workspace", true, "specficy workspace folder for config and log files. default (if omitted): " + Tools.getWorkingPath(PROJECT));
         DefaultParser parser = new DefaultParser();
         CommandLine cl = null;
         String footer = "https://www.flashheart.de";
@@ -85,10 +82,8 @@ public class Main {
             System.exit(0);
         }
 
-//        if (cl.hasOption("w")) System.setProperty("workspace", cl.getOptionValue("w"));
-//        else System.setProperty("workspace", Tools.getWorkingPath(PROJECT));
+        configs = new Configs(System.getProperty("agentname"));
 
-        configs = new Configs();
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         pinHandler = new PinHandler(configs);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -96,7 +91,7 @@ public class Main {
         }));
 
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-        myUI = GraphicsEnvironment.isHeadless() ? Optional.empty() : Optional.of(new MyUI(configs.get(Configs.MY_ID)));
+        myUI = GraphicsEnvironment.isHeadless() ? Optional.empty() : Optional.of(new MyUI(configs.getAgentname()));
         myUI.ifPresent(myUI1 -> myUI1.setVisible(true));
     }
 
