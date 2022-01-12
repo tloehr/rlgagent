@@ -92,10 +92,6 @@ public class RLGAgent implements MqttCallbackExtended {
         // myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
 
-        //lcdPage = myLCD.addPage();
-//        myLCD.setLine("page0", 3, "Ready 4");
-//        myLCD.setLine("page0", 4, "Action");
-
         initAgent();
         initMqttConnectionJob();
     }
@@ -163,6 +159,11 @@ public class RLGAgent implements MqttCallbackExtended {
                 }
 
                 pinHandler.off();
+                pinHandler.setScheme(Configs.OUT_LED_WHITE, "very_fast"); // white is always flashing
+                myLCD.setLine("page0", 1, "RLGAgent");
+                myLCD.setLine("page0", 2, "Ver. ${agversion}.${agbuild}");
+                myLCD.setLine("page0", 3, "MQTT found @");
+                myLCD.setLine("page0", 4, uri);
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
@@ -182,23 +183,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private void proc(String topic, MqttMessage receivedMessage) {
         List<String> tokens = Collections.list(new StringTokenizer(topic, "/")).stream().map(token -> (String) token).collect(Collectors.toList());
         if (tokens.size() < 4 || tokens.size() > 5) return;
-
-        // rlg/cmd/<gameid/>/<agentid/>/<cmd/>
-        // rlg/cmd/<gameid/>/all/<cmd/>
-        // for tokensize == 5
-
-        boolean message_is_for_me = false;
-        String gameid, agentid, cmd;
-        cmd = tokens.get(tokens.size() - 1);
-        if (topic.startsWith("rlg/cmd/all")) {
-            message_is_for_me = true;
-        } else {
-            gameid = tokens.get(tokens.size() - 3);
-            agentid = tokens.get(tokens.size() - 2);
-            message_is_for_me = agentid.equals("all") || agentid.equals(me.getAgentid());
-        }
-
-        if (!message_is_for_me) return;
+        String cmd = tokens.get(tokens.size() - 1);
 
         log.debug("received {} from {} cmd {}", receivedMessage, topic, cmd);
         try {
@@ -214,7 +199,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 }
             } else {
                 final JSONObject json = new JSONObject(new String(receivedMessage.getPayload()));
-                // <cmd/> => paged|signals|timers|vars|init|shutdown
+                // <cmd/> => paged|signals|timers|vars
                 if (cmd.equalsIgnoreCase("paged")) {
                     procPaged(json);
                 } else if (cmd.equalsIgnoreCase("signals")) {
@@ -364,10 +349,11 @@ public class RLGAgent implements MqttCallbackExtended {
     private void show_connection_status_as_signals() {
         int wifi = me.getWifi();
 
-        pinHandler.setScheme(Configs.OUT_LED_WHITE, "very_fast"); // white is always flashing
+        pinHandler.setScheme(Configs.OUT_LED_WHITE, "normal"); // white is always flashing
         if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "normal");
         if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "normal");
         if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");
+        if (wifi > 3) pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
         myLCD.setLine("page0", 4, "WIFI: " + Tools.WIFI[wifi]);
 

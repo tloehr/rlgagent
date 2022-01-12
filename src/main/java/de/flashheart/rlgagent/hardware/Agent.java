@@ -30,8 +30,14 @@ public class Agent {
                 .put("wifi", wifi);
     }
 
-    public String getMqttClientId(){
-        return "mqtt-"+agentid;
+    /**
+     * creates a unique but readable client id. if it is not unique the client will
+     * behave insane, once the connection has been lost and re-established.
+     * it was quite painful finding this one out.
+     * @return
+     */
+    public String getMqttClientId() {
+        return "mqtt-" + (int) (Math.random() * 10000) + "-" + agentid;
     }
 
     @Override
