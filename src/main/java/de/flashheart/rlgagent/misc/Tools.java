@@ -201,11 +201,10 @@ public class Tools {
 
     public static void system_shutdown() {
         if (!Tools.isArm()) return;
-        if (System.getProperty("shutdown","").isEmpty()) return;
         try {
             ProcessBuilder processBuilder = new ProcessBuilder();
-            processBuilder.command(System.getProperty("shutdown"));
-            //processBuilder.command("bash", "-c", cmd);
+            //processBuilder.command(System.getProperty("shutdown"));
+            processBuilder.command("bash", "-c", "/opt/rlgagentd/shutdown.sh");
             Process process = processBuilder.start();
             process.waitFor(); // as we are shutting down, there is nothing to wait for
         } catch (IOException | InterruptedException io) {

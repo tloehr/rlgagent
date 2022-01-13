@@ -194,7 +194,7 @@ public class RLGAgent implements MqttCallbackExtended {
             } else if (cmd.equalsIgnoreCase("status")) {
                 procStatus();
             } else if (cmd.equalsIgnoreCase("shutdown")) {
-                procShutdown();
+                procShutdown(true);
             } else {
                 final JSONObject json = new JSONObject(new String(receivedMessage.getPayload()));
                 // <cmd/> => paged|signals|timers|vars
@@ -218,17 +218,17 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
 
-    public void procShutdown() {
+    public void procShutdown(boolean system_shutdown) {
         log.debug("received SHUTDOWN");
 
-        if (System.currentTimeMillis() - agent_connected_since > MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED) {
+        if (System.currentTimeMillis() - agent_connected_since < MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED) {
             log.warn("shutdown message too soon after connection. discarding.");
             return;
         }
 
         myLCD.init();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-        myLCD.setLine("page0", 2, "System");
+        myLCD.setLine("page0", 2, system_shutdown ? "System" : "Agent");
         myLCD.setLine("page0", 3, "shutdown");
 
         try {
@@ -246,8 +246,8 @@ public class RLGAgent implements MqttCallbackExtended {
         });
         configs.saveConfigs();
         pinHandler.off();
-        Tools.system_shutdown();
-        System.exit(0);
+        if (system_shutdown) Tools.system_shutdown();
+        //System.exit(0);
     }
 
     private void procInit() {
@@ -433,10 +433,6 @@ public class RLGAgent implements MqttCallbackExtended {
     @Override
     public void deliveryComplete(IMqttDeliveryToken token) {
         log.trace("{} - delivered", token.getMessageId());
-    }
-
-    public void shutdown() {
-
     }
 
     @Override

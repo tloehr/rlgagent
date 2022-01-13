@@ -87,7 +87,7 @@ public class Main {
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         pinHandler = new PinHandler(configs);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            agent.procShutdown();
+            agent.procShutdown(false);
         }));
 
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
