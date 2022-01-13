@@ -87,7 +87,7 @@ public class Main {
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         pinHandler = new PinHandler(configs);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            prepareShutdown();
+            agent.procShutdown();
         }));
 
         UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
@@ -162,12 +162,5 @@ public class Main {
         myLCD = new MyLCD(myUI, configs, lcd_hardware);
     }
 
-    public static void prepareShutdown() {
-        log.info("Preparing Shutdown");
-
-        configs.saveConfigs();
-        agent.shutdown();
-        pinHandler.off();
-    }
 
 }

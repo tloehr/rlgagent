@@ -89,6 +89,7 @@ public class MyLCD implements Runnable {
             dirty = false;
             pages.clear();
             pages.add(new LCDPage("page0"));
+            visible_page_index = 0;
             timers.clear();
             variables.clear();
             // set defaults for variables
@@ -174,7 +175,7 @@ public class MyLCD implements Runnable {
      */
     private void display_active_page() {
         for (int r = 0; r < rows; r++) {
-            String line = pages.get(visible_page_index).getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(pages.get(visible_page_index).getLine(r), cols), cols - 1);
+            String line = pages.get(visible_page_index).getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(pages.get(visible_page_index).getLine(r), cols), cols); // -1 ??
             log.trace("VISIBLE PAGE #" + visible_page_index + " Line" + r + ": " + line);
 //            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
 //                String pagenumber = Integer.toString(visible_page_index);

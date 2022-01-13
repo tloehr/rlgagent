@@ -19,7 +19,6 @@ import org.json.JSONObject;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
-import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,7 +30,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private static final int MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS = 8;
-    private static final long MINIMUM_UPTIME_B4_SHUTDOWN = 60000;
+    private static final long MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED = 60000;
     private final String EVENTS, CMD4ME, CMD4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
@@ -45,6 +44,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private final Agent me;
     private SimpleTrigger connectionTrigger;
     private Optional<String> MQTT_URI;
+    private long agent_connected_since = Long.MAX_VALUE;
 
 
     final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
@@ -170,6 +170,8 @@ public class RLGAgent implements MqttCallbackExtended {
                 iMqttClient.get().subscribe(CMD4ALL, (topic, receivedMessage) -> proc(topic, receivedMessage));
                 iMqttClient.get().subscribe(CMD4ME, (topic, receivedMessage) -> proc(topic, receivedMessage));
 
+                agent_connected_since = System.currentTimeMillis();
+
                 success = true;
             }
         } catch (MqttException e) {
@@ -192,22 +194,22 @@ public class RLGAgent implements MqttCallbackExtended {
             } else if (cmd.equalsIgnoreCase("status")) {
                 procStatus();
             } else if (cmd.equalsIgnoreCase("shutdown")) {
-                if (ManagementFactory.getRuntimeMXBean().getUptime() > MINIMUM_UPTIME_B4_SHUTDOWN) {
-                    procShutdown();
-                } else {
-                    log.debug("shutdown message to soon. discarding.");
-                }
+                procShutdown();
             } else {
                 final JSONObject json = new JSONObject(new String(receivedMessage.getPayload()));
                 // <cmd/> => paged|signals|timers|vars
                 if (cmd.equalsIgnoreCase("paged")) {
                     procPaged(json);
+                } else if (cmd.equalsIgnoreCase("delpage")) {
+                    procDelPage(json);
                 } else if (cmd.equalsIgnoreCase("signals")) {
                     procSignals(json);
                 } else if (cmd.equalsIgnoreCase("timers")) {
                     procTimers(json);
                 } else if (cmd.equalsIgnoreCase("vars")) {
                     procVars(json);
+                } else {
+                    log.warn("unknown command {}", cmd);
                 }
             }
         } catch (Exception e) {
@@ -215,14 +217,36 @@ public class RLGAgent implements MqttCallbackExtended {
         }
     }
 
-    private void procShutdown() {
+
+    public void procShutdown() {
         log.debug("received SHUTDOWN");
+
+        if (System.currentTimeMillis() - agent_connected_since > MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED) {
+            log.warn("shutdown message too soon after connection. discarding.");
+            return;
+        }
+
         myLCD.init();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
         myLCD.setLine("page0", 2, "System");
         myLCD.setLine("page0", 3, "shutdown");
-        Main.prepareShutdown();
-        Tools.system_shutdown("/opt/rlgagent/shutdown.sh");
+
+        try {
+            scheduler.shutdown();
+        } catch (SchedulerException e) {
+            e.printStackTrace();
+        }
+        iMqttClient.ifPresent(iMqttClient1 -> {
+            try {
+                iMqttClient1.disconnect();
+                iMqttClient1.close();
+            } catch (MqttException e) {
+                e.printStackTrace();
+            }
+        });
+        configs.saveConfigs();
+        pinHandler.off();
+        Tools.system_shutdown();
         System.exit(0);
     }
 
@@ -274,6 +298,10 @@ public class RLGAgent implements MqttCallbackExtended {
         });
     }
 
+    private void procDelPage(JSONObject json) {
+        json.getJSONArray("page_handles").forEach(page -> myLCD.delPage(page.toString()));
+    }
+
 
     private void initAgent() {
         // Hardware Buttons
@@ -308,6 +336,7 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     private void initMqttConnectionJob() throws SchedulerException {
         if (scheduler.checkExists(myConnectionJobKey)) return;
+        agent_connected_since = Long.MAX_VALUE;
         log.debug("initMqttConnectionJob()");
         JobDetail job = newJob(MqttConnectionJob.class)
                 .withIdentity(myConnectionJobKey)
@@ -407,22 +436,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     public void shutdown() {
-        try {
-//            myLCD.init();
-//            myLCD.setLine("page0", 2, "agent");
-//            myLCD.setLine("page0", 3, "shutdown");
-            scheduler.shutdown();
-        } catch (SchedulerException e) {
-            e.printStackTrace();
-        }
-        iMqttClient.ifPresent(iMqttClient1 -> {
-            try {
-                iMqttClient1.disconnect();
-                iMqttClient1.close();
-            } catch (MqttException e) {
-                e.printStackTrace();
-            }
-        });
+
     }
 
     @Override
