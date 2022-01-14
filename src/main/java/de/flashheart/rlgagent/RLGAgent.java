@@ -21,6 +21,7 @@ import org.quartz.impl.StdSchedulerFactory;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.quartz.JobBuilder.newJob;
@@ -45,11 +46,14 @@ public class RLGAgent implements MqttCallbackExtended {
     private SimpleTrigger connectionTrigger;
     private Optional<String> MQTT_URI;
     private long agent_connected_since = Long.MAX_VALUE;
+    private long mqtt_connect_tries = 0l;
+    final ReentrantLock lock;
 
 
     final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
+        this.lock = new ReentrantLock();
         this.myUI = myUI;
         this.gpio = gpio;
         this.pinHandler = pinHandler;
@@ -125,6 +129,36 @@ public class RLGAgent implements MqttCallbackExtended {
 
     }
 
+    private void unsubscribe_from_all() {
+        // don't know if this ever comes into effect
+        iMqttClient.ifPresent(iMqttClient1 -> {
+            try {
+                iMqttClient1.unsubscribe(CMD4ALL);
+                log.debug("unsubscribing from " + CMD4ALL);
+            } catch (MqttException e) {
+                log.debug(e.getMessage());
+            }
+            try {
+                iMqttClient1.unsubscribe(CMD4ME);
+                log.debug("unsubscribing from " + CMD4ME);
+            } catch (MqttException e) {
+                log.debug(e.getMessage());
+            }
+            try {
+                iMqttClient1.disconnect();
+                log.debug("disconnecting " + iMqttClient1.getClientId());
+            } catch (MqttException e) {
+                log.debug(e.getMessage());
+            }
+            try {
+                iMqttClient1.close();
+                log.debug("closing " + iMqttClient1.getClientId());
+            } catch (MqttException e) {
+                log.debug(e.getMessage());
+            }
+        });
+    }
+
     /**
      * belongs to connect_to_mqtt_broker()
      *
@@ -133,9 +167,16 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     boolean try_mqtt_broker(String uri) {
         boolean success = false;
-        log.debug("trying broker @{}", uri);
+//        if (lock.isLocked()) {
+//            log.warn("try_mqtt_broker is busy with try #{}", mqtt_connect_tries);
+//            return false;
+//        }
         try {
-            iMqttClient = Optional.of(new MqttClient(uri, me.getMqttClientId(), new MqttDefaultFilePersistence(configs.getWORKSPACE())));
+//            lock.lock();
+            mqtt_connect_tries++;
+            log.debug("trying broker @{} number of tries: {}", uri, mqtt_connect_tries);
+            unsubscribe_from_all();
+            iMqttClient = Optional.of(new MqttClient(uri, String.format("%s#%d-%s", me.getAgentid(), mqtt_connect_tries, UUID.randomUUID()) + mqtt_connect_tries, new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
             options.setCleanSession(false);
@@ -147,7 +188,7 @@ public class RLGAgent implements MqttCallbackExtended {
             }
 
             if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
-                log.info("Connected to the broker @{}", iMqttClient.get().getServerURI());
+                log.info("Connected to the broker @{} with ID: {}", iMqttClient.get().getServerURI(), iMqttClient.get().getClientId());
                 MQTT_URI = Optional.of(uri); // we will stick with this URI from now on
                 // stop the connection job - we are done here
                 try {
@@ -171,7 +212,6 @@ public class RLGAgent implements MqttCallbackExtended {
                 iMqttClient.get().subscribe(CMD4ME, (topic, receivedMessage) -> proc(topic, receivedMessage));
 
                 agent_connected_since = System.currentTimeMillis();
-
                 success = true;
             }
         } catch (MqttException e) {
@@ -219,10 +259,12 @@ public class RLGAgent implements MqttCallbackExtended {
 
 
     public void procShutdown(boolean system_shutdown) {
-        log.debug("received SHUTDOWN");
+        log.debug("received SHUTDOWN command");
 
-        if (System.currentTimeMillis() - agent_connected_since < MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED) {
-            log.warn("shutdown message too soon after connection. discarding.");
+        long connection_up_time = System.currentTimeMillis() - agent_connected_since;
+        log.debug("connection uptime in seconds {}", connection_up_time / 1000);
+        if (connection_up_time < MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED) {
+            log.warn("shutdown arrived message too soon after last connection. discarding.");
             return;
         }
 
@@ -236,18 +278,11 @@ public class RLGAgent implements MqttCallbackExtended {
         } catch (SchedulerException e) {
             e.printStackTrace();
         }
-        iMqttClient.ifPresent(iMqttClient1 -> {
-            try {
-                iMqttClient1.disconnect();
-                iMqttClient1.close();
-            } catch (MqttException e) {
-                e.printStackTrace();
-            }
-        });
+        unsubscribe_from_all();
         configs.saveConfigs();
         pinHandler.off();
         if (system_shutdown) Tools.system_shutdown();
-        //System.exit(0);
+        Runtime.getRuntime().halt(0);
     }
 
     private void procInit() {
@@ -336,7 +371,6 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     private void initMqttConnectionJob() throws SchedulerException {
         if (scheduler.checkExists(myConnectionJobKey)) return;
-        agent_connected_since = Long.MAX_VALUE;
         log.debug("initMqttConnectionJob()");
         JobDetail job = newJob(MqttConnectionJob.class)
                 .withIdentity(myConnectionJobKey)
@@ -393,7 +427,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 myLCD.setLine("page0", 4, "NO WIFI");
             } else { // wifi but no broker yet
                 myLCD.setLine("page0", 2, "Searching for");
-                myLCD.setLine("page0", 3, "MQTT Broker");
+                myLCD.setLine("page0", 3, "MQTT Broker " + mqtt_connect_tries + "x");
             }
         }
     }
@@ -437,5 +471,7 @@ public class RLGAgent implements MqttCallbackExtended {
 
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
+        agent_connected_since = Long.MAX_VALUE;
+        log.info("connection #{} complete", mqtt_connect_tries);
     }
 }

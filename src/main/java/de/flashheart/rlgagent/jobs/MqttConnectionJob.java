@@ -5,6 +5,7 @@ import lombok.extern.log4j.Log4j2;
 import org.quartz.*;
 
 @Log4j2
+@DisallowConcurrentExecution
 public class MqttConnectionJob implements Job, InterruptableJob {
     public static final String name = "mqttconnection";
 
