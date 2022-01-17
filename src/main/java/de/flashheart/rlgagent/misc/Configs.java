@@ -90,9 +90,11 @@ public class Configs extends AbstractConfigs {
         configs.setProperty("long", "1:on,2500;off,1");
         configs.setProperty("medium", "1:on,1000;off,1");
         configs.setProperty("short", "1:on,500;off,1");
+        configs.setProperty("very_short", "1:on,250;off,1");
 
         // recurring signals
-        configs.setProperty("slow", "∞:on,2000;off,1000");
+        configs.setProperty("slow", "∞:on,1000;off,5000");
+        configs.setProperty("slow", "∞:on,1000;off,2000");
         configs.setProperty("normal", "∞:on,1000;off,1000");
         configs.setProperty("fast", "∞:on,500;off,500");
         configs.setProperty("very_fast", "∞:on,250;off,250");

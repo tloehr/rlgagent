@@ -6,6 +6,7 @@ import de.flashheart.rlgagent.hardware.Agent;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
 import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
 import de.flashheart.rlgagent.jobs.MqttConnectionJob;
+import de.flashheart.rlgagent.jobs.StatusJob;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
 import de.flashheart.rlgagent.misc.Tools;
@@ -31,6 +32,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private static final int MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS = 8;
+    private static final int STATUS_INTERVAL_IN_SECONDS = 60;
     private static final long MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED = 60000;
     private final String EVENTS, CMD4ME, CMD4ALL;
     private final Optional<MyUI> myUI;
@@ -40,10 +42,10 @@ public class RLGAgent implements MqttCallbackExtended {
     private final MyLCD myLCD;
     private Optional<IMqttClient> iMqttClient;
 
-    private final JobKey myConnectionJobKey;
+    private final JobKey myConnectionJobKey, myStatusJobKey;
     private final Scheduler scheduler;
     private final Agent me;
-    private SimpleTrigger connectionTrigger;
+    private SimpleTrigger connectionTrigger, statusTrigger;
     private Optional<String> MQTT_URI;
     private long agent_connected_since = Long.MAX_VALUE;
     private long mqtt_connect_tries = 0l;
@@ -71,21 +73,7 @@ public class RLGAgent implements MqttCallbackExtended {
         this.scheduler.start();
 
         iMqttClient = Optional.empty();
-        /**
-         * channel structure
-         * inbound
-         * rlg/cmd/<agentid/>/<cmd/>
-         * rlg/cmd/all/<cmd/>
-         *
-         * outbound
-         * rlg/evt/<agentid/>/<src/>
-         *
-         * <cmd/> => paged|signals|timers|vars|init|shutdown
-         * <src/> => btn1|btn2|btn3|stat
-         */
 
-        // rlg/<gameid/>
-        //PREFIX = String.format("%s/%s", configs.get(Configs.MQTT_ROOT), GAMEID);
         // inbound
         CMD4ALL = String.format("%s/cmd/all/#", configs.get(Configs.MQTT_ROOT), me.getAgentid());
         CMD4ME = String.format("%s/cmd/%s/#", configs.get(Configs.MQTT_ROOT), me.getAgentid());
@@ -93,11 +81,12 @@ public class RLGAgent implements MqttCallbackExtended {
         // outbound
         EVENTS = String.format("%s/evt/%s/", configs.get(Configs.MQTT_ROOT), me.getAgentid());
 
-        // myStatusJobKey = new JobKey(StatusJob.name, "group1");
+        myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
 
         initAgent();
         initMqttConnectionJob();
+        initStatusJob();
     }
 
     /**
@@ -344,6 +333,7 @@ public class RLGAgent implements MqttCallbackExtended {
             GpioPinDigitalInput bnt01 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN01)), PinPullResistance.PULL_UP);
             bnt01.setDebounce(DEBOUNCE);
             bnt01.addListener((GpioPinListenerDigital) event -> {
+                log.debug("button event: {}; State: {}; Edge: {}", "btn01", event.getState(), event.getEdge());
                 if (event.getState() != PinState.LOW) return;
                 reportEvent("btn01");
             });
@@ -351,6 +341,7 @@ public class RLGAgent implements MqttCallbackExtended {
             GpioPinDigitalInput bnt02 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN02)), PinPullResistance.PULL_UP);
             bnt02.setDebounce(DEBOUNCE);
             bnt02.addListener((GpioPinListenerDigital) event -> {
+                log.debug("button event: {}; State: {}; Edge: {}", "btn01", event.getState(), event.getEdge());
                 if (event.getState() != PinState.LOW) return;
                 reportEvent("btn02");
             });
@@ -385,6 +376,26 @@ public class RLGAgent implements MqttCallbackExtended {
         scheduler.scheduleJob(job, connectionTrigger);
     }
 
+    /**
+     * start a job that tries to connect to the mqtt broker
+     *
+     * @throws SchedulerException
+     */
+    private void initStatusJob() throws SchedulerException {
+        if (scheduler.checkExists(myStatusJobKey)) return;
+        JobDetail job = newJob(StatusJob.class)
+                .withIdentity(myStatusJobKey)
+                .build();
+
+        statusTrigger = newTrigger()
+                .withIdentity(StatusJob.name + "-trigger", "group1")
+                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
+                        .withIntervalInSeconds(STATUS_INTERVAL_IN_SECONDS)
+                        .repeatForever())
+                .build();
+        scheduler.scheduleJob(job, statusTrigger);
+    }
+
 
     private void reportEvent(String src) {
         reportEvent(src, "");
@@ -394,7 +405,7 @@ public class RLGAgent implements MqttCallbackExtended {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             try {
                 MqttMessage msg = new MqttMessage();
-                msg.setQos(2);
+                msg.setQos(0);
                 if (!payload.isEmpty()) msg.setPayload(payload.getBytes());
                 iMqttClient.get().publish(EVENTS + src, msg);
                 log.info(EVENTS);
@@ -412,11 +423,12 @@ public class RLGAgent implements MqttCallbackExtended {
     private void show_connection_status_as_signals() {
         int wifi = me.getWifi();
 
-        pinHandler.setScheme(Configs.OUT_LED_WHITE, "normal"); // white is always flashing
-        if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "normal");
-        if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "normal");
-        if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, "normal");
-        if (wifi > 3) pinHandler.setScheme(Configs.OUT_LED_BLUE, "normal");
+        String scheme = "∞:on,250;off,1750";
+        pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
+        if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
+        if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
+        if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
+        if (wifi > 3) pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme);
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
         myLCD.setLine("page0", 4, "WIFI: " + Tools.WIFI[wifi]);
 
