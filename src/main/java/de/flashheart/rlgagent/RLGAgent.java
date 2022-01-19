@@ -20,6 +20,8 @@ import org.json.JSONObject;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
@@ -109,7 +111,7 @@ public class RLGAgent implements MqttCallbackExtended {
             log.debug("searching for mqtt broker");
             // try all the brokers on the space separated list.
             for (String broker : Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"))) {
-                success = try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
+                success = Tools.ping(broker) && try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
                 if (success) break;
             }
         }
@@ -156,12 +158,8 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     boolean try_mqtt_broker(String uri) {
         boolean success = false;
-//        if (lock.isLocked()) {
-//            log.warn("try_mqtt_broker is busy with try #{}", mqtt_connect_tries);
-//            return false;
-//        }
+
         try {
-//            lock.lock();
             mqtt_connect_tries++;
             log.debug("trying broker @{} number of tries: {}", uri, mqtt_connect_tries);
             unsubscribe_from_all();
@@ -245,7 +243,6 @@ public class RLGAgent implements MqttCallbackExtended {
             log.error(e.toString());
         }
     }
-
 
     public void procShutdown(boolean system_shutdown) {
         log.debug("received SHUTDOWN command");
@@ -349,8 +346,20 @@ public class RLGAgent implements MqttCallbackExtended {
 
         // Software Buttons
         myUI.ifPresent(myUI1 -> {
-            myUI1.addActionListenerToBTN01(e -> reportEvent("btn01"));
-            myUI1.addActionListenerToBTN02(e -> reportEvent("btn02"));
+            myUI1.getBtn01().addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    reportEvent("btn01", "down");
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    reportEvent("btn01", "up");
+                }
+            });
+//            myUI1.addActionListenerToBTN01(e -> reportEvent("btn01"));
+//            myUI1.addActionListenerToBTN01(e -> reportEvent("btn01"));
+//            myUI1.addActionListenerToBTN02(e -> reportEvent("btn02"));
         });
 
     }
@@ -361,6 +370,7 @@ public class RLGAgent implements MqttCallbackExtended {
      * @throws SchedulerException
      */
     private void initMqttConnectionJob() throws SchedulerException {
+        show_connection_status_as_signals();
         if (scheduler.checkExists(myConnectionJobKey)) return;
         log.debug("initMqttConnectionJob()");
         JobDetail job = newJob(MqttConnectionJob.class)
@@ -405,7 +415,8 @@ public class RLGAgent implements MqttCallbackExtended {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             try {
                 MqttMessage msg = new MqttMessage();
-                msg.setQos(0);
+                msg.setQos(2);
+                msg.setRetained(false);
                 if (!payload.isEmpty()) msg.setPayload(payload.getBytes());
                 iMqttClient.get().publish(EVENTS + src, msg);
                 log.info(EVENTS);

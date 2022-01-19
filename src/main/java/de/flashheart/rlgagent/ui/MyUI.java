@@ -102,6 +102,14 @@ public class MyUI extends JFrame {
         );
     }
 
+    public JButton getBtn01() {
+        return btn01;
+    }
+
+    public JButton getBtn02() {
+        return btn02;
+    }
+
     public void addActionListenerToBTN01(ActionListener actionListener) {
         btn01.addActionListener(actionListener);
     }
