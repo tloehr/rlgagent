@@ -32,15 +32,14 @@ public class Configs extends AbstractConfigs {
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3};
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
-    private final String agentname;
+    public static final String MY_ID = "myid";
 
-    public Configs(String agentname) throws IOException {
-        super(System.getProperty("user.home")+ File.separator+agentname);
-        this.agentname = agentname;
+    public Configs() throws IOException {
+        super(System.getProperties().getProperty("workspace"));
     }
 
     public String getAgentname() {
-        return agentname;
+        return configs.getProperty(MY_ID);
     }
 
     @Override
@@ -55,6 +54,7 @@ public class Configs extends AbstractConfigs {
     @Override
     public void loadDefaults() {
         configs.setProperty(MQTT_BROKER, "localhost");
+        configs.setProperty(MY_ID, "ag01");
         configs.setProperty(MQTT_PORT, "1883");
         // configs.setProperty(MQTT_BROKER, String.format("tcp://%s:%s", "mqtt", "port"));
         configs.setProperty(MQTT_ROOT, "rlg");

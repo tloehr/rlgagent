@@ -324,23 +324,30 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
 
+    //2022-01-19T21:35:20.389+0100 [pi4j-gpio-event-executor-0] DEBUG button event: btn01; State: LOW; Edge: falling
+    //2022-01-19T21:35:20.619+0100 [pi4j-gpio-event-executor-0] DEBUG button event: btn01; State: HIGH; Edge: rising
+
     private void initAgent() {
         // Hardware Buttons
         gpio.ifPresent(gpioController -> {
-            GpioPinDigitalInput bnt01 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN01)), PinPullResistance.PULL_UP);
-            bnt01.setDebounce(DEBOUNCE);
-            bnt01.addListener((GpioPinListenerDigital) event -> {
+            GpioPinDigitalInput btn01 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN01)), PinPullResistance.PULL_UP);
+            btn01.setDebounce(DEBOUNCE);
+            btn01.addListener((GpioPinListenerDigital) event -> {
                 log.debug("button event: {}; State: {}; Edge: {}", "btn01", event.getState(), event.getEdge());
-                if (event.getState() != PinState.LOW) return;
-                reportEvent("btn01");
+                //if (event.getState() != PinState.LOW) return;
+                if (event.getState() == PinState.HIGH) reportEvent("btn01", "up");
+                if (event.getState() == PinState.LOW) reportEvent("btn01", "down");
+//                if (event.getEdge().equals(PinEdge.RISING)) reportEvent("btn01", "down");
+//                if (event.getEdge().equals(PinEdge.FALLING)) reportEvent("btn01", "up");
             });
 
-            GpioPinDigitalInput bnt02 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN02)), PinPullResistance.PULL_UP);
-            bnt02.setDebounce(DEBOUNCE);
-            bnt02.addListener((GpioPinListenerDigital) event -> {
-                log.debug("button event: {}; State: {}; Edge: {}", "btn01", event.getState(), event.getEdge());
-                if (event.getState() != PinState.LOW) return;
-                reportEvent("btn02");
+            GpioPinDigitalInput btn02 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN02)), PinPullResistance.PULL_UP);
+            btn02.setDebounce(DEBOUNCE);
+            btn02.addListener((GpioPinListenerDigital) event -> {
+                log.debug("button event: {}; State: {}; Edge: {}", "btn02", event.getState(), event.getEdge());
+                //if (event.getState() != PinState.LOW) return;
+                if (event.getState() == PinState.HIGH) reportEvent("btn02", "up");
+                if (event.getState() == PinState.LOW) reportEvent("btn02", "down");
             });
         });
 
@@ -357,9 +364,6 @@ public class RLGAgent implements MqttCallbackExtended {
                     reportEvent("btn01", "up");
                 }
             });
-//            myUI1.addActionListenerToBTN01(e -> reportEvent("btn01"));
-//            myUI1.addActionListenerToBTN01(e -> reportEvent("btn01"));
-//            myUI1.addActionListenerToBTN02(e -> reportEvent("btn02"));
         });
 
     }
@@ -465,7 +469,13 @@ public class RLGAgent implements MqttCallbackExtended {
             me.setWifi(wifi);
             myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
         }
-        reportEvent("status", me.toJson().toString());
+        reportEvent("status", new JSONObject()
+                .put("wifi", me.getWifi())
+                .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
+                .put("mqtt-broker", MQTT_URI.isPresent() ? MQTT_URI.get() : "! no broker yet !")
+                .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
+                .toString()
+        );
     }
 
     @SneakyThrows

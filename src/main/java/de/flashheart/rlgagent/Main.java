@@ -51,9 +51,9 @@ public class Main {
 
     private static void initBaseSystem(String[] args) throws IOException, UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
 
-        if (!System.getProperties().containsKey("agentname")) {
-            log.fatal("agent name needs to be set via -Dagentname=ag01");
-            System.exit(1);
+        if (!System.getProperties().containsKey("workspace")) {
+            log.fatal("workspace directory parameter needs to be set via -Dworkspace=/path/you/want");
+            Runtime.getRuntime().halt(0);
         }
 
         Options opts = new Options();
@@ -73,16 +73,16 @@ public class Main {
         } catch (ParseException ex) {
             HelpFormatter f = new HelpFormatter();
             f.printHelp(jarname + ".jar [OPTION]", PROJECT, opts, footer);
-            System.exit(0);
+            Runtime.getRuntime().halt(0);
         }
 
         if (cl.hasOption("h")) {
             HelpFormatter f = new HelpFormatter();
             f.printHelp(jarname + ".jar [OPTION]", PROJECT, opts, footer);
-            System.exit(0);
+            Runtime.getRuntime().halt(0);
         }
 
-        configs = new Configs(System.getProperty("agentname"));
+        configs = new Configs();
 
         Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         pinHandler = new PinHandler(configs);

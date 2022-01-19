@@ -186,12 +186,8 @@ public class Tools {
 
             int exitVal = process.waitFor();
             if (exitVal == 0) {
-
-                log.debug(cmd);
-                log.debug(output);
-
+                log.debug("command {} returned {} ", cmd, output);
                 result = output.toString();
-
             }
         } catch (IOException | InterruptedException io) {
             log.error(io);
@@ -220,6 +216,7 @@ public class Tools {
      */
     public static int getWifiQuality(String driver_response) {
         if (driver_response.equalsIgnoreCase("desktop")) return 4;
+        if (driver_response.trim().isEmpty()) return 0;
         int wifiQuality;
         int wifi;
         //driver_response = "level=94";
@@ -258,18 +255,6 @@ public class Tools {
             text = text.replace(entry.getKey(), entry.getValue());
         }
         log.trace("and after: {}", text);
-//        Pattern pattern = Pattern.compile("\\$\\{[a-zA-Z0-9]*\\}");
-//        Matcher matcher = pattern.matcher(text);
-//
-//        StringBuilder builder = new StringBuilder();
-//        int i = 0;
-//        while (matcher.find()) {
-//            builder.append(text, i, matcher.start());
-//            builder.append(replacements.getOrDefault(matcher.group(0), ""));
-//            i = matcher.end();
-//        }
-//        builder.append(text.substring(i));
-//        return builder.toString();
         return text;
     }
 
