@@ -275,10 +275,13 @@ public class Tools {
 
     public static boolean ping(String address) {
         try {
+            log.debug("pinging {}", address);
             InetAddress iaddress = InetAddress.getByName(address);
-            return iaddress.isReachable(1000);
+            boolean reachable = iaddress.isReachable(1000);
+            log.debug("{} reachable: {}", address, reachable);
+            return reachable;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.debug("ping {}", e.getMessage());
             return false;
         }
     }
