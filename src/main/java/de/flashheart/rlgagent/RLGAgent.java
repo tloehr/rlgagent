@@ -48,7 +48,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private final Scheduler scheduler;
     private final Agent me;
     private SimpleTrigger connectionTrigger, statusTrigger;
-    private Optional<String> MQTT_URI;
+    //private Optional<String> MQTT_URI;
     private long agent_connected_since = Long.MAX_VALUE;
     private long mqtt_connect_tries = 0l;
     final ReentrantLock lock;
@@ -63,7 +63,7 @@ public class RLGAgent implements MqttCallbackExtended {
         this.pinHandler = pinHandler;
         this.configs = configs;
         this.myLCD = myLCD;
-        this.MQTT_URI = Optional.empty();
+        //this.MQTT_URI = Optional.empty();
 
         me = new Agent(new JSONObject()
                 .put("agentid", configs.getAgentname())
@@ -99,25 +99,22 @@ public class RLGAgent implements MqttCallbackExtended {
      * To reconnect to a different broker, the agent needs to restart.
      */
     public void connect_to_mqtt_broker() {
-        // the wifi quality might be of interest during that phase
-        int wifi = Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
-        if (wifi != me.getWifi()) me.setWifi(wifi);
-        boolean success = false;
+        show_connection_status();
 
-        if (MQTT_URI.isPresent()) { // we already had a working broker. going to stick with it.
-            log.debug("we already had a working broker. trying to REconnect to it");
-            success = try_mqtt_broker(MQTT_URI.get());
+        if (me.getWifi() <= 0) {
+            log.warn("no wifi - no chance");
         } else {
+            mqtt_connect_tries++;
             log.debug("searching for mqtt broker");
             // try all the brokers on the space separated list.
             for (String broker : Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"))) {
-                success = Tools.ping(broker) && try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
-                if (success) break;
+                boolean success = Tools.ping(broker) && try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
+                if (success) {
+                    show_connection_status();
+                    break;
+                }
             }
         }
-
-        if (!success) show_connection_status_as_signals();
-
     }
 
     private void unsubscribe_from_all() {
@@ -160,14 +157,13 @@ public class RLGAgent implements MqttCallbackExtended {
         boolean success = false;
 
         try {
-            mqtt_connect_tries++;
             log.debug("trying broker @{} number of tries: {}", uri, mqtt_connect_tries);
             unsubscribe_from_all();
             iMqttClient = Optional.of(new MqttClient(uri, String.format("%s#%d-%s", me.getAgentid(), mqtt_connect_tries, UUID.randomUUID()) + mqtt_connect_tries, new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
-            options.setCleanSession(false);
-            options.setConnectionTimeout(10);
+            options.setCleanSession(true);
+            options.setConnectionTimeout(5);
 
             if (iMqttClient.isPresent()) {
                 iMqttClient.get().connect(options);
@@ -175,8 +171,9 @@ public class RLGAgent implements MqttCallbackExtended {
             }
 
             if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
+                mqtt_connect_tries = 0;
                 log.info("Connected to the broker @{} with ID: {}", iMqttClient.get().getServerURI(), iMqttClient.get().getClientId());
-                MQTT_URI = Optional.of(uri); // we will stick with this URI from now on
+                //MQTT_URI = Optional.of(uri); // we will stick with this URI from now on
                 // stop the connection job - we are done here
                 try {
                     scheduler.interrupt(myConnectionJobKey);
@@ -185,13 +182,6 @@ public class RLGAgent implements MqttCallbackExtended {
                 } catch (SchedulerException e) {
                     log.warn(e);
                 }
-
-                pinHandler.off();
-                pinHandler.setScheme(Configs.OUT_LED_WHITE, "very_fast"); // white is always flashing
-                myLCD.setLine("page0", 1, "RLGAgent");
-                myLCD.setLine("page0", 2, "Ver. ${agversion}.${agbuild}");
-                myLCD.setLine("page0", 3, "MQTT found @");
-                myLCD.setLine("page0", 4, uri);
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
@@ -323,10 +313,6 @@ public class RLGAgent implements MqttCallbackExtended {
         json.getJSONArray("page_handles").forEach(page -> myLCD.delPage(page.toString()));
     }
 
-
-    //2022-01-19T21:35:20.389+0100 [pi4j-gpio-event-executor-0] DEBUG button event: btn01; State: LOW; Edge: falling
-    //2022-01-19T21:35:20.619+0100 [pi4j-gpio-event-executor-0] DEBUG button event: btn01; State: HIGH; Edge: rising
-
     private void initAgent() {
         // Hardware Buttons
         gpio.ifPresent(gpioController -> {
@@ -335,10 +321,10 @@ public class RLGAgent implements MqttCallbackExtended {
             btn01.addListener((GpioPinListenerDigital) event -> {
                 log.debug("button event: {}; State: {}; Edge: {}", "btn01", event.getState(), event.getEdge());
                 //if (event.getState() != PinState.LOW) return;
-                if (event.getState() == PinState.HIGH) reportEvent("btn01", "up");
-                if (event.getState() == PinState.LOW) reportEvent("btn01", "down");
-//                if (event.getEdge().equals(PinEdge.RISING)) reportEvent("btn01", "down");
-//                if (event.getEdge().equals(PinEdge.FALLING)) reportEvent("btn01", "up");
+                if (event.getState() == PinState.HIGH)
+                    reportEvent("btn01", new JSONObject().put("button", "up").toString());
+                if (event.getState() == PinState.LOW)
+                    reportEvent("btn01", new JSONObject().put("button", "down").toString());
             });
 
             GpioPinDigitalInput btn02 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN02)), PinPullResistance.PULL_UP);
@@ -346,8 +332,10 @@ public class RLGAgent implements MqttCallbackExtended {
             btn02.addListener((GpioPinListenerDigital) event -> {
                 log.debug("button event: {}; State: {}; Edge: {}", "btn02", event.getState(), event.getEdge());
                 //if (event.getState() != PinState.LOW) return;
-                if (event.getState() == PinState.HIGH) reportEvent("btn02", "up");
-                if (event.getState() == PinState.LOW) reportEvent("btn02", "down");
+                if (event.getState() == PinState.HIGH)
+                    reportEvent("btn02", new JSONObject().put("button", "up").toString());
+                if (event.getState() == PinState.LOW)
+                    reportEvent("btn02", new JSONObject().put("button", "down").toString());
             });
         });
 
@@ -356,12 +344,12 @@ public class RLGAgent implements MqttCallbackExtended {
             myUI1.getBtn01().addMouseListener(new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    reportEvent("btn01", "down");
+                    reportEvent("btn01", new JSONObject().put("button", "down").toString());
                 }
 
                 @Override
                 public void mouseReleased(MouseEvent e) {
-                    reportEvent("btn01", "up");
+                    reportEvent("btn01", new JSONObject().put("button", "up").toString());
                 }
             });
         });
@@ -374,7 +362,6 @@ public class RLGAgent implements MqttCallbackExtended {
      * @throws SchedulerException
      */
     private void initMqttConnectionJob() throws SchedulerException {
-        show_connection_status_as_signals();
         if (scheduler.checkExists(myConnectionJobKey)) return;
         log.debug("initMqttConnectionJob()");
         JobDetail job = newJob(MqttConnectionJob.class)
@@ -411,9 +398,9 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
 
-    private void reportEvent(String src) {
-        reportEvent(src, "");
-    }
+//    private void reportEvent(String src) {
+//        reportEvent(src, "");
+//    }
 
     private void reportEvent(String src, String payload) {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
@@ -435,27 +422,36 @@ public class RLGAgent implements MqttCallbackExtended {
      * <p>
      * white - agent is running and trying to connect red - green - signal strength for wifi blue - mqtt is connected
      */
-    private void show_connection_status_as_signals() {
-        int wifi = me.getWifi();
+    private void show_connection_status() {
+        me.setWifi(Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE))));
 
         String scheme = "∞:on,250;off,1750";
-        pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
-        if (wifi > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
-        if (wifi > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
-        if (wifi > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
-        if (wifi > 3) pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme);
-        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-        myLCD.setLine("page0", 4, "WIFI: " + Tools.WIFI[wifi]);
 
-        if (!iMqttClient.isPresent() || !iMqttClient.get().isConnected()) {
-            if (me.getWifi() <= 0) { // no wifi
-                myLCD.setLine("page0", 2, "");
-                myLCD.setLine("page0", 3, "");
-                myLCD.setLine("page0", 4, "NO WIFI");
-            } else { // wifi but no broker yet
-                myLCD.setLine("page0", 2, "Searching for");
-                myLCD.setLine("page0", 3, "MQTT Broker " + mqtt_connect_tries + "x");
-            }
+        pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
+        pinHandler.setScheme(Configs.OUT_LED_RED, "off");
+        pinHandler.setScheme(Configs.OUT_LED_YELLOW, "off");
+        pinHandler.setScheme(Configs.OUT_LED_GREEN, "off");
+        pinHandler.setScheme(Configs.OUT_LED_BLUE, "off");
+
+        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+        myLCD.setLine("page0", 4, "WIFI: " + Tools.WIFI[me.getWifi()]);
+
+        if (me.getWifi() <= 0) {
+            myLCD.setLine("page0", 2, "");
+            myLCD.setLine("page0", 3, "");
+            myLCD.setLine("page0", 4, "NO WIFI");
+        } else if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
+            myLCD.setLine("page0", 1, "RLGAgent");
+            myLCD.setLine("page0", 2, "Ver. ${agversion}.${agbuild}");
+            myLCD.setLine("page0", 3, "MQTT found @");
+            myLCD.setLine("page0", 4, iMqttClient.get().getServerURI());
+            pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme);
+        } else {
+            myLCD.setLine("page0", 2, "Searching for");
+            myLCD.setLine("page0", 3, "MQTT Broker " + mqtt_connect_tries + "x");
+            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
+            if (me.getWifi() > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
+            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
         }
     }
 
@@ -472,7 +468,7 @@ public class RLGAgent implements MqttCallbackExtended {
         reportEvent("status", new JSONObject()
                 .put("wifi", me.getWifi())
                 .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
-                .put("mqtt-broker", MQTT_URI.isPresent() ? MQTT_URI.get() : "! no broker yet !")
+                .put("mqtt-broker", iMqttClient.isPresent() ? iMqttClient.get().getServerURI() : "not connected")
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                 .toString()
         );
