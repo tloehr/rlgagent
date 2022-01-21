@@ -161,9 +161,11 @@ public class RLGAgent implements MqttCallbackExtended {
             unsubscribe_from_all();
             iMqttClient = Optional.of(new MqttClient(uri, String.format("%s#%d-%s", me.getAgentid(), mqtt_connect_tries, UUID.randomUUID()) + mqtt_connect_tries, new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
-            options.setAutomaticReconnect(true);
+            // todo: this needs to go into the configs
+            options.setAutomaticReconnect(true); // todo: really ? Try with false.
             options.setCleanSession(true);
-            options.setConnectionTimeout(5);
+            options.setConnectionTimeout(10);
+            options.setMaxInflight(1000);
 
             if (iMqttClient.isPresent()) {
                 iMqttClient.get().connect(options);
@@ -173,7 +175,6 @@ public class RLGAgent implements MqttCallbackExtended {
             if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
                 mqtt_connect_tries = 0;
                 log.info("Connected to the broker @{} with ID: {}", iMqttClient.get().getServerURI(), iMqttClient.get().getClientId());
-                //MQTT_URI = Optional.of(uri); // we will stick with this URI from now on
                 // stop the connection job - we are done here
                 try {
                     scheduler.interrupt(myConnectionJobKey);
@@ -235,8 +236,8 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     public void procShutdown(boolean system_shutdown) {
-        log.debug("received SHUTDOWN command");
-
+        log.debug("Shutdown initiated");
+        // todo: this is not good. maybe shutdowns should not retain.
         long connection_up_time = System.currentTimeMillis() - agent_connected_since;
         log.debug("connection uptime in seconds {}", connection_up_time / 1000);
         if (connection_up_time < MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED) {
