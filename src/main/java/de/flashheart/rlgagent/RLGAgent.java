@@ -48,22 +48,22 @@ public class RLGAgent implements MqttCallbackExtended {
     private final Scheduler scheduler;
     private final Agent me;
     private SimpleTrigger connectionTrigger, statusTrigger;
-    //private Optional<String> MQTT_URI;
     private long agent_connected_since = Long.MAX_VALUE;
     private long mqtt_connect_tries = 0l;
-    final ReentrantLock lock;
+    private boolean network_debug_mode = false;
+    //final ReentrantLock lock;
+
 
 
     final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
-        this.lock = new ReentrantLock();
+        //this.lock = new ReentrantLock();
         this.myUI = myUI;
         this.gpio = gpio;
         this.pinHandler = pinHandler;
         this.configs = configs;
         this.myLCD = myLCD;
-        //this.MQTT_URI = Optional.empty();
 
         me = new Agent(new JSONObject()
                 .put("agentid", configs.getAgentname())
@@ -161,11 +161,10 @@ public class RLGAgent implements MqttCallbackExtended {
             unsubscribe_from_all();
             iMqttClient = Optional.of(new MqttClient(uri, String.format("%s#%d-%s", me.getAgentid(), mqtt_connect_tries, UUID.randomUUID()) + mqtt_connect_tries, new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
-            // todo: this needs to go into the configs
-            options.setAutomaticReconnect(true); // todo: really ? Try with false.
-            options.setCleanSession(true);
-            options.setConnectionTimeout(10);
-            options.setMaxInflight(1000);
+            options.setAutomaticReconnect(configs.is(Configs.MQTT_RECONNECT));
+            options.setCleanSession(configs.is(Configs.MQTT_CLEAN_SESSION));
+            options.setConnectionTimeout(configs.getInt(Configs.MQTT_TIMEOUT));
+            options.setMaxInflight(configs.getInt(Configs.MQTT_MAX_INFLIGHT));
 
             if (iMqttClient.isPresent()) {
                 iMqttClient.get().connect(options);
@@ -398,17 +397,12 @@ public class RLGAgent implements MqttCallbackExtended {
         scheduler.scheduleJob(job, statusTrigger);
     }
 
-
-//    private void reportEvent(String src) {
-//        reportEvent(src, "");
-//    }
-
     private void reportEvent(String src, String payload) {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             try {
                 MqttMessage msg = new MqttMessage();
-                msg.setQos(2);
-                msg.setRetained(false);
+                msg.setQos(configs.getInt(Configs.MQTT_QOS));
+                msg.setRetained(configs.is(Configs.MQTT_RETAINED));
                 if (!payload.isEmpty()) msg.setPayload(payload.getBytes());
                 iMqttClient.get().publish(EVENTS + src, msg);
                 log.info(EVENTS);
@@ -423,9 +417,7 @@ public class RLGAgent implements MqttCallbackExtended {
      * <p>
      * white - agent is running and trying to connect red - green - signal strength for wifi blue - mqtt is connected
      */
-    private void show_connection_status() {
-        me.setWifi(Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE))));
-
+    public void show_connection_status() {
         String scheme = "∞:on,250;off,1750";
 
         pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
@@ -437,23 +429,34 @@ public class RLGAgent implements MqttCallbackExtended {
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
         myLCD.setLine("page0", 4, "WIFI: " + Tools.WIFI[me.getWifi()]);
 
+        if (network_debug_mode) {
+            // do something ,...
+        }
+
+        me.setWifi(Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE))));
         if (me.getWifi() <= 0) {
             myLCD.setLine("page0", 2, "");
             myLCD.setLine("page0", 3, "");
             myLCD.setLine("page0", 4, "NO WIFI");
-        } else if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
+            return;
+        }
+
+        if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             myLCD.setLine("page0", 1, "RLGAgent");
             myLCD.setLine("page0", 2, "Ver. ${agversion}.${agbuild}");
             myLCD.setLine("page0", 3, "MQTT found @");
             myLCD.setLine("page0", 4, iMqttClient.get().getServerURI());
             pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme);
-        } else {
-            myLCD.setLine("page0", 2, "Searching for");
-            myLCD.setLine("page0", 3, "MQTT Broker " + mqtt_connect_tries + "x");
-            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
-            if (me.getWifi() > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
-            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
+            return;
         }
+
+
+        myLCD.setLine("page0", 2, "Searching for");
+        myLCD.setLine("page0", 3, "MQTT Broker " + mqtt_connect_tries + "x");
+        if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
+        if (me.getWifi() > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
+        if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
+
     }
 
     /**

@@ -6,7 +6,7 @@ import org.quartz.*;
 
 @Log4j2
 @DisallowConcurrentExecution
-public class StatusJob implements Job, InterruptableJob {
+public class StatusJob implements InterruptableJob {
     public static final String name = "statusreport";
 
     @Override

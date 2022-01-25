@@ -6,15 +6,16 @@ import org.quartz.*;
 
 @Log4j2
 @DisallowConcurrentExecution
-public class MqttConnectionJob implements InterruptableJob {
-    public static final String name = "mqttconnection";
+public class NetworkDebugJob implements InterruptableJob {
+
+    public static final String name = "networkdebug";
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) {
         try {
             log.debug(jobExecutionContext.getJobDetail().getKey() + " executed");
             RLGAgent rlgAgent = (RLGAgent) jobExecutionContext.getScheduler().getContext().get("rlgAgent");
-            rlgAgent.connect_to_mqtt_broker();
+            rlgAgent.show_connection_status();
         } catch (SchedulerException e) {
             log.fatal(e);
             System.exit(0);
@@ -26,4 +27,5 @@ public class MqttConnectionJob implements InterruptableJob {
         log.info("job '{}' interrupted", name);
         // nothing to do here
     }
+
 }

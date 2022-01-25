@@ -12,6 +12,12 @@ public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
     public static final String MQTT_PORT = "mqtt_port";
     public static final String MQTT_ROOT = "mqtt_root";
+    public static final String MQTT_RECONNECT = "mqtt_reconnect";
+    public static final String MQTT_MAX_INFLIGHT = "mqtt_max_inflight";
+    public static final String MQTT_TIMEOUT = "mqtt_timeout";
+    public static final String MQTT_CLEAN_SESSION = "mqtt_clean_session";
+    public static final String MQTT_QOS = "mqtt_qos";
+    public static final String MQTT_RETAINED = "mqtt_retained";
     public static final String OUT_LED_WHITE = "led_wht";
     public static final String OUT_LED_RED = "led_red";
     public static final String OUT_LED_BLUE = "led_blu";
@@ -56,8 +62,13 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(MQTT_BROKER, "localhost");
         configs.setProperty(MY_ID, "ag01");
         configs.setProperty(MQTT_PORT, "1883");
-        // configs.setProperty(MQTT_BROKER, String.format("tcp://%s:%s", "mqtt", "port"));
         configs.setProperty(MQTT_ROOT, "rlg");
+        configs.setProperty(MQTT_MAX_INFLIGHT, "1000");
+        configs.setProperty(MQTT_CLEAN_SESSION, "true");
+        configs.setProperty(MQTT_TIMEOUT, "10");
+        configs.setProperty(MQTT_RECONNECT, "true");
+        configs.setProperty(MQTT_QOS, "2");
+        configs.setProperty(MQTT_RETAINED, "true");
 
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
         configs.setProperty(MCP23017_I2C_ADDRESS, "0x20");
