@@ -26,7 +26,7 @@ public class Tools {
     private static final int WIFI_UNSTABLE = -80;
     private static final int WIFI_BAD = -90;
     private static final int NO_WIFI = -99;
-    public static final String[] WIFI = new String[]{"UGLY", "BAD", "FAIR", "GOOD", "EXCELLENT", "DESKTOP"};
+    public static final String[] WIFI = new String[]{"NO_WIFI", "BAD", "FAIR", "GOOD", "PERFECT"};
 
     // http://www.mkyong.com/java/how-to-detect-os-in-java-systemgetpropertyosname/
     public static boolean isArm() {
@@ -171,7 +171,6 @@ public class Tools {
         String result = "error";
 
         try {
-
             ProcessBuilder processBuilder = new ProcessBuilder();
             processBuilder.command("bash", "-c", cmd);
 
@@ -236,13 +235,13 @@ public class Tools {
         }
 
         if (wifi >= 0) wifiQuality = 0;
-        else if (wifi > WIFI_EXCELLENT) wifiQuality = 4; // excellent
-        else if (wifi > WIFI_GOOD) wifiQuality = 4;
-        else if (wifi > WIFI_FAIR) wifiQuality = 3; // good
-        else if (wifi > WIFI_MINIMUM) wifiQuality = 3;  // good
-        else if (wifi > WIFI_UNSTABLE) wifiQuality = 2; // bad
-        else if (wifi > WIFI_BAD) wifiQuality = 1;  // ugly
-        else wifiQuality = 0; // dead
+        else if (wifi > WIFI_EXCELLENT) wifiQuality = 4; // PERFECT
+        else if (wifi > WIFI_GOOD) wifiQuality = 3; // good
+        else if (wifi > WIFI_FAIR) wifiQuality = 2; // fair
+        else if (wifi > WIFI_MINIMUM) wifiQuality = 2;  // fair
+        else if (wifi > WIFI_UNSTABLE) wifiQuality = 1; // bad
+        else if (wifi > WIFI_BAD) wifiQuality = 1;  // bad
+        else wifiQuality = 0; // no wifi
 
         return wifiQuality;
     }

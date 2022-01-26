@@ -6,6 +6,7 @@ import de.flashheart.rlgagent.hardware.Agent;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
 import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
 import de.flashheart.rlgagent.jobs.MqttConnectionJob;
+import de.flashheart.rlgagent.jobs.NetworkDebugJob;
 import de.flashheart.rlgagent.jobs.StatusJob;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
@@ -24,7 +25,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.quartz.JobBuilder.newJob;
@@ -35,7 +35,6 @@ public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private static final int MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS = 8;
     private static final int STATUS_INTERVAL_IN_SECONDS = 60;
-    private static final long MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED = 60000;
     private final String EVENTS, CMD4ME, CMD4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
@@ -44,18 +43,14 @@ public class RLGAgent implements MqttCallbackExtended {
     private final MyLCD myLCD;
     private Optional<IMqttClient> iMqttClient;
 
-    private final JobKey myConnectionJobKey, myStatusJobKey;
+    private final JobKey myConnectionJobKey, myStatusJobKey, myNetworkDebugKey;
     private final Scheduler scheduler;
     private final Agent me;
-    private SimpleTrigger connectionTrigger, statusTrigger;
-    private long agent_connected_since = Long.MAX_VALUE;
+    private SimpleTrigger connectionTrigger, statusTrigger, networkDebugTrigger;
     private long mqtt_connect_tries = 0l;
     private boolean network_debug_mode = false;
-    //final ReentrantLock lock;
 
-
-
-    final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
+    //final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
@@ -85,6 +80,7 @@ public class RLGAgent implements MqttCallbackExtended {
 
         myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
+        myNetworkDebugKey = new JobKey(NetworkDebugJob.name, "group1");
 
         initAgent();
         initMqttConnectionJob();
@@ -99,6 +95,7 @@ public class RLGAgent implements MqttCallbackExtended {
      * To reconnect to a different broker, the agent needs to restart.
      */
     public void connect_to_mqtt_broker() {
+        unsubscribe_from_all();
         show_connection_status();
 
         if (me.getWifi() <= 0) {
@@ -145,6 +142,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 log.debug(e.getMessage());
             }
         });
+        iMqttClient = Optional.empty();
     }
 
     /**
@@ -188,7 +186,6 @@ public class RLGAgent implements MqttCallbackExtended {
                 iMqttClient.get().subscribe(CMD4ALL, (topic, receivedMessage) -> proc(topic, receivedMessage));
                 iMqttClient.get().subscribe(CMD4ME, (topic, receivedMessage) -> proc(topic, receivedMessage));
 
-                agent_connected_since = System.currentTimeMillis();
                 success = true;
             }
         } catch (MqttException e) {
@@ -210,6 +207,8 @@ public class RLGAgent implements MqttCallbackExtended {
                 procInit();
             } else if (cmd.equalsIgnoreCase("status")) {
                 procStatus();
+            } else if (cmd.equalsIgnoreCase("netdebug")) {
+                procNetworkDebug();
             } else if (cmd.equalsIgnoreCase("shutdown")) {
                 procShutdown(true);
             } else {
@@ -236,13 +235,6 @@ public class RLGAgent implements MqttCallbackExtended {
 
     public void procShutdown(boolean system_shutdown) {
         log.debug("Shutdown initiated");
-        // todo: this is not good. maybe shutdowns should not retain.
-        long connection_up_time = System.currentTimeMillis() - agent_connected_since;
-        log.debug("connection uptime in seconds {}", connection_up_time / 1000);
-        if (connection_up_time < MINIMUM_UPTIME_B4_SHUTDOWN_IS_PROCESSED) {
-            log.warn("shutdown arrived message too soon after last connection. discarding.");
-            return;
-        }
 
         myLCD.init();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
@@ -263,11 +255,21 @@ public class RLGAgent implements MqttCallbackExtended {
 
     private void procInit() {
         log.debug("received INIT");
+
         myLCD.init();
-        myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
-        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-        myLCD.setLine("page0", 2, "WIFI: ${wifi}");
+        //        myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
+        //        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+        //        myLCD.setLine("page0", 2, "WIFI: ${wifi}");
         pinHandler.off();
+
+        try {
+            scheduler.interrupt(myNetworkDebugKey);
+            scheduler.unscheduleJob(networkDebugTrigger.getKey());
+            scheduler.deleteJob(myNetworkDebugKey);
+            if (network_debug_mode) initMqttConnectionJob();
+        } catch (SchedulerException e) {
+            log.warn(e);
+        }
     }
 
     private void procTimers(JSONObject json) {
@@ -397,6 +399,22 @@ public class RLGAgent implements MqttCallbackExtended {
         scheduler.scheduleJob(job, statusTrigger);
     }
 
+    private void initNetworkDebug() throws SchedulerException {
+        if (scheduler.checkExists(myNetworkDebugKey)) return;
+
+        JobDetail job = newJob(StatusJob.class)
+                .withIdentity(myNetworkDebugKey)
+                .build();
+
+        networkDebugTrigger = newTrigger()
+                .withIdentity(NetworkDebugJob.name + "-trigger", "group1")
+                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
+                        .withIntervalInSeconds(1)
+                        .repeatForever())
+                .build();
+        scheduler.scheduleJob(job, networkDebugTrigger);
+    }
+
     private void reportEvent(String src, String payload) {
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
             try {
@@ -418,7 +436,12 @@ public class RLGAgent implements MqttCallbackExtended {
      * white - agent is running and trying to connect red - green - signal strength for wifi blue - mqtt is connected
      */
     public void show_connection_status() {
-        String scheme = "∞:on,250;off,1750";
+        String scheme = "∞:on,250;off,750";
+        String driver_response = Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE));
+        me.setWifi(Tools.getWifiQuality(driver_response));
+        myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
+        myLCD.setVariable("drv", driver_response);
+
 
         pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
         pinHandler.setScheme(Configs.OUT_LED_RED, "off");
@@ -427,35 +450,34 @@ public class RLGAgent implements MqttCallbackExtended {
         pinHandler.setScheme(Configs.OUT_LED_BLUE, "off");
 
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-        myLCD.setLine("page0", 4, "WIFI: " + Tools.WIFI[me.getWifi()]);
+        myLCD.setLine("page0", 4, "${drv} ${wifi}");
+
+        if (me.getWifi() == 0) return;
 
         if (network_debug_mode) {
-            // do something ,...
-        }
-
-        me.setWifi(Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE))));
-        if (me.getWifi() <= 0) {
-            myLCD.setLine("page0", 2, "");
-            myLCD.setLine("page0", 3, "");
-            myLCD.setLine("page0", 4, "NO WIFI");
+            myLCD.setLine("page0", 2, "Network Debug");
+            myLCD.setLine("page0", 3, "Mode");
+            pinHandler.setScheme(Configs.OUT_BUZZER, "single_buzz");
+            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
+            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
+            if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
+            pinHandler.setScheme(Configs.OUT_LED_RED, "off");
             return;
         }
 
         if (iMqttClient.isPresent() && iMqttClient.get().isConnected()) {
-            myLCD.setLine("page0", 1, "RLGAgent");
-            myLCD.setLine("page0", 2, "Ver. ${agversion}.${agbuild}");
-            myLCD.setLine("page0", 3, "MQTT found @");
-            myLCD.setLine("page0", 4, iMqttClient.get().getServerURI());
+            myLCD.setLine("page0", 2, "MQTT found @");
+            myLCD.setLine("page0", 3, iMqttClient.get().getServerURI());
             pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme);
             return;
         }
 
-
         myLCD.setLine("page0", 2, "Searching for");
         myLCD.setLine("page0", 3, "MQTT Broker " + mqtt_connect_tries + "x");
+
         if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
-        if (me.getWifi() > 1) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
-        if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
+        if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
+        if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
 
     }
 
@@ -464,11 +486,9 @@ public class RLGAgent implements MqttCallbackExtended {
      * StatusJob
      */
     public void procStatus() {
-        int wifi = Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE)));
-        if (wifi != me.getWifi()) {
-            me.setWifi(wifi);
-            myLCD.setVariable("wifi", wifiQuality[me.getWifi()]);
-        }
+        me.setWifi(Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE))));
+        myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
+
         reportEvent("status", new JSONObject()
                 .put("wifi", me.getWifi())
                 .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
@@ -476,6 +496,19 @@ public class RLGAgent implements MqttCallbackExtended {
                 .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                 .toString()
         );
+    }
+
+    public void procNetworkDebug() {
+        try {
+            scheduler.interrupt(myConnectionJobKey);
+            scheduler.unscheduleJob(connectionTrigger.getKey());
+            scheduler.deleteJob(myConnectionJobKey);
+            network_debug_mode = true;
+            unsubscribe_from_all();
+            initNetworkDebug();
+        } catch (SchedulerException e) {
+            log.warn(e);
+        }
     }
 
     @SneakyThrows
@@ -504,7 +537,6 @@ public class RLGAgent implements MqttCallbackExtended {
 
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
-        agent_connected_since = Long.MAX_VALUE;
         log.info("connection #{} complete", mqtt_connect_tries);
     }
 }
