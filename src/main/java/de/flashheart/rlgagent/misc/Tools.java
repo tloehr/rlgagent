@@ -10,9 +10,9 @@ import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringTokenizer;
+import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Log4j2
 public class Tools {
@@ -164,8 +164,29 @@ public class Tools {
         return ZonedDateTime.parse(iso8601).toLocalDateTime();
     }
 
+    /**
+     * parses a standard iwconfig to a HashMap
+     *
+     * @param current_wifi_params
+     * @param iwconfig_output
+     * @return
+     */
+    public static void getWifiParams(HashMap<String, String> current_wifi_params, String iwconfig_output) {
+        if (!Tools.isArm()) return;
 
-    public static String getWifiDriverResponse(String cmd) {
+        List<String> l = Collections.list(new StringTokenizer(iwconfig_output, " :="))
+                .stream().map(token -> (String) token).collect(Collectors.toList());
+        current_wifi_params.put("essid", l.get(l.indexOf("ESSID") + 1));
+        current_wifi_params.put("bitrate", l.get(l.indexOf("Bit") + 2));
+        current_wifi_params.put("txpower", l.get(l.indexOf("Tx-Power") + 1));
+        current_wifi_params.put("link", l.get(l.indexOf("Quality") + 1));
+        current_wifi_params.put("signal", l.get(l.indexOf("Signal") + 2));
+        current_wifi_params.put("freq", l.get(l.indexOf("Frequency") + 1));
+        current_wifi_params.put("powermgt", l.get(l.indexOf("Management") + 1));
+    }
+
+
+    public static String getIWConfig(String cmd) {
         if (!Tools.isArm()) return "desktop";
 
         String result = "error";
@@ -185,7 +206,7 @@ public class Tools {
 
             int exitVal = process.waitFor();
             if (exitVal == 0) {
-                log.debug("command {} returned {} ", cmd, output);
+                log.trace("command {} returned {} ", cmd, output);
                 result = output.toString();
             }
         } catch (IOException | InterruptedException io) {
@@ -209,13 +230,14 @@ public class Tools {
     }
 
     /**
-     * @param driver_response shell command to get the signal strength from the wifi driver. can be in dbm or percentage
-     *                        like "70/100"
+     * translates a signal level to an quality rating
+     *
+     * @param signal_level signal level as reported from iwconfig can be in dbm or percentage like "70/100"
      * @return 4 - excellent (or desktop), 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
-    public static int getWifiQuality(String driver_response) {
-        if (driver_response.equalsIgnoreCase("desktop")) return 4;
-        if (driver_response.trim().isEmpty()) return 0;
+    public static int getWifiQuality(String signal_level) {
+        if (signal_level.equalsIgnoreCase("desktop")) return 4;
+        if (signal_level.trim().isEmpty()) return 0;
         int wifiQuality;
         int wifi;
         //driver_response = "level=94";
@@ -223,12 +245,12 @@ public class Tools {
         // sometimes when driver show level=100/100 use
         // iwconfig wlan0|egrep "Signal level"|awk '{print $4}'|sed 's/[^0-9/]*//g'
         try {
-            if (driver_response.contains("/")) { // link quality in percentage
-                StringTokenizer tokenizer = new StringTokenizer(driver_response, "/");
+            if (signal_level.contains("/")) { // link quality in percentage
+                StringTokenizer tokenizer = new StringTokenizer(signal_level, "/");
                 int quality = Integer.parseInt(tokenizer.nextToken());
                 wifi = quality / 2 - 100;
             } else { // link quality in dbm
-                wifi = Integer.parseInt(driver_response.replaceAll("[^0-9\\-]", ""));
+                wifi = Integer.parseInt(signal_level.replaceAll("[^0-9\\-]", ""));
             }
         } catch (NumberFormatException nfe) {
             wifi = 0;
@@ -257,15 +279,15 @@ public class Tools {
         return text;
     }
 
-    public static boolean ping(String address) {
+    public static boolean ping(String address, int timeout) {
         try {
-            log.debug("pinging {}", address);
+            log.trace("pinging {}", address);
             InetAddress iaddress = InetAddress.getByName(address);
-            boolean reachable = iaddress.isReachable(1000);
-            log.debug("{} reachable: {}", address, reachable);
+            boolean reachable = iaddress.isReachable(timeout);
+            log.trace("{} reachable: {}", address, reachable);
             return reachable;
         } catch (Exception e) {
-            log.debug("ping {}", e.getMessage());
+            log.trace("ping {}", e.getMessage());
             return false;
         }
     }

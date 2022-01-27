@@ -8,14 +8,14 @@ import org.quartz.*;
 @DisallowConcurrentExecution
 public class NetworkMonitoringJob implements InterruptableJob {
 
-    public static final String name = "networkdebug";
+    public static final String name = "networkingmonitor";
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) {
         try {
             log.debug(jobExecutionContext.getJobDetail().getKey() + " executed");
             RLGAgent rlgAgent = (RLGAgent) jobExecutionContext.getScheduler().getContext().get("rlgAgent");
-            rlgAgent.show_connection_status();
+            rlgAgent.procNetworkMonitoring();
         } catch (SchedulerException e) {
             log.fatal(e);
             System.exit(0);

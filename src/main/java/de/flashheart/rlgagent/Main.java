@@ -84,7 +84,7 @@ public class Main {
 
         configs = new Configs();
 
-        Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
+        //Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         pinHandler = new PinHandler(configs);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> agent.procShutdown(false)));
 
