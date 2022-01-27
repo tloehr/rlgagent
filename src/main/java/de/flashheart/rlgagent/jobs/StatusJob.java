@@ -14,7 +14,7 @@ public class StatusJob implements InterruptableJob {
         try {
             log.debug(jobExecutionContext.getJobDetail().getKey() + " executed");
             RLGAgent rlgAgent = (RLGAgent) jobExecutionContext.getScheduler().getContext().get("rlgAgent");
-            rlgAgent.procStatus();
+            rlgAgent.procNetworkMonitoring();
         } catch (SchedulerException e) {
             log.fatal(e);
             System.exit(0);

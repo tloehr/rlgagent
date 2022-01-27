@@ -6,7 +6,7 @@ import org.quartz.*;
 
 @Log4j2
 @DisallowConcurrentExecution
-public class NetworkDebugJob implements InterruptableJob {
+public class NetworkMonitoringJob implements InterruptableJob {
 
     public static final String name = "networkdebug";
 

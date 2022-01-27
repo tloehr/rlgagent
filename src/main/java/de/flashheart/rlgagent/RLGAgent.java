@@ -6,7 +6,7 @@ import de.flashheart.rlgagent.hardware.Agent;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
 import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
 import de.flashheart.rlgagent.jobs.MqttConnectionJob;
-import de.flashheart.rlgagent.jobs.NetworkDebugJob;
+import de.flashheart.rlgagent.jobs.NetworkMonitoringJob;
 import de.flashheart.rlgagent.jobs.StatusJob;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
@@ -34,6 +34,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private static final int MQTT_INTERVAL_BETWEEN_CONNECTION_TRIES_IN_SECONDS = 8;
+    private int NETWORKING_MONITOR_INTERVAL = 1;
     private static final int STATUS_INTERVAL_IN_SECONDS = 60;
     private final String EVENTS, CMD4ME, CMD4ALL;
     private final Optional<MyUI> myUI;
@@ -46,11 +47,10 @@ public class RLGAgent implements MqttCallbackExtended {
     private final JobKey myConnectionJobKey, myStatusJobKey, myNetworkDebugKey;
     private final Scheduler scheduler;
     private final Agent me;
-    private SimpleTrigger connectionTrigger, statusTrigger, networkDebugTrigger;
+    private SimpleTrigger connectionTrigger,  networkMonitorTrigger;
     private long mqtt_connect_tries = 0l;
     private boolean network_debug_mode = false;
-
-    //final String[] wifiQuality = new String[]{"dead", "ugly", "bad", "good", "excellent"};
+    private long netmonitor_cycle = 0l;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
@@ -80,11 +80,11 @@ public class RLGAgent implements MqttCallbackExtended {
 
         myStatusJobKey = new JobKey(StatusJob.name, "group1");
         myConnectionJobKey = new JobKey(MqttConnectionJob.name, "group1");
-        myNetworkDebugKey = new JobKey(NetworkDebugJob.name, "group1");
+        myNetworkDebugKey = new JobKey(NetworkMonitoringJob.name, "group1");
 
         initAgent();
         initMqttConnectionJob();
-        initStatusJob();
+        initNetworkMonitoringJob();
     }
 
     /**
@@ -151,12 +151,12 @@ public class RLGAgent implements MqttCallbackExtended {
      * @param uri to try for connection
      * @return true when connection was successful, false otherwise
      */
-    boolean try_mqtt_broker(String uri) {
+    private boolean try_mqtt_broker(String uri) {
         boolean success = false;
 
         try {
             log.debug("trying broker @{} number of tries: {}", uri, mqtt_connect_tries);
-            unsubscribe_from_all();
+            //unsubscribe_from_all();
             iMqttClient = Optional.of(new MqttClient(uri, String.format("%s#%d-%s", me.getAgentid(), mqtt_connect_tries, UUID.randomUUID()) + mqtt_connect_tries, new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(configs.is(Configs.MQTT_RECONNECT));
@@ -206,9 +206,7 @@ public class RLGAgent implements MqttCallbackExtended {
             if (cmd.equalsIgnoreCase("init")) {
                 procInit();
             } else if (cmd.equalsIgnoreCase("status")) {
-                procStatus();
-            } else if (cmd.equalsIgnoreCase("netdebug")) {
-                procNetworkDebug();
+                procNetworkMonitoring();
             } else if (cmd.equalsIgnoreCase("shutdown")) {
                 procShutdown(true);
             } else {
@@ -264,7 +262,7 @@ public class RLGAgent implements MqttCallbackExtended {
 
         try {
             scheduler.interrupt(myNetworkDebugKey);
-            scheduler.unscheduleJob(networkDebugTrigger.getKey());
+            scheduler.unscheduleJob(networkMonitorTrigger.getKey());
             scheduler.deleteJob(myNetworkDebugKey);
             if (network_debug_mode) initMqttConnectionJob();
         } catch (SchedulerException e) {
@@ -379,40 +377,21 @@ public class RLGAgent implements MqttCallbackExtended {
         scheduler.scheduleJob(job, connectionTrigger);
     }
 
-    /**
-     * start a job that tries to connect to the mqtt broker
-     *
-     * @throws SchedulerException
-     */
-    private void initStatusJob() throws SchedulerException {
-        if (scheduler.checkExists(myStatusJobKey)) return;
-        JobDetail job = newJob(StatusJob.class)
-                .withIdentity(myStatusJobKey)
-                .build();
 
-        statusTrigger = newTrigger()
-                .withIdentity(StatusJob.name + "-trigger", "group1")
-                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(STATUS_INTERVAL_IN_SECONDS)
-                        .repeatForever())
-                .build();
-        scheduler.scheduleJob(job, statusTrigger);
-    }
-
-    private void initNetworkDebug() throws SchedulerException {
+    private void initNetworkMonitoringJob() throws SchedulerException {
         if (scheduler.checkExists(myNetworkDebugKey)) return;
 
         JobDetail job = newJob(StatusJob.class)
                 .withIdentity(myNetworkDebugKey)
                 .build();
 
-        networkDebugTrigger = newTrigger()
-                .withIdentity(NetworkDebugJob.name + "-trigger", "group1")
+        networkMonitorTrigger = newTrigger()
+                .withIdentity(NetworkMonitoringJob.name + "-trigger", "group1")
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(1)
+                        .withIntervalInSeconds(NETWORKING_MONITOR_INTERVAL)
                         .repeatForever())
                 .build();
-        scheduler.scheduleJob(job, networkDebugTrigger);
+        scheduler.scheduleJob(job, networkMonitorTrigger);
     }
 
     private void reportEvent(String src, String payload) {
@@ -485,10 +464,13 @@ public class RLGAgent implements MqttCallbackExtended {
      * inform commander about my current status and what I am capable of (role) is repeated every 60 seconds by the
      * StatusJob
      */
-    public void procStatus() {
+    public void procNetworkMonitoring() throws SchedulerException {
         me.setWifi(Tools.getWifiQuality(Tools.getWifiDriverResponse(configs.get(Configs.WIFI_CMD_LINE))));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
+        netmonitor_cycle++;
+        initMqttConnectionJob();
 
+        if (netmonitor_cycle % STATUS_INTERVAL_IN_SECONDS != 0) return;
         reportEvent("status", new JSONObject()
                 .put("wifi", me.getWifi())
                 .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
@@ -498,24 +480,15 @@ public class RLGAgent implements MqttCallbackExtended {
         );
     }
 
-    public void procNetworkDebug() {
-        try {
-            scheduler.interrupt(myConnectionJobKey);
-            scheduler.unscheduleJob(connectionTrigger.getKey());
-            scheduler.deleteJob(myConnectionJobKey);
-            network_debug_mode = true;
-            unsubscribe_from_all();
-            initNetworkDebug();
-        } catch (SchedulerException e) {
-            log.warn(e);
-        }
-    }
-
     @SneakyThrows
     @Override
+    /**
+     * this reacts very late on a network disconnect. When the broker is shut down normally
+     * this method is called immediately. So this is not useful for network disconnects.
+     */
     public void connectionLost(Throwable cause) {
-        log.warn("connection to broker lost - {}", cause.getMessage());
-        cause.printStackTrace();
+        log.warn("connectionLost() - {}", cause.getMessage());
+        //cause.printStackTrace();
         initMqttConnectionJob();
     }
 
