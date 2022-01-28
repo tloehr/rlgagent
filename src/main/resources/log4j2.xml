@@ -2,6 +2,8 @@
 <Configuration status="warn" name="rlgagent" packages="">
     <!-- Logging Properties -->
     <Properties>
+        <!--  %C Outputs the fully qualified class name of the caller issuing the logging request. This conversion specifier can be optionally followed by precision specifier, that follows the same rules as the logger name converter.
+        Generating the class name of the caller (location information) is an expensive operation and may impact performance. Use with caution. -->
         <Property name="LOG_PATTERN">%d{yyMMdd HH:mm:ss.SSS}[%-5level] %m%n</Property>
         <!--        The workspace parameter has to be passed via the command line. example: -Dworkspace=/Users/tloehr/ag01. The default value is always the rlgagent/logs directory in the homedir. -->
         <Property name="APP_LOG_ROOT">${sys:workspace}/logs</Property>

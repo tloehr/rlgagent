@@ -88,48 +88,9 @@ public class RLGAgent implements MqttCallbackExtended {
         initNetworkMonitoringJob();
     }
 
-    /**
-     * the agent uses a space separated list of brokers in the config file (key 'mqtt_broker'). it tries every entry in
-     * this list until a connection can be established. during a RUNTIME this broker is not changed again. even if the
-     * connection drops, the agent will try to reconnect to the same broker again.
-     * <p>
-     * To reconnect to a different broker, the agent needs to restart.
-     */
-//    public void connect_to_mqtt_broker() {
-//        unsubscribe_from_all();
-//        show_connection_status();
-//
-//        if (me.getWifi() <= 0) {
-//            log.warn("no wifi - no chance");
-//        } else {
-//            mqtt_connect_tries++;
-//            log.trace("searching for mqtt broker");
-//            // try all the brokers on the space separated list.
-//            for (String broker : potential_brokers) {
-//                boolean success = Tools.ping(broker, 250) && try_mqtt_broker(String.format("tcp://%s:%s", broker, configs.get(Configs.MQTT_PORT)));
-//                if (success) {
-//                    show_connection_status();
-//                    break;
-//                }
-//            }
-//        }
-//    }
-    private void unsubscribe_from_all() {
-        log.debug("unsubscribing from all");
-        // don't know if this ever comes into effect
+    private void disconnect_from_mqtt_broker() {
         iMqttClient.ifPresent(iMqttClient1 -> {
-//            try {
-//                iMqttClient1.unsubscribe(CMD4ALL);
-//                log.trace("unsubscribing from " + CMD4ALL);
-//            } catch (MqttException e) {
-//                log.trace(e.getMessage());
-//            }
-//            try {
-//                iMqttClient1.unsubscribe(CMD4ME);
-//                log.trace("unsubscribing from " + CMD4ME);
-//            } catch (MqttException e) {
-//                log.trace(e.getMessage());
-//            }
+            log.debug("disconnecting from mqtt if necessary");
             try {
                 iMqttClient1.disconnect();
                 log.debug("disconnecting " + iMqttClient1.getClientId());
@@ -145,7 +106,7 @@ public class RLGAgent implements MqttCallbackExtended {
             }
         });
         iMqttClient = Optional.empty();
-        log.debug("unsubscribing DONE");
+        log.debug("disconnected from mqtt");
     }
 
     /**
@@ -239,7 +200,7 @@ public class RLGAgent implements MqttCallbackExtended {
         } catch (SchedulerException e) {
             e.printStackTrace();
         }
-        unsubscribe_from_all();
+        disconnect_from_mqtt_broker();
         configs.saveConfigs();
         pinHandler.off();
         if (system_shutdown) Tools.system_shutdown();
@@ -392,6 +353,12 @@ public class RLGAgent implements MqttCallbackExtended {
 
     }
 
+    private void set_pins_to(String[] pins, String scheme) {
+        for (String pin : pins) {
+            pinHandler.setScheme(pin, scheme);
+        }
+    }
+
     /**
      * this method is called every 5 seconds to check if network is still good.
      *
@@ -408,9 +375,11 @@ public class RLGAgent implements MqttCallbackExtended {
         netmonitor_cycle++;
         show_connection_status();
 
+        // we assume that a raspi
         if (me.getWifi() == 0) return; // no wifi - no chance
 
         String reachable_host = "";
+        // if we already have an active broker, we check it first
         if (!Tools.isReachable(active_broker, configs.getInt(Configs.MQTT_PORT), 250)) {
             ListIterator<String> brokers = potential_brokers.listIterator();
             while (reachable_host.isEmpty() && brokers.hasNext()) {
@@ -422,16 +391,22 @@ public class RLGAgent implements MqttCallbackExtended {
         }
 
         // if a broker is reachable but the MQTTClient is not yet connected. Try it.
-        if (!reachable_host.isEmpty()) {
-            if (!mqtt_connected()) {
+        if (!reachable_host.isEmpty()) { // somebody answered
+            if (!mqtt_connected()) { // but we don't have a mqtt connection yet
                 myLCD.setLine("page0", 2, "Searching for broker");
                 myLCD.setLine("page0", 3, "@" + reachable_host);
                 active_broker = try_mqtt_broker(String.format("tcp://%s:%s", reachable_host, configs.get(Configs.MQTT_PORT))) ? reachable_host : "";
+                // SUCCESS!!
+                if (!active_broker.isEmpty()) {
+                    myLCD.setLine("page0", 2, "Connected to");
+                    myLCD.setLine("page0", 3, active_broker);
+                }
             }
         } else {
-            unsubscribe_from_all();
+            disconnect_from_mqtt_broker();
         }
 
+        // this reports a status message. very useful to see if all the agents are doing well during the game
         if (netmonitor_cycle % STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES == 0)
             reportEvent("status", new JSONObject()
                     .put("wifi", Tools.WIFI[me.getWifi()])
@@ -471,12 +446,6 @@ public class RLGAgent implements MqttCallbackExtended {
         log.trace("{} - {}", topic, message);
     }
 
-    private void set_pins_to(String[] pins, String scheme) {
-        for (String pin : pins) {
-            pinHandler.setScheme(pin, scheme);
-        }
-    }
-
     @Override
     public void deliveryComplete(IMqttDeliveryToken token) {
         log.trace("{} - delivered", token.getMessageId());
@@ -484,6 +453,6 @@ public class RLGAgent implements MqttCallbackExtended {
 
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
-        log.info("connection #{} complete", mqtt_connect_tries);
+        log.info("mqtt connection #{} complete", mqtt_connect_tries);
     }
 }

@@ -7,7 +7,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.time.LocalDateTime;
@@ -174,6 +173,18 @@ public class Tools {
      * @return
      */
     public static void getWifiParams(HashMap<String, String> current_wifi_params, String iwconfig_output) {
+        if (!Tools.isArm()) {
+            // a regular desktop has always good connection
+            current_wifi_params.put("essid", "!DESKTOP!");
+            current_wifi_params.put("bitrate", "super");
+            current_wifi_params.put("txpower", "high");
+            current_wifi_params.put("link", "not zelda");
+            current_wifi_params.put("freq", "good vibes");
+            current_wifi_params.put("powermgt", "off");
+            current_wifi_params.put("signal", Integer.toString(WIFI_PERFECT));
+            return;
+        }
+
         iwconfig_output = iwconfig_output.replaceAll("\n|\r|\"", "");
 
         List<String> l = Collections.list(new StringTokenizer(iwconfig_output, " :="))
@@ -182,13 +193,15 @@ public class Tools {
         current_wifi_params.put("bitrate", l.contains("Bit") ? l.get(l.indexOf("Bit") + 2) : "");
         current_wifi_params.put("txpower", l.contains("Tx-Power") ? l.get(l.indexOf("Tx-Power") + 1) : "");
         current_wifi_params.put("link", l.contains("Quality") ? l.get(l.indexOf("Quality") + 1) : "");
-        current_wifi_params.put("signal", l.contains("Signal") ? l.get(l.indexOf("Signal") + 2) : "");
         current_wifi_params.put("freq", l.contains("Frequency") ? l.get(l.indexOf("Frequency") + 1) : "");
         current_wifi_params.put("powermgt", l.contains("Management") ? l.get(l.indexOf("Management") + 1) : "");
+        current_wifi_params.put("signal", l.contains("Signal") ? l.get(l.indexOf("Signal") + 2) : "");
     }
 
 
     public static String getIWConfig(String cmd) {
+        // this is a result from a non connected raspi
+        // just for test reasons. Is not used in any way.
         if (!Tools.isArm()) return "wlan0     unassociated  Nickname:\"rtl_wifi\"\n" +
                 "          Mode:Managed  Access Point: Not-Associated   Sensitivity:0/0\n" +
                 "          Retry:off   RTS thr:off   Fragment thr:off\n" +
@@ -214,7 +227,7 @@ public class Tools {
 
             int exitVal = process.waitFor();
             if (exitVal == 0) {
-                log.debug("command {} returned {} ", cmd, output);
+                log.debug("command {} returned \n\n {} ", cmd, output);
                 result = output.toString();
             }
         } catch (IOException | InterruptedException io) {
@@ -273,7 +286,7 @@ public class Tools {
         else if (wifi > WIFI_BAD) wifiQuality = 1;  // bad
         else wifiQuality = 0; // no wifi
 
-        log.debug("signal quality {}", WIFI[wifiQuality]);
+        log.trace("signal quality {}", WIFI[wifiQuality]);
 
         return wifiQuality;
     }
@@ -292,10 +305,7 @@ public class Tools {
 
     public static boolean isReachable(String address, int openPort, int timeOutMillis) {
         if (address.trim().isEmpty()) return false;
-        // Any Open port on other machine
-        // openPort =  22 - ssh, 80 or 443 - webserver, 25 - mailserver etc.
-        // 188
-        log.debug("pinging {}", address);
+        log.debug("trying socket connection to {}", address);
         try {
             try (Socket soc = new Socket()) {
                 soc.connect(new InetSocketAddress(address, openPort), timeOutMillis);
@@ -308,17 +318,17 @@ public class Tools {
         }
     }
 
-    public static boolean ping(String address, int timeout) {
-        try {
-            log.debug("pinging {}", address);
-            InetAddress iaddress = InetAddress.getByName(address);
-            boolean reachable = iaddress.isReachable(timeout);
-            log.debug("{} reachable: {}", address, reachable);
-            return reachable;
-        } catch (Exception e) {
-            log.warn("ping {}", e.getMessage());
-            return false;
-        }
-    }
+//    public static boolean ping(String address, int timeout) {
+//        try {
+//            log.debug("pinging {}", address);
+//            InetAddress iaddress = InetAddress.getByName(address);
+//            boolean reachable = iaddress.isReachable(timeout);
+//            log.debug("{} reachable: {}", address, reachable);
+//            return reachable;
+//        } catch (Exception e) {
+//            log.warn("ping {}", e.getMessage());
+//            return false;
+//        }
+//    }
 
 }
