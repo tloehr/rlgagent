@@ -70,7 +70,7 @@ public class PinHandler {
                 genericBlinkModel.setScheme(scheme);
                 futures.put(name, executorService.submit(genericBlinkModel));
             } else {
-                log.error("Element not found in handler");
+                log.error("Element not found in pin handler");
             }
         } catch (Exception e) {
             e.printStackTrace();

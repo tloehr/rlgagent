@@ -120,7 +120,7 @@ public class MyLCD implements Runnable {
         if (handle.equalsIgnoreCase("page0")) return;
         if (pageExists(handle)) return;
         lock.lock();
-        log.debug("adding page {}", handle);
+        log.trace("adding page {}", handle);
         try {
             pages.add(new LCDPage(handle));
         } finally {
@@ -136,7 +136,7 @@ public class MyLCD implements Runnable {
     public void delPage(String handle) {
         if (handle.equalsIgnoreCase("page0")) return;
         if (!pageExists(handle)) return;
-        log.debug("deleting page {}", handle);
+        log.trace("deleting page {}", handle);
         lock.lock();
         try {
             try {
@@ -177,7 +177,7 @@ public class MyLCD implements Runnable {
         for (int r = 0; r < rows; r++) {
             String line = pages.get(visible_page_index).getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(pages.get(visible_page_index).getLine(r), cols), cols); // -1 ??
             log.trace("VISIBLE PAGE #" + visible_page_index + " Line" + r + ": " + line);
-//            if (log.getLevel().equals(Level.DEBUG) && r == rows - 1) { // last line, we want a pagenumber here, when in debug mode
+//            if (log.getLevel().equals(Level.trace) && r == rows - 1) { // last line, we want a pagenumber here, when in trace mode
 //                String pagenumber = Integer.toString(visible_page_index);
 //                line = StringUtils.overlay(line, pagenumber, line.length() - pagenumber.length(), line.length());
 //            }
@@ -234,12 +234,12 @@ public class MyLCD implements Runnable {
     }
 
     public void setTimer(String key, long time) {
-        log.debug("setting timer {} to {}", key, time);
+        log.trace("setting timer {} to {}", key, time);
         timers.put(key, time * 1000l);
     }
 
     public void setVariable(String key, String var) {
-        log.debug("setting var {} to {}", key, var);
+        log.trace("setting var {} to {}", key, var);
         variables.put("${" + key + "}", var);
     }
 

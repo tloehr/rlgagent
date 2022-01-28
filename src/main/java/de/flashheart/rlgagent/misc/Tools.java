@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -172,22 +174,28 @@ public class Tools {
      * @return
      */
     public static void getWifiParams(HashMap<String, String> current_wifi_params, String iwconfig_output) {
-        if (!Tools.isArm()) return;
+        iwconfig_output = iwconfig_output.replaceAll("\n|\r|\"", "");
 
         List<String> l = Collections.list(new StringTokenizer(iwconfig_output, " :="))
                 .stream().map(token -> (String) token).collect(Collectors.toList());
-        current_wifi_params.put("essid", l.get(l.indexOf("ESSID") + 1));
-        current_wifi_params.put("bitrate", l.get(l.indexOf("Bit") + 2));
-        current_wifi_params.put("txpower", l.get(l.indexOf("Tx-Power") + 1));
-        current_wifi_params.put("link", l.get(l.indexOf("Quality") + 1));
-        current_wifi_params.put("signal", l.get(l.indexOf("Signal") + 2));
-        current_wifi_params.put("freq", l.get(l.indexOf("Frequency") + 1));
-        current_wifi_params.put("powermgt", l.get(l.indexOf("Management") + 1));
+        current_wifi_params.put("essid", l.contains("ESSID") ? l.get(l.indexOf("ESSID") + 1) : "");
+        current_wifi_params.put("bitrate", l.contains("Bit") ? l.get(l.indexOf("Bit") + 2) : "");
+        current_wifi_params.put("txpower", l.contains("Tx-Power") ? l.get(l.indexOf("Tx-Power") + 1) : "");
+        current_wifi_params.put("link", l.contains("Quality") ? l.get(l.indexOf("Quality") + 1) : "");
+        current_wifi_params.put("signal", l.contains("Signal") ? l.get(l.indexOf("Signal") + 2) : "");
+        current_wifi_params.put("freq", l.contains("Frequency") ? l.get(l.indexOf("Frequency") + 1) : "");
+        current_wifi_params.put("powermgt", l.contains("Management") ? l.get(l.indexOf("Management") + 1) : "");
     }
 
 
     public static String getIWConfig(String cmd) {
-        if (!Tools.isArm()) return "desktop";
+        if (!Tools.isArm()) return "wlan0     unassociated  Nickname:\"rtl_wifi\"\n" +
+                "          Mode:Managed  Access Point: Not-Associated   Sensitivity:0/0\n" +
+                "          Retry:off   RTS thr:off   Fragment thr:off\n" +
+                "          Power Management:off\n" +
+                "          Link Quality:0  Signal level:0  Noise level:0\n" +
+                "          Rx invalid nwid:0  Rx invalid crypt:0  Rx invalid frag:0\n" +
+                "          Tx excessive retries:0  Invalid misc:0   Missed beacon:0";
 
         String result = "error";
 
@@ -206,7 +214,7 @@ public class Tools {
 
             int exitVal = process.waitFor();
             if (exitVal == 0) {
-                log.trace("command {} returned {} ", cmd, output);
+                log.debug("command {} returned {} ", cmd, output);
                 result = output.toString();
             }
         } catch (IOException | InterruptedException io) {
@@ -236,6 +244,7 @@ public class Tools {
      * @return 4 - excellent (or desktop), 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
     public static int getWifiQuality(String signal_level) {
+        log.debug("signal level {}", signal_level);
         if (signal_level.equalsIgnoreCase("desktop")) return 4;
         if (signal_level.trim().isEmpty()) return 0;
         int wifiQuality;
@@ -243,7 +252,6 @@ public class Tools {
         //driver_response = "level=94";
         // some wifi drivers show the link quality in percentage (e.g. 70/100) rather than dbm
         // sometimes when driver show level=100/100 use
-        // iwconfig wlan0|egrep "Signal level"|awk '{print $4}'|sed 's/[^0-9/]*//g'
         try {
             if (signal_level.contains("/")) { // link quality in percentage
                 StringTokenizer tokenizer = new StringTokenizer(signal_level, "/");
@@ -265,6 +273,8 @@ public class Tools {
         else if (wifi > WIFI_BAD) wifiQuality = 1;  // bad
         else wifiQuality = 0; // no wifi
 
+        log.debug("signal quality {}", WIFI[wifiQuality]);
+
         return wifiQuality;
     }
 
@@ -279,15 +289,34 @@ public class Tools {
         return text;
     }
 
+
+    public static boolean isReachable(String address, int openPort, int timeOutMillis) {
+        if (address.trim().isEmpty()) return false;
+        // Any Open port on other machine
+        // openPort =  22 - ssh, 80 or 443 - webserver, 25 - mailserver etc.
+        // 188
+        log.debug("pinging {}", address);
+        try {
+            try (Socket soc = new Socket()) {
+                soc.connect(new InetSocketAddress(address, openPort), timeOutMillis);
+            }
+            log.debug("{} is reachable", address);
+            return true;
+        } catch (IOException ex) {
+            log.debug("{} is NOT reachable", address);
+            return false;
+        }
+    }
+
     public static boolean ping(String address, int timeout) {
         try {
-            log.trace("pinging {}", address);
+            log.debug("pinging {}", address);
             InetAddress iaddress = InetAddress.getByName(address);
             boolean reachable = iaddress.isReachable(timeout);
-            log.trace("{} reachable: {}", address, reachable);
+            log.debug("{} reachable: {}", address, reachable);
             return reachable;
         } catch (Exception e) {
-            log.trace("ping {}", e.getMessage());
+            log.warn("ping {}", e.getMessage());
             return false;
         }
     }

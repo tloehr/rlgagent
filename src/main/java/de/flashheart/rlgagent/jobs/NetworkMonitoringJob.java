@@ -13,7 +13,7 @@ public class NetworkMonitoringJob implements InterruptableJob {
     @Override
     public void execute(JobExecutionContext jobExecutionContext) {
         try {
-            log.debug(jobExecutionContext.getJobDetail().getKey() + " executed");
+            log.trace(jobExecutionContext.getJobDetail().getKey() + " executed");
             RLGAgent rlgAgent = (RLGAgent) jobExecutionContext.getScheduler().getContext().get("rlgAgent");
             rlgAgent.procNetworkMonitoring();
         } catch (SchedulerException e) {
