@@ -51,8 +51,9 @@ public class RLGAgent implements MqttCallbackExtended {
     private long mqtt_connect_tries = 0l;
     private long netmonitor_cycle = -1l;
     private String active_broker = "";
-    private HashMap<String, String> current_wifi_params;
+    private HashMap<String, String> current_network_stats;
     private final DateTimeFormatter myformat;
+    boolean NETWORK_TEST_ONLY = true;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
@@ -62,7 +63,7 @@ public class RLGAgent implements MqttCallbackExtended {
         this.configs = configs;
         this.myLCD = myLCD;
         potential_brokers = Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"));
-        current_wifi_params = new HashMap<>();
+        current_network_stats = new HashMap<>();
         myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
 
         me = new Agent(new JSONObject()
@@ -297,8 +298,8 @@ public class RLGAgent implements MqttCallbackExtended {
             });
         });
 
-        current_wifi_params.put("link", "100/100");
-        current_wifi_params.put("signal", "-30");
+        current_network_stats.put("link", "100/100");
+        current_network_stats.put("signal", "-30");
 
     }
 
@@ -343,7 +344,7 @@ public class RLGAgent implements MqttCallbackExtended {
         String scheme = "∞:on,250;off,750";
 
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-        myLCD.setLine("page0", 2 ,"  Network not");
+        myLCD.setLine("page0", 2, "  Network not");
         myLCD.setLine("page0", 3, "   connected");
         myLCD.setLine("page0", 4, "${signal} ${wifi}");
 
@@ -368,11 +369,11 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     public void procNetworkMonitoring() throws SchedulerException {
         log.debug("checking network status");
-        Tools.getWifiParams(current_wifi_params, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
-        me.setWifi(Tools.getWifiQuality(current_wifi_params.get("signal")));
-        log.debug("wifi signal strength {}", current_wifi_params.get("signal"));
+        Tools.getWifiParams(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
+        me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
+        log.debug("wifi signal strength {}", current_network_stats.get("signal"));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
-        myLCD.setVariable("signal", current_wifi_params.get("signal"));
+        myLCD.setVariable("signal", current_network_stats.get("signal"));
 
         netmonitor_cycle++;
         show_connection_status();
@@ -383,32 +384,44 @@ public class RLGAgent implements MqttCallbackExtended {
         String reachable_host = "";
         // if we already have an active broker, we check it first
 
-        
-
-        if (!Tools.ping(active_broker, configs.getInt(Configs.MQTT_PORT), 1000)) {
+        if (!Tools.fping(current_network_stats, active_broker)) {
             ListIterator<String> brokers = potential_brokers.listIterator();
             while (reachable_host.isEmpty() && brokers.hasNext()) {
                 String broker = brokers.next();
-                reachable_host = Tools.ping(broker, configs.getInt(Configs.MQTT_PORT), 1000) ? broker : "";
+                reachable_host = Tools.fping(current_network_stats, broker) ? broker : "";
             }
         } else {
             reachable_host = active_broker;
+            myLCD.setLine("page0", 2, "fping " + reachable_host);
+            myLCD.setLine("page0", 3,
+                    current_network_stats.get("ping_min") + "/" +
+                            current_network_stats.get("ping_avg") + "/" +
+                            current_network_stats.get("ping_max") + "/" +
+                            current_network_stats.get("ping_loss")
+                    // todo: change to variables
+            );
+            myLCD.setVariable("ping_min", current_network_stats.getOrDefault("ping_min", "--"));
+            myLCD.setVariable("ping_avg", current_network_stats.getOrDefault("ping_avg", "--"));
+            myLCD.setVariable("ping_max", current_network_stats.getOrDefault("ping_max", "--"));
+            myLCD.setVariable("ping_loss", current_network_stats.getOrDefault("ping_loss", "--"));
         }
 
-        // if a broker is reachable but the MQTTClient is not yet connected. Try it.
-        if (!reachable_host.isEmpty()) { // somebody answered
-            if (!mqtt_connected()) { // but we don't have a mqtt connection yet
-                myLCD.setLine("page0", 2, "Searching for broker");
-                myLCD.setLine("page0", 3, "@" + reachable_host);
-                active_broker = try_mqtt_broker(String.format("tcp://%s:%s", reachable_host, configs.get(Configs.MQTT_PORT))) ? reachable_host : "";
-                // SUCCESS!!
-                if (!active_broker.isEmpty()) {
-                    myLCD.setLine("page0", 2, "Connected to");
-                    myLCD.setLine("page0", 3, active_broker);
+        if (!NETWORK_TEST_ONLY) {
+            // if a broker is reachable but the MQTTClient is not yet connected. Try it.
+            if (!reachable_host.isEmpty()) { // somebody answered
+                if (!mqtt_connected()) { // but we don't have a mqtt connection yet
+                    myLCD.setLine("page0", 2, "Searching for broker");
+                    myLCD.setLine("page0", 3, "@" + reachable_host);
+                    active_broker = try_mqtt_broker(String.format("tcp://%s:%s", reachable_host, configs.get(Configs.MQTT_PORT))) ? reachable_host : "";
+                    // SUCCESS!!
+                    if (!active_broker.isEmpty()) {
+                        myLCD.setLine("page0", 2, "Connected to");
+                        myLCD.setLine("page0", 3, active_broker);
+                    }
                 }
+            } else {
+                disconnect_from_mqtt_broker();
             }
-        } else {
-            disconnect_from_mqtt_broker();
         }
 
         // this reports a status message. very useful to see if all the agents are doing well during the game
@@ -418,15 +431,8 @@ public class RLGAgent implements MqttCallbackExtended {
                     .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
                     .put("mqtt-broker", active_broker)
                     .put("timestamp", LocalDateTime.now().format(myformat))
-                    .put("signal", current_wifi_params.getOrDefault("signal", "--"))
-                    .put("essid", current_wifi_params.getOrDefault("essid", "--"))
-                    .put("link", current_wifi_params.getOrDefault("link", "--"))
-                    .put("signal", current_wifi_params.getOrDefault("signal", "--"))
-                    .put("freq", current_wifi_params.getOrDefault("freq", "--"))
-                    .put("txpower", current_wifi_params.getOrDefault("txpower", "--"))
-                    .put("bitrate", current_wifi_params.getOrDefault("bitrate", "--"))
-                    .put("powermgt", current_wifi_params.getOrDefault("powermgt", "--"))
                     .put("mqtt_connect_tries", mqtt_connect_tries)
+                    .put("network_stats", current_network_stats)
                     .toString()
             );
     }

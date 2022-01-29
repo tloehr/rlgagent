@@ -169,20 +169,21 @@ public class Tools {
     /**
      * parses a standard iwconfig to a HashMap
      *
-     * @param current_wifi_params
+     * @param current_network_values
      * @param iwconfig_output
      * @return
      */
-    public static void getWifiParams(HashMap<String, String> current_wifi_params, String iwconfig_output) {
+    public static void getWifiParams(HashMap<String, String> current_network_values, String iwconfig_output) {
         if (!Tools.isArm()) {
             // a regular desktop has always good connection
-            current_wifi_params.put("essid", "!DESKTOP!");
-            current_wifi_params.put("bitrate", "super");
-            current_wifi_params.put("txpower", "high");
-            current_wifi_params.put("link", "not zelda");
-            current_wifi_params.put("freq", "good vibes");
-            current_wifi_params.put("powermgt", "off");
-            current_wifi_params.put("signal", Integer.toString(WIFI_PERFECT));
+            current_network_values.put("essid", "!DESKTOP!");
+            current_network_values.put("bitrate", "super");
+            current_network_values.put("txpower", "high");
+            current_network_values.put("access_point", "Not-Associated");
+            current_network_values.put("link", "not zelda");
+            current_network_values.put("freq", "good vibes");
+            current_network_values.put("powermgt", "off");
+            current_network_values.put("signal", Integer.toString(WIFI_PERFECT));
             return;
         }
 
@@ -190,13 +191,27 @@ public class Tools {
 
         List<String> l = Collections.list(new StringTokenizer(iwconfig_output, " :="))
                 .stream().map(token -> (String) token).collect(Collectors.toList());
-        current_wifi_params.put("essid", l.contains("ESSID") ? l.get(l.indexOf("ESSID") + 1) : "");
-        current_wifi_params.put("bitrate", l.contains("Bit") ? l.get(l.indexOf("Bit") + 2) : "");
-        current_wifi_params.put("txpower", l.contains("Tx-Power") ? l.get(l.indexOf("Tx-Power") + 1) : "");
-        current_wifi_params.put("link", l.contains("Quality") ? l.get(l.indexOf("Quality") + 1) : "");
-        current_wifi_params.put("freq", l.contains("Frequency") ? l.get(l.indexOf("Frequency") + 1) : "");
-        current_wifi_params.put("powermgt", l.contains("Management") ? l.get(l.indexOf("Management") + 1) : "");
-        current_wifi_params.put("signal", l.contains("Signal") ? l.get(l.indexOf("Signal") + 2) : "");
+        current_network_values.put("essid", l.contains("ESSID") ? l.get(l.indexOf("ESSID") + 1) : "");
+        if (l.contains("Point")) {
+            final int index = l.indexOf("Point");
+            if (l.get(index + 1).equalsIgnoreCase("Not-Associated")) {
+                current_network_values.put("access_point", "Not-Associated");
+            } else {
+                // reconstruct MAC Address
+                String mac = "";
+                for (int i = 1; i < 7; i++) {
+                    mac += l.get(index + i) + ":";
+                }
+                current_network_values.put("access_point", mac.substring(0, 16));
+            }
+        }
+
+        current_network_values.put("bitrate", l.contains("Bit") ? l.get(l.indexOf("Bit") + 2) : "");
+        current_network_values.put("txpower", l.contains("Tx-Power") ? l.get(l.indexOf("Tx-Power") + 1) : "");
+        current_network_values.put("link", l.contains("Quality") ? l.get(l.indexOf("Quality") + 1) : "");
+        current_network_values.put("freq", l.contains("Frequency") ? l.get(l.indexOf("Frequency") + 1) : "");
+        current_network_values.put("powermgt", l.contains("Management") ? l.get(l.indexOf("Management") + 1) : "");
+        current_network_values.put("signal", l.contains("Signal") ? l.get(l.indexOf("Signal") + 2) : "");
     }
 
 
@@ -304,33 +319,80 @@ public class Tools {
         return text;
     }
 
+//
+//    public static boolean ping(String address, int openPort, int timeOutMillis) {
+//        if (address.trim().isEmpty()) return false;
+//        log.debug("trying socket connection to {}", address);
+//        try {
+//            try (Socket soc = new Socket()) {
+//                soc.connect(new InetSocketAddress(address, openPort), timeOutMillis);
+//            }
+//            log.debug("{} is reachable", address);
+//            return true;
+//        } catch (IOException ex) {
+//            log.debug("{} is NOT reachable", address);
+//            return false;
+//        }
+//    }
+//
+//    public static boolean ping(String address, int timeout) {
+//        try {
+//            log.debug("pinging {}", address);
+//            InetAddress iaddress = InetAddress.getByName(address);
+//            boolean reachable = iaddress.isReachable(timeout);
+//            log.debug("{} reachable: {}", address, reachable);
+//            return reachable;
+//        } catch (Exception e) {
+//            log.warn("ping {}", e.getMessage());
+//            return false;
+//        }
+//    }
 
-    public static boolean ping(String address, int openPort, int timeOutMillis) {
+
+    public static boolean fping(HashMap<String, String> current_network_values, String address) {
         if (address.trim().isEmpty()) return false;
-        log.debug("trying socket connection to {}", address);
+        boolean success;
         try {
-            try (Socket soc = new Socket()) {
-                soc.connect(new InetSocketAddress(address, openPort), timeOutMillis);
-            }
-            log.debug("{} is reachable", address);
-            return true;
-        } catch (IOException ex) {
-            log.debug("{} is NOT reachable", address);
-            return false;
-        }
-    }
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command("bash", "-c", "fping", "-c5", "-t500", "-q", address);
 
-    public static boolean ping(String address, int timeout) {
-        try {
-            log.debug("pinging {}", address);
-            InetAddress iaddress = InetAddress.getByName(address);
-            boolean reachable = iaddress.isReachable(timeout);
-            log.debug("{} reachable: {}", address, reachable);
-            return reachable;
-        } catch (Exception e) {
-            log.warn("ping {}", e.getMessage());
-            return false;
+            Process process = processBuilder.start();
+            StringBuilder output = new StringBuilder();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line + "\n");
+            }
+
+            int exitVal = process.waitFor();
+            success = exitVal == 0;
+
+            if (success) {
+                List<String> tokens = Collections.list(new StringTokenizer(output.toString(), "/:="))
+                        .stream().map(token -> (String) token).collect(Collectors.toList());
+                if (tokens.size() >= 12) {
+                    current_network_values.put("ping_loss", tokens.get(6));
+                    current_network_values.put("ping_min", tokens.get(10));
+                    current_network_values.put("ping_avg", tokens.get(11));
+                    current_network_values.put("ping_max", tokens.get(12));
+                }
+
+                log.debug("fping returned \n\n {} ", output);
+            } else {
+                log.debug("fping failed to contact {}", address);
+            }
+        } catch (IOException | InterruptedException io) {
+            log.error(io);
+            success = false;
         }
+
+        return success;
+
+//        pi@iot02:~ $ fping -c5 -t500 -q srv01
+//            srv01 : xmt/rcv/%loss = 5/5/0%, min/avg/max = 2.23/4.67/6.36
+        //srv01 : xmt/rcv/%loss = 5/5/0%, min/avg/max = 0.338/0.470/0.565
+
     }
 
 }
