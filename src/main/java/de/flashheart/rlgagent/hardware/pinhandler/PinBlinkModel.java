@@ -71,7 +71,7 @@ public class PinBlinkModel implements GenericBlinkModel {
      * @param scheme
      */
     @Override
-    public void setScheme(String scheme) {
+    public void setScheme(String scheme) throws NumberFormatException {
 
         onOffScheme.clear();
 

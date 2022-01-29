@@ -33,8 +33,8 @@ import static org.quartz.TriggerBuilder.newTrigger;
 @Log4j2
 public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
-    private int NETWORKING_MONITOR_INTERVAL = 5;
-    private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 12;
+    private int NETWORKING_MONITOR_INTERVAL = 10;
+    private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 6;
     private final String EVENTS, CMD4ME, CMD4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
@@ -343,6 +343,8 @@ public class RLGAgent implements MqttCallbackExtended {
         String scheme = "∞:on,250;off,750";
 
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+        myLCD.setLine("page0", 2 ,"  Network not");
+        myLCD.setLine("page0", 3, "   connected");
         myLCD.setLine("page0", 4, "${signal} ${wifi}");
 
         set_pins_to(Configs.ALL_LEDS, "off");
@@ -380,11 +382,14 @@ public class RLGAgent implements MqttCallbackExtended {
 
         String reachable_host = "";
         // if we already have an active broker, we check it first
-        if (!Tools.isReachable(active_broker, configs.getInt(Configs.MQTT_PORT), 250)) {
+
+        
+
+        if (!Tools.ping(active_broker, configs.getInt(Configs.MQTT_PORT), 1000)) {
             ListIterator<String> brokers = potential_brokers.listIterator();
             while (reachable_host.isEmpty() && brokers.hasNext()) {
                 String broker = brokers.next();
-                reachable_host = Tools.isReachable(broker, configs.getInt(Configs.MQTT_PORT), 250) ? broker : "";
+                reachable_host = Tools.ping(broker, configs.getInt(Configs.MQTT_PORT), 1000) ? broker : "";
             }
         } else {
             reachable_host = active_broker;

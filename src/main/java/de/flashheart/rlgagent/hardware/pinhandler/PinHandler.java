@@ -72,10 +72,12 @@ public class PinHandler {
             } else {
                 log.error("Element not found in pin handler");
             }
+        } catch (NumberFormatException nfe) {
+            log.error(nfe);
         } catch (Exception e) {
             e.printStackTrace();
             log.fatal(e);
-            System.exit(0);
+//            System.exit(0);
         } finally {
             lock.unlock();
         }

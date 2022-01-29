@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.time.LocalDateTime;
@@ -261,32 +262,33 @@ public class Tools {
         if (signal_level.equalsIgnoreCase("desktop")) return 4;
         if (signal_level.trim().isEmpty()) return 0;
         int wifiQuality;
-        int wifi;
+
         //driver_response = "level=94";
         // some wifi drivers show the link quality in percentage (e.g. 70/100) rather than dbm
         // sometimes when driver show level=100/100 use
         try {
             if (signal_level.contains("/")) { // link quality in percentage
                 StringTokenizer tokenizer = new StringTokenizer(signal_level, "/");
-                int quality = Integer.parseInt(tokenizer.nextToken());
-                wifi = quality / 2 - 100;
+                int quality = Math.min(100, Math.abs(Integer.parseInt(tokenizer.nextToken())));
+                wifiQuality = Math.min(4, quality / 25 + 1);
+                log.trace("{}% quality is {}", quality, wifiQuality, WIFI[wifiQuality]);
             } else { // link quality in dbm
-                wifi = Integer.parseInt(signal_level.replaceAll("[^0-9\\-]", ""));
+                int dbm = Integer.parseInt(signal_level.replaceAll("[^0-9\\-]", ""));
+
+                if (dbm >= 0) wifiQuality = 0;
+                else if (dbm > WIFI_EXCELLENT) wifiQuality = 4; // PERFECT
+                else if (dbm > WIFI_GOOD) wifiQuality = 3; // good
+                else if (dbm > WIFI_FAIR) wifiQuality = 2; // fair
+                else if (dbm > WIFI_MINIMUM) wifiQuality = 2;  // fair
+                else if (dbm > WIFI_UNSTABLE) wifiQuality = 1; // bad
+                else if (dbm > WIFI_BAD) wifiQuality = 1;  // bad
+                else wifiQuality = 0; // no wifi
+
+                log.trace("{} dbm signal quality {}", dbm, WIFI[wifiQuality]);
             }
         } catch (NumberFormatException nfe) {
-            wifi = 0;
+            wifiQuality = 0;
         }
-
-        if (wifi >= 0) wifiQuality = 0;
-        else if (wifi > WIFI_EXCELLENT) wifiQuality = 4; // PERFECT
-        else if (wifi > WIFI_GOOD) wifiQuality = 3; // good
-        else if (wifi > WIFI_FAIR) wifiQuality = 2; // fair
-        else if (wifi > WIFI_MINIMUM) wifiQuality = 2;  // fair
-        else if (wifi > WIFI_UNSTABLE) wifiQuality = 1; // bad
-        else if (wifi > WIFI_BAD) wifiQuality = 1;  // bad
-        else wifiQuality = 0; // no wifi
-
-        log.trace("signal quality {}", WIFI[wifiQuality]);
 
         return wifiQuality;
     }
@@ -303,7 +305,7 @@ public class Tools {
     }
 
 
-    public static boolean isReachable(String address, int openPort, int timeOutMillis) {
+    public static boolean ping(String address, int openPort, int timeOutMillis) {
         if (address.trim().isEmpty()) return false;
         log.debug("trying socket connection to {}", address);
         try {
@@ -318,17 +320,17 @@ public class Tools {
         }
     }
 
-//    public static boolean ping(String address, int timeout) {
-//        try {
-//            log.debug("pinging {}", address);
-//            InetAddress iaddress = InetAddress.getByName(address);
-//            boolean reachable = iaddress.isReachable(timeout);
-//            log.debug("{} reachable: {}", address, reachable);
-//            return reachable;
-//        } catch (Exception e) {
-//            log.warn("ping {}", e.getMessage());
-//            return false;
-//        }
-//    }
+    public static boolean ping(String address, int timeout) {
+        try {
+            log.debug("pinging {}", address);
+            InetAddress iaddress = InetAddress.getByName(address);
+            boolean reachable = iaddress.isReachable(timeout);
+            log.debug("{} reachable: {}", address, reachable);
+            return reachable;
+        } catch (Exception e) {
+            log.warn("ping {}", e.getMessage());
+            return false;
+        }
+    }
 
 }
