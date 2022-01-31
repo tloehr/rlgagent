@@ -80,6 +80,13 @@ public class MyLCD implements Runnable {
         thread.start();
     }
 
+    public void welcome_page(){
+        setLine("page0", 1, "  Welcome to the  ");
+        setLine("page0", 2, "RLGAgent ${agversion}.${agbuild}");
+        setLine("page0", 3, "");
+        setLine("page0", 4, "Initializing...");
+    }
+
     /**
      * removes all pages but one "page0"
      */
@@ -93,10 +100,14 @@ public class MyLCD implements Runnable {
             timers.clear();
             variables.clear();
             // set defaults for variables
-            setVariable("wifi", "");
+            setVariable("wifi", "--");
+            setVariable("ssid", "--");
             setVariable("agversion", configs.getBuildProperties("my.version"));
             setVariable("agbuild", configs.getBuildProperties("buildNumber"));
             setVariable("agbdate", configs.getBuildProperties("buildDate"));
+
+            welcome_page();
+
         } finally {
             lock.unlock();
         }
@@ -127,6 +138,7 @@ public class MyLCD implements Runnable {
             lock.unlock();
         }
     }
+
 
     /**
      * deletes a page and starts the page cycle from the beginning
@@ -195,7 +207,7 @@ public class MyLCD implements Runnable {
         pages.get(visible_page_index).clear();
     }
 
-    boolean pageExists(String handle) {
+    public boolean pageExists(String handle) {
         return pages.stream().filter(lcdPage -> lcdPage.getName().equalsIgnoreCase(handle)).count() > 0;
     }
 

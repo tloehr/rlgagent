@@ -15,7 +15,7 @@ public class NetworkMonitoringJob implements InterruptableJob {
         try {
             log.trace(jobExecutionContext.getJobDetail().getKey() + " executed");
             RLGAgent rlgAgent = (RLGAgent) jobExecutionContext.getScheduler().getContext().get("rlgAgent");
-            rlgAgent.procNetworkMonitoring();
+            rlgAgent.network_connection();
         } catch (SchedulerException e) {
             log.fatal(e);
             System.exit(0);
