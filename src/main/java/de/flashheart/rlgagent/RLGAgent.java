@@ -341,15 +341,15 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     /**
-     * this method is called every NETWORKING_MONITOR_INTERVAL seconds to check if network is still good. maintains a global map with necessary
-     * parameters to describe the current state of the network.
-     * ** reads wifi parameters and stores them
-     * ** pings the last reachable host first. if no luck, it tries out all given potential brokers from the config.txt
-     * ** if the host answers the ping, and we are connected to a broker on that host -> WE ARE GOOD
-     * ** if the host answers the ping, and we are NOT connected to a broker, then we try to connect to the broker on that host.
-     * ** if nobody answers to our pings -> we are CLOSE a potential connection to any MQTT broker we were connected to before.
-     * ** When there is No MQTT Broker connection, the agent displays the connection status on the LCD and the LEDs.
-     * ** every STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES cycles a status message is sent out the broker (if there is one)
+     * this method is called every NETWORKING_MONITOR_INTERVAL seconds to check if network is still good. maintains a
+     * global map with necessary parameters to describe the current state of the network. ** reads wifi parameters and
+     * stores them ** pings the last reachable host first. if no luck, it tries out all given potential brokers from the
+     * config.txt ** if the host answers the ping, and we are connected to a broker on that host -> WE ARE GOOD ** if
+     * the host answers the ping, and we are NOT connected to a broker, then we try to connect to the broker on that
+     * host. ** if nobody answers to our pings -> we are CLOSE a potential connection to any MQTT broker we were
+     * connected to before. ** When there is No MQTT Broker connection, the agent displays the connection status on the
+     * LCD and the LEDs. ** every STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES cycles a status message is sent out the
+     * broker (if there is one)
      *
      * @throws SchedulerException
      */
@@ -388,8 +388,10 @@ public class RLGAgent implements MqttCallbackExtended {
                 // SUCCESS!!
                 if (!active_broker.isEmpty()) {
                     myLCD.init();
+                    myLCD.setLine("page0", 1, "=== MQTT ===");
                     myLCD.setLine("page0", 2, "Connected to");
                     myLCD.setLine("page0", 3, active_broker);
+                    myLCD.setLine("page0", 4, "");
                     set_pins_to(Configs.ALL_LEDS, "off");
                     pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
                     pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme); // white is always flashing
@@ -424,16 +426,15 @@ public class RLGAgent implements MqttCallbackExtended {
         }
 
         // this reports a status message. very useful to see if all the agents are doing well during the game
-        if (netmonitor_cycle % STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES == 0)
-            reportEvent("status", new JSONObject()
-                    .put("wifi", Tools.WIFI[me.getWifi()])
+        if (netmonitor_cycle % STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES == 0) {
+            JSONObject status = new JSONObject(current_network_stats);
+            status.put("wifi", Tools.WIFI[me.getWifi()])
                     .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
                     .put("mqtt-broker", active_broker)
                     .put("timestamp", LocalDateTime.now().format(myformat))
-                    .put("mqtt_connect_tries", mqtt_connect_tries)
-                    .put("network_stats", current_network_stats)
-                    .toString()
-            );
+                    .put("mqtt_connect_tries", mqtt_connect_tries);
+            reportEvent("status", status.toString());
+        }
     }
 
     private boolean mqtt_connected() {

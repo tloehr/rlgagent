@@ -21,7 +21,8 @@ new FormModel {
 							"axis": 3
 						} ) {
 							name: "pnlLCD"
-							"background": new java.awt.Color( 0, 255, 255, 255 )
+							"background": sfield java.awt.Color gray
+							"foreground": sfield java.awt.Color black
 						}, new FormLayoutConstraints( class java.lang.String ) {
 							"value": "South"
 						} )

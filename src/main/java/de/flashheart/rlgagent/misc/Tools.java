@@ -178,6 +178,7 @@ public class Tools {
         if (!Tools.isArm()) {
             // a regular desktop has always good connection
             current_network_values.put("essid", "!DESKTOP!");
+            current_network_values.put("ap", "!DESKTOP!");
             current_network_values.put("bitrate", "super");
             current_network_values.put("txpower", "high");
             current_network_values.put("access_point", "Not-Associated");

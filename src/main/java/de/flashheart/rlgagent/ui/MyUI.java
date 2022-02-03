@@ -4,6 +4,7 @@
 
 package de.flashheart.rlgagent.ui;
 
+import com.bulenkov.darcula.DarculaLaf;
 import de.flashheart.rlgagent.misc.Configs;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
@@ -12,6 +13,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicLookAndFeel;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Element;
 import java.awt.*;
@@ -31,6 +33,13 @@ public class MyUI extends JFrame {
     ArrayList<JLabel> lineList;
 
     public MyUI(String title) {
+
+        try {
+            BasicLookAndFeel darcula = new DarculaLaf();
+            UIManager.setLookAndFeel(darcula);
+        } catch (UnsupportedLookAndFeelException e) {
+            e.printStackTrace();
+        }
         initComponents();
         setTitle(title);
         initLEDs();
@@ -92,6 +101,7 @@ public class MyUI extends JFrame {
     public void addLCDLine(int cols) {
         JLabel lbl = new JLabel(StringUtils.repeat(" ", cols));
         lbl.setFont(new Font("Monospaced", Font.PLAIN, 16));
+        lbl.setForeground(Color.BLACK);
         lineList.add(lbl);
         pnlLCD.add(lbl);
     }
@@ -150,7 +160,8 @@ public class MyUI extends JFrame {
 
                     //======== pnlLCD ========
                     {
-                        pnlLCD.setBackground(Color.cyan);
+                        pnlLCD.setBackground(Color.gray);
+                        pnlLCD.setForeground(Color.black);
                         pnlLCD.setLayout(new BoxLayout(pnlLCD, BoxLayout.PAGE_AXIS));
                     }
                     content1.add(pnlLCD, BorderLayout.SOUTH);

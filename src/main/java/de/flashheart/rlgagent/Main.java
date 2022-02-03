@@ -1,5 +1,6 @@
 package de.flashheart.rlgagent;
 
+import com.bulenkov.darcula.DarculaLaf;
 import com.pi4j.gpio.extension.mcp.MCP23017GpioProvider;
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioFactory;
@@ -20,6 +21,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.config.Configurator;
 
 import javax.swing.*;
+import javax.swing.plaf.basic.BasicLookAndFeel;
 import java.awt.*;
 import java.io.IOException;
 import java.util.Optional;
