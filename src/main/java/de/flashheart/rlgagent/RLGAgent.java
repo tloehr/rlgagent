@@ -158,7 +158,7 @@ public class RLGAgent implements MqttCallbackExtended {
         if (tokens.size() < 4 || tokens.size() > 5) return;
         String cmd = tokens.get(tokens.size() - 1);
 
-        log.trace("received {} from {} cmd {}", receivedMessage, topic, cmd);
+        log.debug("received {} from {} cmd {}", receivedMessage, topic, cmd);
         try {
             if (cmd.equalsIgnoreCase("init")) {
                 procInit();

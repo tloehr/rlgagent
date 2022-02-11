@@ -178,13 +178,12 @@ public class Tools {
         if (!Tools.isArm()) {
             // a regular desktop has always good connection
             current_network_values.put("essid", "!DESKTOP!");
-            current_network_values.put("ap", "!DESKTOP!");
-            current_network_values.put("bitrate", "super");
-            current_network_values.put("txpower", "high");
-            current_network_values.put("access_point", "Not-Associated");
-            current_network_values.put("link", "not zelda");
-            current_network_values.put("freq", "good vibes");
-            current_network_values.put("powermgt", "off");
+            current_network_values.put("ap", "--");
+            current_network_values.put("bitrate", "--");
+            current_network_values.put("txpower", "--");
+            current_network_values.put("link", "--");
+            current_network_values.put("freq", "--");
+            current_network_values.put("powermgt", "--");
             current_network_values.put("signal", Integer.toString(WIFI_PERFECT));
             return;
         }
@@ -349,10 +348,10 @@ public class Tools {
                 List<String> tokens = Collections.list(new StringTokenizer(output.toString(), "/:=,"))
                         .stream().map(token -> (String) token).collect(Collectors.toList());
                 if (tokens.size() >= 12) {
-                    current_network_values.put("ping_loss", tokens.get(6));
-                    current_network_values.put("ping_min", tokens.get(9));
-                    current_network_values.put("ping_avg", tokens.get(10));
-                    current_network_values.put("ping_max", tokens.get(11));
+                    current_network_values.put("ping_loss", tokens.get(6).trim());
+                    current_network_values.put("ping_min", tokens.get(10).trim());
+                    current_network_values.put("ping_avg", tokens.get(11).trim());
+                    current_network_values.put("ping_max", tokens.get(12).trim());
                 }
 
                 log.debug("fping returned \n\n {} ", output);
