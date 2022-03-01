@@ -324,6 +324,8 @@ public class Tools {
         if (address.trim().isEmpty()) return false;
         boolean success;
         try {
+            // todo: complain about missing fping or retreat to ping
+            // what about windows ?
             ProcessBuilder processBuilder = new ProcessBuilder();
             String cmd = String.format("fping -c%d -t%d -q %s", tries, timeout, address);
             processBuilder.command("bash", "-c", cmd);
