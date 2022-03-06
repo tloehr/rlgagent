@@ -12,14 +12,14 @@ import java.util.ArrayList;
  */
 @Log4j2
 public class PinBlinkModel implements GenericBlinkModel {
-    public static final String SCHEME_TEST_REGEX = "^(\\d+|∞):(((on|off){1},\\d+)+(;((on|off){1},\\d+))*)$";
+    //public static final String SCHEME_TEST_REGEX = "^(\\d+|∞|infty):(((on|off){1},\\d+)+(;((on|off){1},\\d+))*)$";
 
 
     MyPin pin;
     private ArrayList<PinScheduleEvent> onOffScheme;
     int repeat;
 
-    String infinity = "\u221E";
+
 
     public PinBlinkModel(MyPin pin) {
 
@@ -80,7 +80,7 @@ public class PinBlinkModel implements GenericBlinkModel {
         // zuerst wiederholungen vom muster trennen
         String[] splitFirstTurn = scheme.trim().split(":");
         String repeatString = splitFirstTurn[0];
-        repeat = repeatString.equals("∞") ? Integer.MAX_VALUE : Integer.parseInt(repeatString);
+        repeat = repeatString.equals("∞") || repeatString.equalsIgnoreCase("infty") ? Integer.MAX_VALUE : Integer.parseInt(repeatString);
 
         if (repeat > 0) {
             // Hier trennen wir die einzelnen muster voneinander

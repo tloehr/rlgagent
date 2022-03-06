@@ -104,11 +104,11 @@ public class Configs extends AbstractConfigs {
         configs.setProperty("very_short", "1:on,250;off,1");
 
         // recurring signals
-        configs.setProperty("slow", "∞:on,1000;off,5000");
-        configs.setProperty("slow", "∞:on,1000;off,2000");
-        configs.setProperty("normal", "∞:on,1000;off,1000");
-        configs.setProperty("fast", "∞:on,500;off,500");
-        configs.setProperty("very_fast", "∞:on,250;off,250");
+        configs.setProperty("slow", "infty:on,1000;off,5000");
+        configs.setProperty("slow", "infty:on,1000;off,2000");
+        configs.setProperty("normal", "infty:on,1000;off,1000");
+        configs.setProperty("fast", "infty:on,500;off,500");
+        configs.setProperty("very_fast", "infty:on,250;off,250");
 
         // for sirens
         configs.setProperty("single_buzz", "1:on,75;off,75");

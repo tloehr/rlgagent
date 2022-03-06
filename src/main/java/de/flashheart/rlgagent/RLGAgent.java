@@ -32,7 +32,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 @Log4j2
 public class RLGAgent implements MqttCallbackExtended {
-    private final String scheme = "∞:on,250;off,750";
+    private final String scheme = "infty:on,250;off,750";
     private static final int DEBOUNCE = 200; //ms
     private int NETWORKING_MONITOR_INTERVAL = 10;
     private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 6;
