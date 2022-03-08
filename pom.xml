@@ -22,10 +22,8 @@
         <pi.password></pi.password>
         <pi.deployDirectory>/home/pi/rlgagent</pi.deployDirectory>
         <pi.main.class>de.flashheart.rlgagent.Main</pi.main.class>
-
         <project.build.timestamp>${maven.build.timestamp}</project.build.timestamp>
         <my.version>${project.version}</my.version>
-
         <pi4j.version>1.3</pi4j.version>
         <paho.version>1.2.5</paho.version>
         <collections4.version>4.4</collections4.version>
@@ -154,8 +152,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
                 <!--                <configuration>-->
                 <!--                    <release>11</release>-->

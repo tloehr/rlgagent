@@ -36,7 +36,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private static final int DEBOUNCE = 200; //ms
     private int NETWORKING_MONITOR_INTERVAL = 10;
     private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 6;
-    private final String EVENTS, CMD4ME, CMD4ALL;
+    private final String EVENTS, CMD4ME;//, CMD4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
     private final PinHandler pinHandler;
@@ -54,7 +54,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private String active_broker = "";
     private HashMap<String, String> current_network_stats;
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
-    private final String CLIENTID = UUID.randomUUID().toString(); // constant client-id during the application runtime.
+    //UUID.randomUUID().toString(); // constant client-id during the application runtime.
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
@@ -77,7 +77,7 @@ public class RLGAgent implements MqttCallbackExtended {
         iMqttClient = Optional.empty();
 
         // inbound
-        CMD4ALL = String.format("%s/cmd/all/#", configs.get(Configs.MQTT_ROOT), me.getAgentid());
+        //CMD4ALL = String.format("%s/cmd/all/#", configs.get(Configs.MQTT_ROOT), me.getAgentid());
         CMD4ME = String.format("%s/cmd/%s/#", configs.get(Configs.MQTT_ROOT), me.getAgentid());
 
         // outbound
@@ -123,7 +123,7 @@ public class RLGAgent implements MqttCallbackExtended {
             mqtt_connect_tries++;
             log.debug("trying broker @{} number of tries: {}", uri, mqtt_connect_tries);
             //unsubscribe_from_all();
-            iMqttClient = Optional.of(new MqttClient(uri, String.format("%s-%s", me.getAgentid(), CLIENTID), new MqttDefaultFilePersistence(configs.getWORKSPACE())));
+            iMqttClient = Optional.of(new MqttClient(uri, String.format("%s-%s", me.getAgentid(), configs.get(Configs.MYUUID)), new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(configs.is(Configs.MQTT_RECONNECT));
             options.setCleanSession(configs.is(Configs.MQTT_CLEAN_SESSION));
@@ -140,7 +140,7 @@ public class RLGAgent implements MqttCallbackExtended {
 
                 // if the connection is lost, these subscriptions are lost too.
                 // we need to (re)subscribe
-                iMqttClient.get().subscribe(CMD4ALL, (topic, receivedMessage) -> proc(topic, receivedMessage));
+                //iMqttClient.get().subscribe(CMD4ALL, (topic, receivedMessage) -> proc(topic, receivedMessage));
                 iMqttClient.get().subscribe(CMD4ME, (topic, receivedMessage) -> proc(topic, receivedMessage));
 
                 success = true;
@@ -332,8 +332,7 @@ public class RLGAgent implements MqttCallbackExtended {
             }
         }
     }
-
-
+    
     private void set_pins_to(String[] pins, String scheme) {
         for (String pin : pins) {
             pinHandler.setScheme(pin, scheme);
@@ -395,6 +394,7 @@ public class RLGAgent implements MqttCallbackExtended {
                     set_pins_to(Configs.ALL_LEDS, "off");
                     pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
                     pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme); // white is always flashing
+                    netmonitor_cycle = 0; // to inform commander right away
                 }
             }
             // get a better ping statistics out of 5 pings to the current WORKING broker
@@ -426,14 +426,16 @@ public class RLGAgent implements MqttCallbackExtended {
         }
 
         // this reports a status message. very useful to see if all the agents are doing well during the game
-        if (netmonitor_cycle % STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES == 0) {
-            JSONObject status = new JSONObject(current_network_stats);
-            status.put("wifi", Tools.WIFI[me.getWifi()])
-                    .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
-                    .put("mqtt-broker", active_broker)
-                    .put("timestamp", LocalDateTime.now().format(myformat))
-                    .put("mqtt_connect_tries", mqtt_connect_tries);
-            reportEvent("status", status.toString());
+        if (netmonitor_cycle == 0 || netmonitor_cycle % STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES == 0) {
+            if (mqtt_connected()) {
+                JSONObject status = new JSONObject(current_network_stats);
+                status.put("wifi", Tools.WIFI[me.getWifi()])
+                        .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
+                        .put("mqtt-broker", active_broker)
+                        .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
+                        .put("mqtt_connect_tries", mqtt_connect_tries);
+                reportEvent("status", status.toString());
+            }
         }
     }
 
@@ -450,6 +452,7 @@ public class RLGAgent implements MqttCallbackExtended {
      */
     public void connectionLost(Throwable cause) {
         log.warn("connectionLost() - {}", cause.getMessage());
+        disconnect_from_mqtt_broker();
     }
 
     @Override

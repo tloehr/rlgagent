@@ -344,7 +344,7 @@ public class Tools {
             success = exitVal == 0;
 
             current_network_values.put("ping_host", address);
-            current_network_values.put("ping_success", success ? "reached successfully" : "failed to reach");
+            current_network_values.put("ping_success", success ? "ok" : "failed");
             current_network_values.put("last_ping", LocalDateTime.now().format(RLGAgent.myformat));
             if (success) {
                 List<String> tokens = Collections.list(new StringTokenizer(output.toString(), "/:=,"))
