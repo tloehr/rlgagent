@@ -274,7 +274,7 @@ public class Tools {
      * @return 4 - excellent (or desktop), 3 - good, 2 - bad, 1 - ugly, 0 - dead
      */
     public static int getWifiQuality(String signal_level) {
-        log.debug("signal level {}", signal_level);
+        log.trace("signal level {}", signal_level);
         if (signal_level.equalsIgnoreCase("desktop")) return 4;
         if (signal_level.trim().isEmpty()) return 0;
         int wifiQuality;

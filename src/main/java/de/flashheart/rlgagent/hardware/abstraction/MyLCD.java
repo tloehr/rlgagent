@@ -98,7 +98,7 @@ public class MyLCD implements Runnable {
             pages.add(new LCDPage("page0"));
             visible_page_index = 0;
             timers.clear();
-            variables.clear();
+            //variables.clear();
             // set defaults for variables
             setVariable("wifi", "--");
             setVariable("ssid", "--");

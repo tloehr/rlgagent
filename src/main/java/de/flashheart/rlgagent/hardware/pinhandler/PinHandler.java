@@ -59,7 +59,7 @@ public class PinHandler {
     public void setScheme(String name, String scheme) {
         if (lock.isLocked()) log.warn("setScheme() is currently locked. Delay will occur.");
         if (scheme.equalsIgnoreCase("off")) scheme = "0:";
-        scheme = configs.get(scheme, scheme); // replace with predefines scheme or leave it as it was
+        scheme = configs.getScheme(scheme); // replace with predefines scheme or leave it as it was
         lock.lock();
         try {
             GenericBlinkModel genericBlinkModel = pinMap.get(name);

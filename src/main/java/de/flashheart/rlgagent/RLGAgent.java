@@ -32,7 +32,6 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 @Log4j2
 public class RLGAgent implements MqttCallbackExtended {
-    private final String scheme = "infty:on,250;off,750";
     private static final int DEBOUNCE = 200; //ms
     private int NETWORKING_MONITOR_INTERVAL = 10;
     private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 6;
@@ -169,8 +168,6 @@ public class RLGAgent implements MqttCallbackExtended {
                 // <cmd/> => paged|signals|timers|vars
                 if (cmd.equalsIgnoreCase("paged")) {
                     procPaged(json);
-                } else if (cmd.equalsIgnoreCase("delpage")) {
-                    procDelPage(json);
                 } else if (cmd.equalsIgnoreCase("signals")) {
                     procSignals(json);
                 } else if (cmd.equalsIgnoreCase("timers")) {
@@ -243,16 +240,13 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     private void procPaged(JSONObject json) {
+        myLCD.init(); // always a fresh start. changes are rare.
         json.keySet().forEach(page -> {
             JSONArray lines = json.getJSONArray(page);
             for (int line = 1; line <= lines.length(); line++) {
                 myLCD.setLine(page, line, lines.getString(line - 1));
             }
         });
-    }
-
-    private void procDelPage(JSONObject json) {
-        json.getJSONArray("page_handles").forEach(page -> myLCD.delPage(page.toString()));
     }
 
     private void initAgent() {
@@ -353,7 +347,7 @@ public class RLGAgent implements MqttCallbackExtended {
      * @throws SchedulerException
      */
     public void network_connection() throws SchedulerException {
-        log.debug("checking network status");
+        log.trace("checking network status");
         Tools.getWifiParams(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
         me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
@@ -392,8 +386,8 @@ public class RLGAgent implements MqttCallbackExtended {
                     myLCD.setLine("page0", 3, active_broker);
                     myLCD.setLine("page0", 4, "");
                     set_pins_to(Configs.ALL_LEDS, "off");
-                    pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
-                    pinHandler.setScheme(Configs.OUT_LED_BLUE, scheme); // white is always flashing
+                    pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
+                    pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
                     netmonitor_cycle = 0; // to inform commander right away
                 }
             }
@@ -405,10 +399,10 @@ public class RLGAgent implements MqttCallbackExtended {
 
         if (!mqtt_connected()) {
             set_pins_to(Configs.ALL_LEDS, "off");
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, scheme); // white is always flashing
-            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, scheme);
-            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, scheme);
-            if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, scheme);
+            pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
+            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "netstatus");
+            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "netstatus");
+            if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, "netstatus");
 
             if (!myLCD.pageExists("network1")) {
                 myLCD.welcome_page();
@@ -433,7 +427,8 @@ public class RLGAgent implements MqttCallbackExtended {
                         .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
                         .put("mqtt-broker", active_broker)
                         .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
-                        .put("mqtt_connect_tries", mqtt_connect_tries);
+                        .put("mqtt_connect_tries", mqtt_connect_tries)
+                        .put("netmonitor_cycle", netmonitor_cycle);
                 reportEvent("status", status.toString());
             }
         }

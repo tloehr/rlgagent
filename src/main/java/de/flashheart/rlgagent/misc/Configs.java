@@ -5,8 +5,8 @@ import de.flashheart.rlgagent.Main;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 
-import java.io.File;
 import java.io.IOException;
+import java.util.Properties;
 
 public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
@@ -39,10 +39,42 @@ public class Configs extends AbstractConfigs {
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
     public static final String MY_ID = "myid";
+    protected final Properties blink_schemes;
 
     public Configs() throws IOException {
         super(System.getProperties().getProperty("workspace"));
+        // predefined schemes belong to the config file
+        // so we can change the commander without necessarily having to update the agent, too
+
+        blink_schemes = new Properties();
+
+        blink_schemes.setProperty("very_long", "1:on,5000;off,1");
+        blink_schemes.setProperty("long", "1:on,2500;off,1");
+        blink_schemes.setProperty("medium", "1:on,1000;off,1");
+        blink_schemes.setProperty("short", "1:on,500;off,1");
+        blink_schemes.setProperty("very_short", "1:on,250;off,1");
+
+        // recurring signals
+        blink_schemes.setProperty("slow", "infty:on,1000;off,5000");
+        blink_schemes.setProperty("slow", "infty:on,1000;off,2000");
+        blink_schemes.setProperty("normal", "infty:on,1000;off,1000");
+        blink_schemes.setProperty("fast", "infty:on,500;off,500");
+        blink_schemes.setProperty("very_fast", "infty:on,250;off,250");
+        blink_schemes.setProperty("netstatus", "infty:on,250;off,750");
+
+
+        // for sirens
+        blink_schemes.setProperty("single_buzz", "1:on,75;off,75");
+        blink_schemes.setProperty("double_buzz", "2:on,75;off,75");
+        blink_schemes.setProperty("triple_buzz", "3:on,75;off,75");
     }
+
+
+    // for fixed blinking schemes
+    public String getScheme(String key) {
+        return blink_schemes.getProperty(key, key);
+    }
+
 
     public String getAgentname() {
         return configs.getProperty(MY_ID);
@@ -95,25 +127,6 @@ public class Configs extends AbstractConfigs {
 
         configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1");
 
-        // predefined schemes belong to the config file
-        // so we can change the commander without necessarily having to update the agent, too
-        configs.setProperty("very_long", "1:on,5000;off,1");
-        configs.setProperty("long", "1:on,2500;off,1");
-        configs.setProperty("medium", "1:on,1000;off,1");
-        configs.setProperty("short", "1:on,500;off,1");
-        configs.setProperty("very_short", "1:on,250;off,1");
-
-        // recurring signals
-        configs.setProperty("slow", "infty:on,1000;off,5000");
-        configs.setProperty("slow", "infty:on,1000;off,2000");
-        configs.setProperty("normal", "infty:on,1000;off,1000");
-        configs.setProperty("fast", "infty:on,500;off,500");
-        configs.setProperty("very_fast", "infty:on,250;off,250");
-
-        // for sirens
-        configs.setProperty("single_buzz", "1:on,75;off,75");
-        configs.setProperty("double_buzz", "2:on,75;off,75");
-        configs.setProperty("triple_buzz", "3:on,75;off,75");
 
         // missionbox
 //        configs.setProperty(OUT_LED_WHITE, RaspiPin.GPIO_05.getName()); // 13
