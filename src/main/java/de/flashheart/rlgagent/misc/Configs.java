@@ -55,7 +55,7 @@ public class Configs extends AbstractConfigs {
         blink_schemes.setProperty("very_short", "1:on,250;off,1");
 
         // recurring signals
-        blink_schemes.setProperty("slow", "infty:on,1000;off,5000");
+        blink_schemes.setProperty("very_slow", "infty:on,1000;off,5000");
         blink_schemes.setProperty("slow", "infty:on,1000;off,2000");
         blink_schemes.setProperty("normal", "infty:on,1000;off,1000");
         blink_schemes.setProperty("fast", "infty:on,500;off,500");

@@ -384,8 +384,7 @@ public class RLGAgent implements MqttCallbackExtended {
                 // SUCCESS!!
                 if (!active_broker.isEmpty()) {
                     myLCD.init();
-                    myLCD.setLine("page0", 1, "=== MQTT ===");
-                    myLCD.setLine("page0", 2, "Connected to");
+                    myLCD.setLine("page0", 2, "MQTT connected to");
                     myLCD.setLine("page0", 3, active_broker);
                     myLCD.setLine("page0", 4, "");
                     set_pins_to(Configs.ALL_LEDS, "off");

@@ -81,8 +81,8 @@ public class MyLCD implements Runnable {
     }
 
     public void welcome_page(){
-        setLine("page0", 1, "  Welcome to the  ");
-        setLine("page0", 2, "RLGAgent ${agversion}.${agbuild}");
+        setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+        setLine("page0", 2, "");
         setLine("page0", 3, "");
         setLine("page0", 4, "Initializing...");
     }
