@@ -1,5 +1,6 @@
 RLG Agent
 =========
+
 * [Configs](#configs)
 * [MQTT](#mqtt)
 * [Commands](#commands)
@@ -19,72 +20,64 @@ RLG Agent
    * [Events](#events)
 ---
 # Preface
-The purpose of the **RLGS** (Real Life Gaming System) is to realize games for **tactical sports** like paintball, airsoft, Nerf or Laser Tag. We try to adapt well known multiplayer modes from games like Battlefield, Call of Duty, FarCry, Planetside 2 oder Counterstrike.
+The purpose of the **RLGS** (Real Life Gaming System) is to realize games for **tactical sports** like paintball, airsoft, Nerf or Laser Tag. RLGS adapts well known multiplayer modes from games like Battlefield, Call of Duty, FarCry, Planetside 2 oder Counterstrike to be played in real life.
 
-The RLGS concept consists of one [commander](https://github.com/tloehr/rlgcommander) and multiple game items on the field, called agents (this project). 
+The RLGS concept consists of two basic elements: the [commander](https://github.com/tloehr/rlgcommander) and one or more agents (this project).
 
-Agents do **not know anything** about why they are flashing LEDs, sounding sirens or why somebody presses their buttons. They completely rely on the commander to tell them what to do, that the signals are meaningful to the players on the field. The commander is the only one who keeps track about the game situation.
+Agents can produce optical and acoustical signals and detect events (currently only the press of a button). They do **not know anything** about why they are flashing LEDs, sounding sirens or why somebody presses their buttons. They completely rely on the commander to tell them what to do. The commander is the only one who keeps track about the game situation.
 
 # Hard- and Software
-Agents are supposed to run on Raspberry Pi computers with several input and output devices connected to them. Like LED stripes, sirens (switched by relay boards), push buttons, LCDs etc. But it is also possible to run them on a standard desktop computers (Mac, Windows, Linux). In this case, they fire up a Swing GUI to simulate the aforementioned devices on the screen or via the sound card. 
+Agents are supposed to run on Raspberry Pi computers with several input and output devices connected to them. Like LED stripes, sirens (switched by relay boards), push buttons, LCDs etc. But it is also possible to run them on a standard desktop computers (Mac, Windows, Linux). In this case, they start up a Swing GUI to simulate the aforementioned devices on the screen or via the sound card. 
 
 ![agent-gui](src/main/resources/docs/agent-gui.png)
 
-We use the [Pi4J](https://pi4j.com/) framework to connect the hardware to our Java source code. The whole framework is about to change drastically with the version 2. But for now we stick to Version 1 which still relies on the now deprecated [WiringPi](http://wiringpi.com/) project, as it runs very well. Please note, that the Pin numbering used in the config files are named according to the WiringPi scheme.
+We use the [Pi4J](https://pi4j.com/) framework to connect the hardware to our Java source code. The whole framework is about to change drastically with the version 2. But for now we stick to Version 1, which still relies on the now deprecated [WiringPi](http://wiringpi.com/) project, as it runs very well. Please note, that the Pin numbering used in the config files are named according to the WiringPi scheme.
 
 WiringPi is not available in Raspbian anymore or as sourcecode in https://git.drogon.net/?p=wiringPi;a=summary
 Until we are moving on to pi4j 2.0 (which based on pigpio), we stick with a source code mirror for WiringPi on GitHub. Which works very well for us.
 
 ## Configs
-The agent creates a workspace folder startup (if missing)The default location is the **home directory of the particular user**. Inside this folder resides the **config.txt** file, which is a standard Java properties file.  
+The agent creates a workspace folder startup (if missing). The default location is the **home directory of the particular user**. Inside this folder resides the **config.txt** file, which is a standard Java properties file.  
 
 ```
 #Settings rlgagent
-#Tue Dec 28 16:59:47 CET 2021
-btn01=GPIO 22
-btn02=GPIO 23
-buzzer=GPIO 12
-double_buzz=2\:on,75;off,75
-gameid=g1
-has_large_display=false
-has_lcd=true
-has_leds=true
-has_line_display=true
-has_rfid=false
-has_sirens=false
-has_sound=false
+#Sun Mar 13 20:19:11 CET 2022
+btn01=GPIO 3
+btn02=GPIO 4
+buzzer=GPIO 26
 lcd_cols=20
+lcd_i2c_address=0x27
 lcd_rows=4
-led_blu=GPIO 6
-led_grn=GPIO 5
-led_wht=GPIO 27
-led_ylw=GPIO 24
-long=1\:on,2500;off,1
+led_blu=GPIO 22
+led_grn=GPIO 21
+led_red=GPIO 1
+led_wht=GPIO 2
+led_ylw=GPIO 5
+loglevel=DEBUG
 mcp23017_i2c_address=0x20
-medium=1\:on,2500;off,1
-mqtt_broker=mqtta mqttb mqtt
+mqtt_broker=localhost
+mqtt_clean_session=true
+mqtt_max_inflight=1000
 mqtt_port=1883
-mqtt_url=tcp\://mqtt\:1883
-normal=\u221E\:on,1000;off,1000
-single_buzz=1\:on,75;off,75
-sir1=GPIO 4
-sir3=GPIO 25
-siren_buzzer=GPIO 12
-slow=\u221E\:on,2000;off,1000
-triple_buzz=3\:on,75;off,75
-uuid=10ffee3d-7041-40a5-820d-74348c11ebcb
-very_fast=\u221E\:on,250;off,250
-very_long=1\:on,5000;off,1
-wifi_cmd=iwconfig wlan0|egrep "Signal level"|awk '{print $4}'
+mqtt_qos=2
+mqtt_reconnect=true
+mqtt_retained=true
+mqtt_root=rlg
+mqtt_timeout=10
+myid=ag01
+sir1=GPIO 7
+sir2=GPIO 0
+sir3=GPIO 6
+uuid=d0cc8d4e-7a10-4762-8241-cfa79a932653
+wifi_cmd=iwconfig wlan0
 ```
 
 # MQTT
-Agents and the Commander communicate through messages handled by [MQTT](https://en.wikipedia.org/wiki/MQTT).
+Agents and the Commander communicate through messages handled by the [MQTT](https://en.wikipedia.org/wiki/MQTT) protocol.
 
-Every agent listens to two fixed topic channels:
+Every agent listens to a fixed topic channel:
 
-1. `<game_id>/cmd/<agent_id>/#`
-2. `<game_id>/cmd/all/#`
+`rlg/cmd/<agent_id>/#`
 
 With 
 - `<game_id>` is a unique key for the current game. Every agent and commander must use the same game id to work together. We will use this prefix just in case we are sharing a MQTT broker with others.

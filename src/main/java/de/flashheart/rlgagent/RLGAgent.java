@@ -57,6 +57,9 @@ public class RLGAgent implements MqttCallbackExtended {
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
+
+        log.info("RLG-Agent {}b{} {}", configs.getBuildProperties("my.version"), configs.getBuildProperties("buildNumber"), configs.getBuildProperties("buildDate"));
+
         this.myUI = myUI;
         this.gpio = gpio;
         this.pinHandler = pinHandler;
