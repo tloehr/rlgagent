@@ -162,24 +162,18 @@ public class RLGAgent implements MqttCallbackExtended {
 
         log.debug("received {} from {} cmd {}", receivedMessage, topic, cmd);
         try {
-            if (cmd.equalsIgnoreCase("init")) {
-                procInit();
-            } else if (cmd.equalsIgnoreCase("shutdown")) {
-                procShutdown(true);
+            final JSONObject json = new JSONObject(new String(receivedMessage.getPayload()));
+            // <cmd/> => paged|signals|timers|vars
+            if (cmd.equalsIgnoreCase("paged")) {
+                procPaged(json);
+            } else if (cmd.equalsIgnoreCase("signals")) {
+                procSignals(json);
+            } else if (cmd.equalsIgnoreCase("timers")) {
+                procTimers(json);
+            } else if (cmd.equalsIgnoreCase("vars")) {
+                procVars(json);
             } else {
-                final JSONObject json = new JSONObject(new String(receivedMessage.getPayload()));
-                // <cmd/> => paged|signals|timers|vars
-                if (cmd.equalsIgnoreCase("paged")) {
-                    procPaged(json);
-                } else if (cmd.equalsIgnoreCase("signals")) {
-                    procSignals(json);
-                } else if (cmd.equalsIgnoreCase("timers")) {
-                    procTimers(json);
-                } else if (cmd.equalsIgnoreCase("vars")) {
-                    procVars(json);
-                } else {
-                    log.warn("unknown command {}", cmd);
-                }
+                log.warn("unknown command {}", cmd);
             }
         } catch (Exception e) {
             log.error(e.toString());
@@ -206,18 +200,11 @@ public class RLGAgent implements MqttCallbackExtended {
         Runtime.getRuntime().halt(0);
     }
 
-    private void procInit() {
-        log.trace("received INIT");
-        myLCD.init();
-        pinHandler.off();
-    }
-
     private void procTimers(JSONObject json) {
         json.keySet().forEach(sKey -> myLCD.setTimer(sKey, json.getLong(sKey)));
     }
 
     private void procVars(JSONObject json) {
-
         json.keySet().forEach(sKey -> myLCD.setVariable(sKey, json.getString(sKey)));
     }
 
@@ -259,7 +246,6 @@ public class RLGAgent implements MqttCallbackExtended {
             btn01.setDebounce(DEBOUNCE);
             btn01.addListener((GpioPinListenerDigital) event -> {
                 log.trace("button event: {}; State: {}; Edge: {}", "btn01", event.getState(), event.getEdge());
-                //if (event.getState() != PinState.LOW) return;
                 if (event.getState() == PinState.HIGH)
                     reportEvent("btn01", new JSONObject().put("button", "up").toString());
                 if (event.getState() == PinState.LOW)
@@ -270,7 +256,6 @@ public class RLGAgent implements MqttCallbackExtended {
             btn02.setDebounce(DEBOUNCE);
             btn02.addListener((GpioPinListenerDigital) event -> {
                 log.trace("button event: {}; State: {}; Edge: {}", "btn02", event.getState(), event.getEdge());
-                //if (event.getState() != PinState.LOW) return;
                 if (event.getState() == PinState.HIGH)
                     reportEvent("btn02", new JSONObject().put("button", "up").toString());
                 if (event.getState() == PinState.LOW)
@@ -329,7 +314,7 @@ public class RLGAgent implements MqttCallbackExtended {
             }
         }
     }
-    
+
     private void set_pins_to(String[] pins, String scheme) {
         for (String pin : pins) {
             pinHandler.setScheme(pin, scheme);
