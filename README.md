@@ -1,25 +1,27 @@
 RLG Agent
 =========
+
 * [Preface](#preface)
 * [Hard- and Software](#hard--and-software)
 * [Workspace](#workspace)
-   * [Logfiles](#logfiles)
-   * [Configs](#configs)
+    * [Logfiles](#logfiles)
+    * [Configs](#configs)
 * [Messaging](#messaging)
 * [Commands](#commands)
-   * [Signals](#signals)
-      * [Schemes](#schemes)
-      * [Standard signal schemes](#standard-signal-schemes)
-      * [Devices](#devices)
-   * [Paged Displays](#paged-displays)
-      * [Setting the page content](#setting-the-page-content)
-      * [Variables and template expressions](#variables-and-template-expressions)
-         * [Preset variables](#preset-variables)
-         * [Dynamic variables](#dynamic-variables)
-         * [Timers](#timers)
+    * [Signals](#signals)
+        * [Schemes](#schemes)
+        * [Standard signal schemes](#standard-signal-schemes)
+        * [Devices](#devices)
+    * [Paged Displays](#paged-displays)
+        * [Setting the page content](#setting-the-page-content)
+        * [Variables and template expressions](#variables-and-template-expressions)
+            * [Preset variables](#preset-variables)
+            * [Dynamic variables](#dynamic-variables)
+            * [Timers](#timers)
 * [Events](#events)
-   * [Buttons](#buttons)
-   * [Status](#status)
+    * [Buttons](#buttons)
+    * [Status](#status)
+
 ---
 
 # Preface
@@ -111,7 +113,7 @@ above). The current day's file is always named `rlgagent.log`
 The **config.txt** is a standard Java properties file. If it is missing either single entries or completely, it will be
 created and filled up with the following default settings:
 
-```
+```properties
 #Settings rlgagent
 #Sun Mar 13 20:19:11 CET 2022
 btn01=GPIO 3
@@ -214,7 +216,7 @@ Signals are sent out by the agent optically (LEDs) or accoustically (Sirens, Buz
 
 Signal schemes are lists of **on** and **off** durations (in milliseconds) for the specific Raspi pin. Every list is
 preceded by the number of repeats. If a scheme should go on forever (until overwritten by a new command), the
-repeat_count can be replaced by the **infty** keyword (in fact, there is no infinity, it is Long.MAX_VALUE, but for our
+repeat_count can be replaced by the **infty** keyword (in fact, there is no infinity, it is **Long.MAX_VALUE**, but for our
 purpose this would take forever). A repeat_count of 0, turns off the signal. Like so: `0:` or the word `off` (which is
 also understood).
 
@@ -266,15 +268,21 @@ There are 3 device groups:
 
 A signal which causes the agent to buzz two times (75 ms) would have a payload like this:
 
-`{"buzzer":"2:on,75;off,75"}`
+```json
+{"buzzer":"2:on,75;off,75"}
+```
 
 If we want all LEDs to blink every second (until further notice), we would send this:
 
-`{"led_all":"infty:on,1000;off,1000"}`
+```json
+{"led_all":"infty:on,1000;off,1000"}
+```
 
 or in short:
 
-`{"led_all":"normal"}`
+```json
+{"led_all":"normal"}
+```
 
 We can combine multiple payloads into one message. Also for the other commands, not only signals.
 
@@ -397,7 +405,7 @@ Events are something that happens to or on the agent. They are reported to the c
 
 Topic: `/rlg/evt/ag01/btn01` or `/rlg/evt/ag01/btn02`
 
-The use of a button is divided into two separate events: 
+The use of a button is divided into two separate events:
 
 1. The first one reporting that the button is **pressed down**: `{"button":"down"}`
 2. the second one when the button is **released again**: `{"button":"up"}`
@@ -406,8 +414,8 @@ The use of a button is divided into two separate events:
 
 Topic: `/rlg/evt/ag01/status`
 
-Every **60 seconds** an agent reports its current status to the commander. Very important to tell, whether all agents are
-working correctly during a match.
+Every **60 seconds** an agent reports its current status to the commander. Very important to tell, whether all agents
+are working correctly during a match.
 
 ```json
 {
