@@ -162,7 +162,8 @@ public class RLGAgent implements MqttCallbackExtended {
 
         log.debug("received {} from {} cmd {}", receivedMessage, topic, cmd);
         try {
-            final JSONObject json = new JSONObject(new String(receivedMessage.getPayload()));
+            String payload = new String(receivedMessage.getPayload());
+            final JSONObject json = new JSONObject(payload.isEmpty() ? "{}" : payload);
             // <cmd/> => paged|signals|timers|vars
             if (cmd.equalsIgnoreCase("paged")) {
                 procPaged(json);
@@ -172,6 +173,8 @@ public class RLGAgent implements MqttCallbackExtended {
                 procTimers(json);
             } else if (cmd.equalsIgnoreCase("vars")) {
                 procVars(json);
+            } else if (cmd.equalsIgnoreCase("shutdown")) {
+                procShutdown(true);
             } else {
                 log.warn("unknown command {}", cmd);
             }
@@ -182,12 +185,9 @@ public class RLGAgent implements MqttCallbackExtended {
 
     public void procShutdown(boolean system_shutdown) {
         log.trace("Shutdown initiated");
-
         myLCD.init();
         myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
-        myLCD.setLine("page0", 2, system_shutdown ? "System" : "Agent");
-        myLCD.setLine("page0", 3, "shutdown");
-
+        myLCD.setLine("page0", 3, "Agent shutdown");
         try {
             scheduler.shutdown();
         } catch (SchedulerException e) {
@@ -196,8 +196,7 @@ public class RLGAgent implements MqttCallbackExtended {
         disconnect_from_mqtt_broker();
         configs.saveConfigs();
         pinHandler.off();
-        if (system_shutdown) Tools.system_shutdown();
-        Runtime.getRuntime().halt(0);
+        if (system_shutdown) System.exit(0);
     }
 
     private void procTimers(JSONObject json) {

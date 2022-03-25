@@ -23,9 +23,7 @@ RLG Agent
     * [Status](#status)
 
 ---
-
 # Preface
-
 The purpose of the **RLGS** (Real Life Gaming System) is to realize games for **tactical sports** like paintball,
 airsoft, Nerf or Laser Tag. RLGS adapts well known multiplayer modes from games like Battlefield, Call of Duty, FarCry,
 Planetside 2 oder Counterstrike to be played in real life.
@@ -33,8 +31,7 @@ Planetside 2 oder Counterstrike to be played in real life.
 The RLGS concept consists of two basic elements: the [commander](https://github.com/tloehr/rlgcommander) and one or more
 agents (this project).
 
-Agents can produce optical and acoustical signals and detect events (currently only the press of a button). They do **
-not know anything** about why they are flashing LEDs, sounding sirens or why somebody presses their buttons. They
+Agents can produce optical and acoustical signals and detect events (currently only the press of a button). They do **not know anything** about why they are flashing LEDs, sounding sirens or why somebody presses their buttons. They
 completely rely on the commander to tell them what to do. The commander is the only one who keeps track about the game
 situation.
 
@@ -49,6 +46,9 @@ The concept of an agent contains the following in- and output devices.
 An agent **does not have to be fully equipped** with every device possible. Such an *complete* system, should not be
 necessary. Nevertheless, the software understands all signals, even if the addressed device is not connected. In this
 case the signal is accepted but ignored.
+
+#Installation
+The agent is written in Java and therefor available on nearly any platform. There are ready-made packages for Windows, Mac, Linux and Raspbian. The Raspbian version is only available as a service or demonized version. Linux versions are distributed via a package repository at flashheart.de. Refer to the [download page](https://www.flashheart.de/doku.php/de:downloads#linux) for more information.
 
 # Hard- and Software
 
