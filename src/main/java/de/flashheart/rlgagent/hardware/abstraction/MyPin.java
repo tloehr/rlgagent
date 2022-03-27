@@ -21,14 +21,31 @@ public class MyPin {
     private final Optional<GpioPinDigitalOutput> outputPin;
     private final String name;
     private final Optional<MyUI> myUI;
-    private int note = -1;
+    private final int note;
     private Synthesizer synthesizer = null;
     private MidiChannel[] channels;
+    private final boolean trigger_on_high;
+
 
     public MyPin(String name, Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, Optional<MCP23017GpioProvider> gpioProvider, int instrument, int note) {
+        this(name, configs, myUI, gpio, gpioProvider, instrument, note, true);
+    }
+
+    /**
+     * @param name
+     * @param configs
+     * @param myUI
+     * @param gpio
+     * @param gpioProvider    only valid when running on a Raspberry
+     * @param instrument      MIDI instrument to simulate a siren signal in the GUI version
+     * @param note            to simulate a siren signal in the GUI version
+     * @param trigger_on_high true (which is default) means, that on will set the pin to HIGH. false, means ON sets the pin to LOW. Mainly necessary for relais boards, which come in two flavors.
+     */
+    public MyPin(String name, Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, Optional<MCP23017GpioProvider> gpioProvider, int instrument, int note, boolean trigger_on_high) {
         this.name = name;
         this.myUI = myUI;
         this.note = note;
+        this.trigger_on_high = trigger_on_high;
 
         if (gpio.isPresent()) {
             Optional<Pin> raspiPin = Optional.ofNullable(RaspiPin.getPinByName(configs.get(name)));
@@ -69,8 +86,10 @@ public class MyPin {
     }
 
     public void setState(boolean on) {
-        outputPin.ifPresent(gpioPinDigitalOutput -> gpioPinDigitalOutput.setState(on ? PinState.HIGH : PinState.LOW));
-        log.trace(getName() + ": "+ (on ? "ON" : "off"));
+        // trigger_on_high can invert the PinState
+        outputPin.ifPresent(gpioPinDigitalOutput -> gpioPinDigitalOutput.setState(trigger_on_high == on ? PinState.HIGH : PinState.LOW));
+        log.trace("{}: trigger_on_high {} => {}", trigger_on_high, getName(), (on ? "ON" : "off"));
+
         myUI.ifPresent(myUI1 -> myUI1.setState(name, on));
 
         if (synthesizer != null) {

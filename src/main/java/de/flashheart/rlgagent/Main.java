@@ -90,9 +90,11 @@ public class Main {
         pinHandler = new PinHandler(configs);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> agent.procShutdown(false)));
 
-        UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
         myUI = GraphicsEnvironment.isHeadless() ? Optional.empty() : Optional.of(new MyUI(configs.getAgentname()));
-        myUI.ifPresent(myUI1 -> myUI1.setVisible(true));
+        if (myUI.isPresent()) {
+            UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            myUI.get().setVisible(true);
+        }
     }
 
     private static void initGameSystem() {
@@ -102,9 +104,9 @@ public class Main {
         pinHandler.add(new MyPin(Configs.OUT_LED_GREEN, configs, myUI, gpioController, mcp23017_1, -1, -1));
         pinHandler.add(new MyPin(Configs.OUT_LED_BLUE, configs, myUI, gpioController, mcp23017_1, -1, -1));
         // sirens
-        pinHandler.add(new MyPin(Configs.OUT_SIREN1, configs, myUI, gpioController, mcp23017_1, 70, 60));
-        pinHandler.add(new MyPin(Configs.OUT_SIREN2, configs, myUI, gpioController, mcp23017_1, 50, 90));
-        pinHandler.add(new MyPin(Configs.OUT_SIREN3, configs, myUI, gpioController, mcp23017_1, 50, 75));
+        pinHandler.add(new MyPin(Configs.OUT_SIREN1, configs, myUI, gpioController, mcp23017_1, 70, 60, configs.is(Configs.TRIGGER_ON_HIGH_SIREN1)));
+        pinHandler.add(new MyPin(Configs.OUT_SIREN2, configs, myUI, gpioController, mcp23017_1, 50, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN2)));
+        pinHandler.add(new MyPin(Configs.OUT_SIREN3, configs, myUI, gpioController, mcp23017_1, 50, 75, configs.is(Configs.TRIGGER_ON_HIGH_SIREN3)));
         pinHandler.add(new MyPin(Configs.OUT_BUZZER, configs, myUI, gpioController, mcp23017_1, 70, 30));
 
     }

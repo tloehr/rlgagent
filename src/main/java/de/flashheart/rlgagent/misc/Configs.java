@@ -26,6 +26,11 @@ public class Configs extends AbstractConfigs {
     public static final String OUT_SIREN1 = "sir1";
     public static final String OUT_SIREN2 = "sir2";
     public static final String OUT_SIREN3 = "sir3";
+    public static final String OUT_SIREN4 = "sir4";
+    public static final String TRIGGER_ON_HIGH_SIREN1 = "trigger_on_high_sir1";
+    public static final String TRIGGER_ON_HIGH_SIREN2 = "trigger_on_high_sir2";
+    public static final String TRIGGER_ON_HIGH_SIREN3 = "trigger_on_high_sir3";
+    public static final String TRIGGER_ON_HIGH_SIREN4 = "trigger_on_high_sir4";
     public static final String OUT_BUZZER = "buzzer"; // ein einfacher Buzzer
     public static final String IN_BTN01 = "btn01";
     public static final String IN_BTN02 = "btn02";
@@ -99,7 +104,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(MQTT_CLEAN_SESSION, "true");
         configs.setProperty(MQTT_TIMEOUT, "10");
         configs.setProperty(MQTT_RECONNECT, "true");
-        configs.setProperty(MQTT_QOS, "2");
+        configs.setProperty(MQTT_QOS, "1"); // QOS1 is good enough - QOS2 can cause some lag
         configs.setProperty(MQTT_RETAINED, "true");
 
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
@@ -121,6 +126,12 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(OUT_SIREN1, RaspiPin.GPIO_07.getName()); // 7
         configs.setProperty(OUT_SIREN2, RaspiPin.GPIO_00.getName()); // 11
         configs.setProperty(OUT_SIREN3, RaspiPin.GPIO_06.getName()); // 22
+        //todo: configs.setProperty(OUT_SIREN4, RaspiPin.GPIO_06.getName()); // 22
+
+        configs.setProperty(TRIGGER_ON_HIGH_SIREN1, "true");
+        configs.setProperty(TRIGGER_ON_HIGH_SIREN2, "true");
+        configs.setProperty(TRIGGER_ON_HIGH_SIREN3, "true");
+        configs.setProperty(TRIGGER_ON_HIGH_SIREN4, "true");
 
         configs.setProperty(IN_BTN01, RaspiPin.GPIO_03.getName()); // 15
         configs.setProperty(IN_BTN02, RaspiPin.GPIO_04.getName()); // 16
