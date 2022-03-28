@@ -28,7 +28,6 @@ import java.util.HashMap;
  */
 @Log4j2
 public class MyUI extends JFrame {
-    private final int MAX_LOG_LINES = 200;
     HashMap<String, MyLED> pinMap;
     ArrayList<JLabel> lineList;
 
@@ -60,6 +59,7 @@ public class MyUI extends JFrame {
         pinMap.put(Configs.OUT_SIREN1, new MyLED(Configs.OUT_SIREN1, Color.DARK_GRAY));
         pinMap.put(Configs.OUT_SIREN2, new MyLED(Configs.OUT_SIREN2, Color.DARK_GRAY));
         pinMap.put(Configs.OUT_SIREN3, new MyLED(Configs.OUT_SIREN3, Color.DARK_GRAY));
+        pinMap.put(Configs.OUT_SIREN4, new MyLED(Configs.OUT_SIREN4, Color.DARK_GRAY));
         pinMap.put(Configs.OUT_BUZZER, new MyLED(Configs.OUT_BUZZER, Color.DARK_GRAY));
 
         JPanel page = new JPanel();
@@ -73,23 +73,15 @@ public class MyUI extends JFrame {
         page.add(leds);
         page.add(sirens);
 
-        //pinPanel.setLayout(new BoxLayout(pinPanel, BoxLayout.PAGE_AXIS));
-        //pinPanel.setLayout(new GridLayout(5, 2, 5, 5));
-
-
-
         leds.add(pinMap.get(Configs.OUT_LED_WHITE));
-
         leds.add(pinMap.get(Configs.OUT_LED_RED));
-
         leds.add(pinMap.get(Configs.OUT_LED_YELLOW));
-
         leds.add(pinMap.get(Configs.OUT_LED_GREEN));
-
         leds.add(pinMap.get(Configs.OUT_LED_BLUE));
         sirens.add(pinMap.get(Configs.OUT_SIREN1));
         sirens.add(pinMap.get(Configs.OUT_SIREN2));
         sirens.add(pinMap.get(Configs.OUT_SIREN3));
+        sirens.add(pinMap.get(Configs.OUT_SIREN4));
         sirens.add(pinMap.get(Configs.OUT_BUZZER));
         content1.add(page, BorderLayout.CENTER);
     }

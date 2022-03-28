@@ -1,6 +1,5 @@
 package de.flashheart.rlgagent;
 
-import com.bulenkov.darcula.DarculaLaf;
 import com.pi4j.gpio.extension.mcp.MCP23017GpioProvider;
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioFactory;
@@ -16,12 +15,8 @@ import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.cli.*;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.config.Configurator;
 
 import javax.swing.*;
-import javax.swing.plaf.basic.BasicLookAndFeel;
 import java.awt.*;
 import java.io.IOException;
 import java.util.Optional;
@@ -90,9 +85,10 @@ public class Main {
         pinHandler = new PinHandler(configs);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> agent.procShutdown(false)));
 
-        myUI = GraphicsEnvironment.isHeadless() ? Optional.empty() : Optional.of(new MyUI(configs.getAgentname()));
-        if (myUI.isPresent()) {
+        myUI = Optional.empty();
+        if (!GraphicsEnvironment.isHeadless()) {
             UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            myUI = Optional.of(new MyUI(configs.getAgentname()));
             myUI.get().setVisible(true);
         }
     }
@@ -107,6 +103,7 @@ public class Main {
         pinHandler.add(new MyPin(Configs.OUT_SIREN1, configs, myUI, gpioController, mcp23017_1, 70, 60, configs.is(Configs.TRIGGER_ON_HIGH_SIREN1)));
         pinHandler.add(new MyPin(Configs.OUT_SIREN2, configs, myUI, gpioController, mcp23017_1, 50, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN2)));
         pinHandler.add(new MyPin(Configs.OUT_SIREN3, configs, myUI, gpioController, mcp23017_1, 50, 75, configs.is(Configs.TRIGGER_ON_HIGH_SIREN3)));
+        pinHandler.add(new MyPin(Configs.OUT_SIREN4, configs, myUI, gpioController, mcp23017_1, 50, 67, configs.is(Configs.TRIGGER_ON_HIGH_SIREN4)));
         pinHandler.add(new MyPin(Configs.OUT_BUZZER, configs, myUI, gpioController, mcp23017_1, 70, 30));
 
     }

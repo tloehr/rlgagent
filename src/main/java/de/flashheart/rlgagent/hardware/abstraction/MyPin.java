@@ -39,7 +39,8 @@ public class MyPin {
      * @param gpioProvider    only valid when running on a Raspberry
      * @param instrument      MIDI instrument to simulate a siren signal in the GUI version
      * @param note            to simulate a siren signal in the GUI version
-     * @param trigger_on_high true (which is default) means, that on will set the pin to HIGH. false, means ON sets the pin to LOW. Mainly necessary for relais boards, which come in two flavors.
+     * @param trigger_on_high true (which is default) means, that on will set the pin to HIGH. false, means ON sets the
+     *                        pin to LOW. Mainly necessary for relais boards, which come in two flavors.
      */
     public MyPin(String name, Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, Optional<MCP23017GpioProvider> gpioProvider, int instrument, int note, boolean trigger_on_high) {
         this.name = name;
@@ -86,7 +87,8 @@ public class MyPin {
     }
 
     public void setState(boolean on) {
-        // trigger_on_high can invert the PinState
+        // trigger_on_high can invert the PinState / only for hardware not for UI
+        // simplified trigger_on_high ? on : !on to trigger_on_high == on
         outputPin.ifPresent(gpioPinDigitalOutput -> gpioPinDigitalOutput.setState(trigger_on_high == on ? PinState.HIGH : PinState.LOW));
         log.trace("{}: trigger_on_high {} => {}", trigger_on_high, getName(), (on ? "ON" : "off"));
 

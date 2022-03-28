@@ -40,7 +40,7 @@ public class Configs extends AbstractConfigs {
     public static final String MCP23017_I2C_ADDRESS = "mcp23017_i2c_address";
     public static final String LOGLEVEL = "loglevel";
     public static final String[] ALL_LEDS = new String[]{OUT_LED_WHITE, OUT_LED_RED, OUT_LED_YELLOW, OUT_LED_GREEN, OUT_LED_BLUE};
-    public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3};
+    public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4};
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
     public static final String MY_ID = "myid";
@@ -126,7 +126,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(OUT_SIREN1, RaspiPin.GPIO_07.getName()); // 7
         configs.setProperty(OUT_SIREN2, RaspiPin.GPIO_00.getName()); // 11
         configs.setProperty(OUT_SIREN3, RaspiPin.GPIO_06.getName()); // 22
-        //todo: configs.setProperty(OUT_SIREN4, RaspiPin.GPIO_06.getName()); // 22
+        configs.setProperty(OUT_SIREN4, RaspiPin.GPIO_23.getName()); // 33
 
         configs.setProperty(TRIGGER_ON_HIGH_SIREN1, "true");
         configs.setProperty(TRIGGER_ON_HIGH_SIREN2, "true");
