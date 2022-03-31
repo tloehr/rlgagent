@@ -80,7 +80,7 @@ public class MyLCD implements Runnable {
         thread.start();
     }
 
-    public void welcome_page(){
+    public void welcome_page() {
         setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
         setLine("page0", 2, "");
         setLine("page0", 3, "");
@@ -237,10 +237,13 @@ public class MyLCD implements Runnable {
             long time = timers.get(key);
             if (time > 0) {
                 time = time - time_difference_since_last_cycle;
-                timers.put(key, time);
-                if (time > 0)
+                if (time > 0) {
+                    timers.put(key, time);
                     setVariable(key, LocalTime.ofSecondOfDay(time / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
-                else setVariable(key, "");
+                } else {
+                    setVariable(key, "");
+                    timers.remove(key);
+                }
             }
         });
     }
@@ -251,7 +254,7 @@ public class MyLCD implements Runnable {
     }
 
     public void setVariable(String key, String var) {
-        log.trace("setting var {} to {}", key, var);
+        log.debug("setting var {} to {}", key, var);
         variables.put("${" + key + "}", var);
     }
 

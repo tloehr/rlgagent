@@ -52,11 +52,14 @@ public class MyPin {
             Optional<Pin> raspiPin = Optional.ofNullable(RaspiPin.getPinByName(configs.get(name)));
             Optional<Pin> mcpPin = Arrays.stream(MCP23017Pin.ALL).sequential().filter(pin1 -> pin1.getName().equalsIgnoreCase(configs.get(name))).findFirst();
 
+            // if the connected device expects the pin state "reversed". like many relay boards.
+            final PinState init_state = trigger_on_high ? PinState.LOW : PinState.HIGH;
+
             if (raspiPin.isPresent()) {
                 outputPin = Optional.of(gpio.get().provisionDigitalOutputPin(raspiPin.get()));
-                outputPin.get().setState(PinState.LOW);
+                outputPin.get().setState(init_state);
             } else if (mcpPin.isPresent() && gpioProvider.isPresent()) {
-                outputPin = Optional.of(gpio.get().provisionDigitalOutputPin(gpioProvider.get(), mcpPin.get(), PinState.LOW));
+                outputPin = Optional.of(gpio.get().provisionDigitalOutputPin(gpioProvider.get(), mcpPin.get(), init_state));
             } else {
                 outputPin = Optional.empty();
             }

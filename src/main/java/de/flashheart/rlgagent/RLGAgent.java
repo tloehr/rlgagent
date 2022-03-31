@@ -115,6 +115,10 @@ public class RLGAgent implements MqttCallbackExtended {
     /**
      * belongs to connect_to_mqtt_broker()
      *
+     * <ol>
+     * <li> </li>
+     * </ol>
+     *
      * @param uri to try for connection
      * @return true when connection was successful, false otherwise
      */
@@ -124,7 +128,6 @@ public class RLGAgent implements MqttCallbackExtended {
         try {
             mqtt_connect_tries++;
             log.debug("trying broker @{} number of tries: {}", uri, mqtt_connect_tries);
-            //unsubscribe_from_all();
             iMqttClient = Optional.of(new MqttClient(uri, String.format("%s-%s", me.getAgentid(), configs.get(Configs.MYUUID)), new MqttDefaultFilePersistence(configs.getWORKSPACE())));
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(configs.is(Configs.MQTT_RECONNECT));
