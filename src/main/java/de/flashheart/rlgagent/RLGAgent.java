@@ -1,5 +1,6 @@
 package de.flashheart.rlgagent;
 
+import com.pi4j.component.button.ButtonStateChangeListener;
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import de.flashheart.rlgagent.hardware.Agent;
@@ -243,6 +244,7 @@ public class RLGAgent implements MqttCallbackExtended {
 
     private void initAgent() {
         // Hardware Buttons
+        ButtonStateChangeListener
         gpio.ifPresent(gpioController -> {
             GpioPinDigitalInput btn01 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN01)), PinPullResistance.PULL_UP);
             btn01.setDebounce(DEBOUNCE);

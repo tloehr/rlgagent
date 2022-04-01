@@ -97,7 +97,7 @@ public class MyLCD implements Runnable {
             pages.clear();
             pages.add(new LCDPage("page0"));
             visible_page_index = 0;
-            timers.clear();
+            //timers.clear();
             //variables.clear();
             // set defaults for variables
             setVariable("wifi", "--");
@@ -105,6 +105,7 @@ public class MyLCD implements Runnable {
             setVariable("agversion", configs.getBuildProperties("my.version"));
             setVariable("agbuild", configs.getBuildProperties("buildNumber"));
             setVariable("agbdate", configs.getBuildProperties("buildDate"));
+            setVariable("agentname", configs.get(Configs.MY_ID));
 
             welcome_page();
 
@@ -235,12 +236,15 @@ public class MyLCD implements Runnable {
         // recalculate all timers
         timers.keySet().forEach(key -> {
             long time = timers.get(key);
+            log.trace("time {} is {}", key, time);
             if (time > 0) {
                 time = time - time_difference_since_last_cycle;
                 if (time > 0) {
+                    log.trace("time {} is now {}", key, time);
                     timers.put(key, time);
                     setVariable(key, LocalTime.ofSecondOfDay(time / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
                 } else {
+                    log.trace("time {} is now {} - removing", key, time);
                     setVariable(key, "");
                     timers.remove(key);
                 }
@@ -249,7 +253,7 @@ public class MyLCD implements Runnable {
     }
 
     public void setTimer(String key, long time) {
-        log.trace("setting timer {} to {}", key, time);
+        log.debug("setting timer {} to {}", key, time);
         timers.put(key, time * 1000l);
     }
 
