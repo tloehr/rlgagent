@@ -1,6 +1,5 @@
 package de.flashheart.rlgagent;
 
-import com.pi4j.component.button.ButtonStateChangeListener;
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import de.flashheart.rlgagent.hardware.Agent;
@@ -244,7 +243,6 @@ public class RLGAgent implements MqttCallbackExtended {
 
     private void initAgent() {
         // Hardware Buttons
-        ButtonStateChangeListener
         gpio.ifPresent(gpioController -> {
             GpioPinDigitalInput btn01 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN01)), PinPullResistance.PULL_UP);
             btn01.setDebounce(DEBOUNCE);
@@ -280,12 +278,22 @@ public class RLGAgent implements MqttCallbackExtended {
                     reportEvent("btn01", new JSONObject().put("button", "up").toString());
                 }
             });
+
+            myUI1.getBtn02().addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    reportEvent("btn02", new JSONObject().put("button", "down").toString());
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    reportEvent("btn02", new JSONObject().put("button", "up").toString());
+                }
+            });
         });
 
         current_network_stats.put("link", "100/100");
         current_network_stats.put("signal", "-30");
-
-
     }
 
     private void initNetworkConnection() throws SchedulerException {
