@@ -34,6 +34,7 @@
         <quartz.version>2.3.2</quartz.version>
         <cli.version>1.5.0</cli.version>
         <ant.version>1.9.6</ant.version>
+        <flatlaf.version>2.1</flatlaf.version>
     </properties>
 
 
@@ -54,9 +55,9 @@
             <version>${paho.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.freeplane.bulenkov</groupId>
-            <artifactId>darcula</artifactId>
-            <version>2018.2</version>
+          <groupId>com.formdev</groupId>
+          <artifactId>flatlaf</artifactId>
+          <version>${flatlaf.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

@@ -4,20 +4,15 @@
 
 package de.flashheart.rlgagent.ui;
 
-import com.bulenkov.darcula.DarculaLaf;
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import de.flashheart.rlgagent.misc.Configs;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.plaf.basic.BasicLookAndFeel;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Element;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,11 +28,13 @@ public class MyUI extends JFrame {
 
     public MyUI(String title) {
 
+        //Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         try {
-            BasicLookAndFeel darcula = new DarculaLaf();
-            UIManager.setLookAndFeel(darcula);
-        } catch (UnsupportedLookAndFeelException e) {
-            e.printStackTrace();
+            UIManager.setLookAndFeel(new FlatLightLaf());
+            FlatDarkLaf.setup();
+        } catch (Exception ex) {
+            log.fatal("Failed to initialize LaF");
+            System.exit(0);
         }
         initComponents();
         setTitle(title);
@@ -65,12 +62,13 @@ public class MyUI extends JFrame {
         JPanel page = new JPanel();
         page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
 
-        JPanel leds= new JPanel();
+        JPanel leds = new JPanel();
         leds.setLayout(new BoxLayout(leds, BoxLayout.PAGE_AXIS));
-        JPanel sirens= new JPanel();
+        JPanel sirens = new JPanel();
         sirens.setLayout(new BoxLayout(sirens, BoxLayout.PAGE_AXIS));
 
         page.add(leds);
+        page.add(Box.createRigidArea(new Dimension(20, 0)));
         page.add(sirens);
 
         leds.add(pinMap.get(Configs.OUT_LED_WHITE));
