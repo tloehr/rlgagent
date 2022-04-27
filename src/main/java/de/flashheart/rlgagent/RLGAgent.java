@@ -373,6 +373,7 @@ public class RLGAgent implements MqttCallbackExtended {
         current_network_stats.forEach((k, v) -> myLCD.setVariable(k, v));
 
         // if a broker is reachable but the MQTTClient is not yet connected. Try it.
+        // todo: continue searching when ping is good but brokes is missing
         if (!reachable_host.isEmpty()) { // somebody answered
             if (!mqtt_connected()) { // but we don't have a mqtt connection yet
                 myLCD.setLine("page0", 2, "Searching for broker");
