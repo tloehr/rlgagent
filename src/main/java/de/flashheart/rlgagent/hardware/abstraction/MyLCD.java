@@ -229,36 +229,29 @@ public class MyLCD implements Runnable {
      * the display. That's it.
      */
     private void calculate_timers() {
-        long now = System.currentTimeMillis();
+        final long now = System.currentTimeMillis();
         time_difference_since_last_cycle = now - last_cycle_started_at;
         last_cycle_started_at = now;
 
+        // remove all timers that are zero and below
+        timers.entrySet().stream().filter(stringLongEntry -> stringLongEntry.getValue() - time_difference_since_last_cycle <= 0).forEach(stringLongEntry -> setVariable(stringLongEntry.getKey(), ""));
+        timers.entrySet().removeIf(stringLongEntry -> stringLongEntry.getValue() - time_difference_since_last_cycle < 0);
         // recalculate all timers
-        timers.keySet().forEach(key -> {
-            long time = timers.get(key);
-            log.trace("time {} is {}", key, time);
-            if (time > 0) {
-                time = time - time_difference_since_last_cycle;
-                if (time > 0) {
-                    log.trace("time {} is now {}", key, time);
-                    timers.put(key, time);
-                    setVariable(key, LocalTime.ofSecondOfDay(time / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
-                } else {
-                    log.trace("time {} is now {} - removing", key, time);
-                    setVariable(key, "");
-                    timers.remove(key);
-                }
-            }
+        timers.replaceAll((key, aLong) -> aLong - time_difference_since_last_cycle);
+        // re-set all variables
+        timers.entrySet().forEach(stringLongEntry -> {
+            log.trace("time {} is now {}", stringLongEntry.getKey(), stringLongEntry.getValue());
+            setVariable(stringLongEntry.getKey(), LocalTime.ofSecondOfDay(stringLongEntry.getValue() / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
         });
     }
 
     public void setTimer(String key, long time) {
-        log.debug("setting timer {} to {}", key, time);
+        log.trace("setting timer {} to {}", key, time);
         timers.put(key, time * 1000l);
     }
 
     public void setVariable(String key, String var) {
-        log.debug("setting var {} to {}", key, var);
+        log.trace("setting var {} to {}", key, var);
         variables.put("${" + key + "}", var);
     }
 

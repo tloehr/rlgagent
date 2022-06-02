@@ -309,7 +309,7 @@ public class Tools {
         return wifiQuality;
     }
 
-    public static String replaceVariables(String text, HashMap<String, String> replacements) {
+    public static String replaceVariables(String text, Map<String, String> replacements) {
         //if (replacements.isEmpty()) return text;
         // matches ${var} style words
         log.trace("var replacement with {}. before {}", replacements.toString(), text);

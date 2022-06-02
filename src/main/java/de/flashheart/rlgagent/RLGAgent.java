@@ -6,6 +6,7 @@ import de.flashheart.rlgagent.hardware.Agent;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
 import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
 import de.flashheart.rlgagent.jobs.NetworkMonitoringJob;
+import de.flashheart.rlgagent.misc.AudioPlayer;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.JavaTimeConverter;
 import de.flashheart.rlgagent.misc.Tools;
@@ -21,6 +22,7 @@ import org.quartz.impl.StdSchedulerFactory;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -53,7 +55,7 @@ public class RLGAgent implements MqttCallbackExtended {
     private String active_broker = "";
     private HashMap<String, String> current_network_stats;
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
-    //UUID.randomUUID().toString(); // constant client-id during the application runtime.
+    private AudioPlayer audioPlayer;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
@@ -75,6 +77,8 @@ public class RLGAgent implements MqttCallbackExtended {
         this.scheduler = StdSchedulerFactory.getDefaultScheduler();
         this.scheduler.getContext().put("rlgAgent", this);
         this.scheduler.start();
+
+        audioPlayer = new AudioPlayer(configs);
 
         iMqttClient = Optional.empty();
 
@@ -172,6 +176,8 @@ public class RLGAgent implements MqttCallbackExtended {
                 procPaged(json);
             } else if (cmd.equalsIgnoreCase("signals")) {
                 procSignals(json);
+            } else if (cmd.equalsIgnoreCase("play")) {
+                procPlay(json);
             } else if (cmd.equalsIgnoreCase("timers")) {
                 procTimers(json);
             } else if (cmd.equalsIgnoreCase("vars")) {
@@ -208,6 +214,10 @@ public class RLGAgent implements MqttCallbackExtended {
 
     private void procVars(JSONObject json) {
         json.keySet().forEach(sKey -> myLCD.setVariable(sKey, json.getString(sKey)));
+    }
+
+    private void procPlay(JSONObject json) throws IOException {
+        audioPlayer.play(json.getString("soundfile"));
     }
 
     private void procSignals(JSONObject json) {
@@ -373,7 +383,7 @@ public class RLGAgent implements MqttCallbackExtended {
         current_network_stats.forEach((k, v) -> myLCD.setVariable(k, v));
 
         // if a broker is reachable but the MQTTClient is not yet connected. Try it.
-        // todo: continue searching when ping is good but brokes is missing
+        // todo: continue searching when ping is good but broker is missing
         if (!reachable_host.isEmpty()) { // somebody answered
             if (!mqtt_connected()) { // but we don't have a mqtt connection yet
                 myLCD.setLine("page0", 2, "Searching for broker");
@@ -424,7 +434,7 @@ public class RLGAgent implements MqttCallbackExtended {
             if (mqtt_connected()) {
                 JSONObject status = new JSONObject(current_network_stats);
                 status.put("wifi", Tools.WIFI[me.getWifi()])
-                        .put("version", configs.getBuildProperties("my.version") + "." + configs.getBuildProperties("buildNumber"))
+                        .put("version", configs.getBuildProperties("my.version") + "b" + configs.getBuildProperties("buildNumber"))
                         .put("mqtt-broker", active_broker)
                         .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                         .put("mqtt_connect_tries", mqtt_connect_tries)
@@ -433,6 +443,7 @@ public class RLGAgent implements MqttCallbackExtended {
             }
         }
     }
+
 
     private boolean mqtt_connected() {
         return iMqttClient.isPresent() && iMqttClient.get().isConnected();

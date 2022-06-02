@@ -5,7 +5,10 @@ import de.flashheart.rlgagent.Main;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 
+import javax.swing.text.html.Option;
+import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Properties;
 
 public class Configs extends AbstractConfigs {
@@ -43,6 +46,7 @@ public class Configs extends AbstractConfigs {
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4};
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
+    public static final String MPG321_BIN = "mpg321_bin";
     public static final String MY_ID = "myid";
     protected final Properties blink_schemes;
 
@@ -80,6 +84,12 @@ public class Configs extends AbstractConfigs {
         return blink_schemes.getProperty(key, key);
     }
 
+    public Optional<File> getAudioFile(String filename) {
+        // todo: add random pick on --random--
+        // directories for intro ...
+        File file = new File(getWORKSPACE() + File.separator + "audio" + File.separator + filename);
+        return file.exists() ? Optional.of(file) : Optional.empty();
+    }
 
     public String getAgentname() {
         return configs.getProperty(MY_ID);
@@ -137,6 +147,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(IN_BTN02, RaspiPin.GPIO_04.getName()); // 16
 
         configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1");
+        configs.setProperty(MPG321_BIN, "");
 
 
         // missionbox
