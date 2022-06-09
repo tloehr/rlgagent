@@ -2,14 +2,19 @@ package de.flashheart.rlgagent.misc;
 
 import com.pi4j.io.gpio.RaspiPin;
 import de.flashheart.rlgagent.Main;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 
 import javax.swing.text.html.Option;
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Random;
 
 public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
@@ -85,11 +90,29 @@ public class Configs extends AbstractConfigs {
     }
 
     public Optional<File> getAudioFile(String filename) {
-        // todo: add random pick on --random--
-        // directories for intro ...
-        File file = new File(getWORKSPACE() + File.separator + "audio" + File.separator + filename);
+        File file = new File(getWORKSPACE() + File.separator + "audio" + File.separator + "intro" + File.separator + filename);
         return file.exists() ? Optional.of(file) : Optional.empty();
     }
+
+    /**
+     * picks a random file in a given subpath on the WORKSPACE.
+     *
+     * @param subpath
+     * @return
+     */
+    public Optional<File> pickRandomFile(String subpath) {
+        Optional<File> chosen;
+        try {
+            // pick a random file from that list.
+            File[] files = new File(getWORKSPACE() + File.separator + subpath).listFiles((dir, name) -> name.endsWith("mp3"));
+            Random r = new Random();
+            chosen = Optional.of(files[r.nextInt(files.length)]);
+        } catch (Exception e) {
+            chosen = Optional.empty();
+        }
+        return chosen;
+    }
+
 
     public String getAgentname() {
         return configs.getProperty(MY_ID);
