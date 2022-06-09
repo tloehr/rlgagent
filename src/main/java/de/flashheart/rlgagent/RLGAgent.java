@@ -195,7 +195,7 @@ public class RLGAgent implements MqttCallbackExtended {
     public void procShutdown(boolean system_shutdown) {
         log.trace("Shutdown initiated");
         myLCD.init();
-        myLCD.setLine("page0", 1, "RLGAgent ${agversion}.${agbuild}");
+        myLCD.setLine("page0", 1, "RLGAgent ${agversion}b${agbuild}");
         myLCD.setLine("page0", 3, "Agent shutdown");
         try {
             scheduler.shutdown();
@@ -217,7 +217,7 @@ public class RLGAgent implements MqttCallbackExtended {
     }
 
     private void procPlay(JSONObject json) throws IOException {
-        audioPlayer.play(json.getString("soundfile"));
+        audioPlayer.play(json.getString("subpath"), json.getString("soundfile"));
     }
 
     private void procSignals(JSONObject json) {

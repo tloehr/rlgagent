@@ -89,8 +89,8 @@ public class Configs extends AbstractConfigs {
         return blink_schemes.getProperty(key, key);
     }
 
-    public Optional<File> getAudioFile(String filename) {
-        File file = new File(getWORKSPACE() + File.separator + "audio" + File.separator + "intro" + File.separator + filename);
+    public Optional<File> getAudioFile(String subpath, String filename) {
+        File file = new File(getWORKSPACE() + File.separator + "audio" + File.separator + subpath + File.separator + filename + ".mp3");
         return file.exists() ? Optional.of(file) : Optional.empty();
     }
 
@@ -100,11 +100,11 @@ public class Configs extends AbstractConfigs {
      * @param subpath
      * @return
      */
-    public Optional<File> pickRandomFile(String subpath) {
+    public Optional<File> pickRandomAudioFile(String subpath) {
         Optional<File> chosen;
         try {
             // pick a random file from that list.
-            File[] files = new File(getWORKSPACE() + File.separator + subpath).listFiles((dir, name) -> name.endsWith("mp3"));
+            File[] files = new File(getWORKSPACE() + File.separator + "audio" + File.separator + subpath).listFiles((dir, name) -> name.endsWith("mp3"));
             Random r = new Random();
             chosen = Optional.of(files[r.nextInt(files.length)]);
         } catch (Exception e) {
