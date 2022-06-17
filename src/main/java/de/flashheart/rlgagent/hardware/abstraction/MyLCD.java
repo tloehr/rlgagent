@@ -7,6 +7,7 @@ import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 
+import java.beans.PropertyChangeEvent;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -123,6 +124,7 @@ public class MyLCD implements Runnable {
         return pages.stream().filter(lcdPage -> lcdPage.getName().equalsIgnoreCase(handle)).findFirst();
     }
 
+
     /**
      * Adds a new page
      *
@@ -222,7 +224,7 @@ public class MyLCD implements Runnable {
         if (line < 1 || line > rows) return;
         getPage(handle).ifPresent(lcdPage -> lcdPage.setLine(line - 1, text));
     }
-
+    
     /**
      * the calculation of the timer is one of the few things the agent does on its own. It simply counts down a given
      * remaining timer (which has been broadcasted by the commander). When it runs out, the timer simply disappears from
@@ -233,15 +235,19 @@ public class MyLCD implements Runnable {
         time_difference_since_last_cycle = now - last_cycle_started_at;
         last_cycle_started_at = now;
 
+
         // remove all timers that are zero and below
-        timers.entrySet().stream().filter(stringLongEntry -> stringLongEntry.getValue() - time_difference_since_last_cycle <= 0).forEach(stringLongEntry -> setVariable(stringLongEntry.getKey(), ""));
+        timers.entrySet().stream().filter(stringLongEntry -> stringLongEntry.getValue() - time_difference_since_last_cycle <= 0).forEach(stringLongEntry -> setVariable(stringLongEntry.getKey(), "--"));
         timers.entrySet().removeIf(stringLongEntry -> stringLongEntry.getValue() - time_difference_since_last_cycle < 0);
         // recalculate all timers
         timers.replaceAll((key, aLong) -> aLong - time_difference_since_last_cycle);
         // re-set all variables
         timers.entrySet().forEach(stringLongEntry -> {
             log.trace("time {} is now {}", stringLongEntry.getKey(), stringLongEntry.getValue());
-            setVariable(stringLongEntry.getKey(), LocalTime.ofSecondOfDay(stringLongEntry.getValue() / 1000l).format(DateTimeFormatter.ofPattern("mm:ss")));
+            String new_time_value = LocalTime.ofSecondOfDay(stringLongEntry.getValue() / 1000l).format(DateTimeFormatter.ofPattern("mm:ss"));
+            setVariable(stringLongEntry.getKey(), new_time_value);
+            // this event will be sent out to realize a Progress Bar via the LEDs.
+            PropertyChangeEvent event = new PropertyChangeEvent(this, stringLongEntry.getKey(), "", new_time_value);
         });
     }
 

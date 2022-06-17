@@ -62,6 +62,7 @@ public class Configs extends AbstractConfigs {
 
         blink_schemes = new Properties();
 
+        // todo: dynamic blinking scheme "remaining" verwendet uses timer var "remaining" scaled to 100%
         blink_schemes.setProperty("very_long", "1:on,5000;off,1");
         blink_schemes.setProperty("long", "1:on,2500;off,1");
         blink_schemes.setProperty("medium", "1:on,1000;off,1");
