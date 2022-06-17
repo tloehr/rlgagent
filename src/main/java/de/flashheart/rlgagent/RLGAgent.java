@@ -22,7 +22,11 @@ import org.quartz.impl.StdSchedulerFactory;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -33,7 +37,7 @@ import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
 
 @Log4j2
-public class RLGAgent implements MqttCallbackExtended {
+public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     private static final int DEBOUNCE = 200; //ms
     private int NETWORKING_MONITOR_INTERVAL = 10;
     private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 6;
@@ -56,17 +60,21 @@ public class RLGAgent implements MqttCallbackExtended {
     private HashMap<String, String> current_network_stats;
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
     private AudioPlayer audioPlayer;
+    private Optional<String> progress_timer;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
 
         log.info("RLG-Agent {}b{} {}", configs.getBuildProperties("my.version"), configs.getBuildProperties("buildNumber"), configs.getBuildProperties("buildDate"));
 
+        progress_timer = Optional.empty();
         this.myUI = myUI;
         this.gpio = gpio;
         this.pinHandler = pinHandler;
         this.configs = configs;
         this.myLCD = myLCD;
+        this.myLCD.addPropertyChangeListener(this);
+
         potential_brokers = Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"));
         current_network_stats = new HashMap<>();
 
@@ -222,11 +230,19 @@ public class RLGAgent implements MqttCallbackExtended {
 
     private void procSignals(JSONObject json) {
         Set<String> keys = json.keySet();
+
         if (keys.contains("all")) {
             set_pins_to(Configs.ALL, json.getString("all"));
         }
         if (keys.contains("led_all")) {
-            set_pins_to(Configs.ALL_LEDS, json.getString("led_all"));
+            String value = json.getString("led_all");
+            if (value.startsWith("progress:")) {
+                //progress_timer = Optional.of();
+                
+            } else {
+                progress_timer = Optional.empty();
+                set_pins_to(Configs.ALL_LEDS, value);
+            }
         }
         if (keys.contains("sir_all")) {
             set_pins_to(Configs.ALL_SIRENS, json.getString("sir_all"));
@@ -234,6 +250,7 @@ public class RLGAgent implements MqttCallbackExtended {
         keys.remove("led_all");
         keys.remove("sir_all");
         keys.remove("all");
+        keys.remove("progress");
 
         keys.forEach(signal_key -> {
             String signal = json.getString(signal_key);
@@ -474,5 +491,23 @@ public class RLGAgent implements MqttCallbackExtended {
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
         log.info("mqtt connection #{} complete", mqtt_connect_tries);
+    }
+
+    /**
+     * for progressing signals with a specific timer
+     *
+     * @param evt A PropertyChangeEvent object describing the event source and the property that has changed.
+     */
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (!progress_timer.isPresent()) return;
+        if (!evt.getPropertyName().equalsIgnoreCase(progress_timer.get())) return;
+        BigDecimal initial_timer = BigDecimal.valueOf((Long) evt.getOldValue());
+        BigDecimal current_timer = BigDecimal.valueOf((Long) evt.getNewValue());
+        BigDecimal ratio = BigDecimal.ONE.subtract(current_timer.divide(initial_timer, 2, RoundingMode.UP));
+        log.debug("timer progress ratio {}", ratio);
+        log.debug("scaled to 5 led stripes {}", ratio.multiply(BigDecimal.valueOf(5l)).intValue());
+        log.debug(Arrays.stream(Arrays.copyOfRange(Configs.ALL_LEDS, 0, ratio.multiply(BigDecimal.valueOf(5l)).intValue() + 1)).collect(Collectors.toList()));
+        // todo - signale nur anpassen wenn sich liste der LEDs geändert hat. Sonst nichts machen.
     }
 }

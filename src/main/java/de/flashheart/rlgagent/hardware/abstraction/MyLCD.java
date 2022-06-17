@@ -1,18 +1,21 @@
 package de.flashheart.rlgagent.hardware.abstraction;
 
 import de.flashheart.rlgagent.hardware.I2CLCD;
+import de.flashheart.rlgagent.misc.AbstractConfigs;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.json.JSONException;
 
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
@@ -37,7 +40,9 @@ public class MyLCD implements Runnable {
     // something that will show up on the display
     // so we maintain them here
     private long time_difference_since_last_cycle;
-    private HashMap<String, Long> timers;
+    // left Long = starting value - neverchanges
+    // right Long = decreasing value ends with 0
+    private HashMap<String, Pair<Long, Long>> timers;
     private HashMap<String, String> variables; // replacement variables for text lines containing something like ${template}
 
     private long last_cycle_started_at;
@@ -50,6 +55,7 @@ public class MyLCD implements Runnable {
     private Optional<I2CLCD> i2CLCD;
     private final Optional<MyUI> myUI;
     private final Configs configs;
+    private final Set<PropertyChangeListener> propertyChangeListeners;
 
 
     /**
@@ -77,6 +83,7 @@ public class MyLCD implements Runnable {
         lock = new ReentrantLock();
         thread = new Thread(this);
         pages = new ArrayList<>();
+        propertyChangeListeners = new HashSet<>();
         init();
         thread.start();
     }
@@ -224,7 +231,7 @@ public class MyLCD implements Runnable {
         if (line < 1 || line > rows) return;
         getPage(handle).ifPresent(lcdPage -> lcdPage.setLine(line - 1, text));
     }
-    
+
     /**
      * the calculation of the timer is one of the few things the agent does on its own. It simply counts down a given
      * remaining timer (which has been broadcasted by the commander). When it runs out, the timer simply disappears from
@@ -237,23 +244,25 @@ public class MyLCD implements Runnable {
 
 
         // remove all timers that are zero and below
-        timers.entrySet().stream().filter(stringLongEntry -> stringLongEntry.getValue() - time_difference_since_last_cycle <= 0).forEach(stringLongEntry -> setVariable(stringLongEntry.getKey(), "--"));
-        timers.entrySet().removeIf(stringLongEntry -> stringLongEntry.getValue() - time_difference_since_last_cycle < 0);
+        timers.entrySet().stream().filter(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle <= 0).forEach(stringPairEntry -> setVariable(stringPairEntry.getKey(), "--"));
+        timers.entrySet().removeIf(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle < 0);
         // recalculate all timers
-        timers.replaceAll((key, aLong) -> aLong - time_difference_since_last_cycle);
+        timers.replaceAll((key, longPair) -> new ImmutablePair<>(longPair.getLeft(), longPair.getRight() - time_difference_since_last_cycle));
+        //timers.replaceAll((key, aLong) -> aLong - time_difference_since_last_cycle);
         // re-set all variables
-        timers.entrySet().forEach(stringLongEntry -> {
-            log.trace("time {} is now {}", stringLongEntry.getKey(), stringLongEntry.getValue());
-            String new_time_value = LocalTime.ofSecondOfDay(stringLongEntry.getValue() / 1000l).format(DateTimeFormatter.ofPattern("mm:ss"));
-            setVariable(stringLongEntry.getKey(), new_time_value);
+        timers.entrySet().forEach(stringPairEntry -> {
+            log.trace("time {} is now {}", stringPairEntry.getKey(), stringPairEntry.getValue().getRight());
+            String new_time_value = LocalTime.ofSecondOfDay(stringPairEntry.getValue().getRight() / 1000l).format(DateTimeFormatter.ofPattern("mm:ss"));
+            setVariable(stringPairEntry.getKey(), new_time_value);
             // this event will be sent out to realize a Progress Bar via the LEDs.
-            PropertyChangeEvent event = new PropertyChangeEvent(this, stringLongEntry.getKey(), "", new_time_value);
+            fireStateReached(new PropertyChangeEvent(this, stringPairEntry.getKey(), stringPairEntry.getValue().getLeft(), stringPairEntry.getValue().getRight()));
         });
     }
 
     public void setTimer(String key, long time) {
         log.trace("setting timer {} to {}", key, time);
-        timers.put(key, time * 1000l);
+        long initial_value = time * 1000l;
+        timers.put(key, new ImmutablePair<>(initial_value, initial_value));
     }
 
     public void setVariable(String key, String var) {
@@ -291,6 +300,16 @@ public class MyLCD implements Runnable {
             }
         }
     }
+
+
+    private void fireStateReached(PropertyChangeEvent propertyChangeEvent) {
+        propertyChangeListeners.forEach(listener -> listener.propertyChange(propertyChangeEvent));
+    }
+
+    public void addPropertyChangeListener(PropertyChangeListener toAdd) {
+        propertyChangeListeners.add(toAdd);
+    }
+
 
     /**
      * sets the page cycle multiplicator. changes will be used immediately

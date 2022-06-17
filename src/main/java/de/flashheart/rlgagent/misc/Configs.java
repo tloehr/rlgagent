@@ -62,7 +62,6 @@ public class Configs extends AbstractConfigs {
 
         blink_schemes = new Properties();
 
-        // todo: dynamic blinking scheme "remaining" verwendet uses timer var "remaining" scaled to 100%
         blink_schemes.setProperty("very_long", "1:on,5000;off,1");
         blink_schemes.setProperty("long", "1:on,2500;off,1");
         blink_schemes.setProperty("medium", "1:on,1000;off,1");
@@ -173,30 +172,6 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1");
         configs.setProperty(MPG321_BIN, "");
 
-
-        // missionbox
-//        configs.setProperty(OUT_LED_WHITE, RaspiPin.GPIO_05.getName()); // 13
-//        configs.setProperty(OUT_LED_RED, RaspiPin.GPIO_06.getName()); // 12
-//        configs.setProperty(OUT_LED_YELLOW, RaspiPin.GPIO_10.getName()); // 18
-//        configs.setProperty(OUT_LED_GREEN, RaspiPin.GPIO_27.getName()); // 29
-//        configs.setProperty(OUT_LED_BLUE, RaspiPin.GPIO_28.getName()); // 31
-//        configs.setProperty(OUT_BUZZER, RaspiPin.GPIO_29.getName()); // 32
-//
-//        configs.setProperty(OUT_SIREN1, RaspiPin.GPIO_00.getName()); // 7
-//        configs.setProperty(OUT_SIREN2, RaspiPin.GPIO_02.getName()); // 11
-//        configs.setProperty(OUT_SIREN3, RaspiPin.GPIO_03.getName()); // 22
-//
-//        configs.setProperty(IN_BTN01, RaspiPin.GPIO_15.getName()); // 15
-//        configs.setProperty(IN_BTN02, RaspiPin.GPIO_16.getName()); // 16
-
-
-        // für RLG Mainboard 1.0
-//        configs.setProperty(OUT_LED_WHITE, MCP23017Pin.GPIO_B5.getName()); // 11
-//        configs.setProperty(OUT_LED_RED, MCP23017Pin.GPIO_B0.getName()); // 13
-//        configs.setProperty(OUT_LED_YELLOW, MCP23017Pin.GPIO_B4.getName()); // 15
-//        configs.setProperty(OUT_LED_GREEN, MCP23017Pin.GPIO_B3.getName()); // 4
-//        configs.setProperty(OUT_LED_BLUE, MCP23017Pin.GPIO_B1.getName()); // 5
-        //configs.setProperty(OUT_BUZZER, MCP23017Pin.GPIO_A6.getName()); // 6
 
 
     }
