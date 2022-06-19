@@ -242,9 +242,11 @@ public class MyLCD implements Runnable {
         time_difference_since_last_cycle = now - last_cycle_started_at;
         last_cycle_started_at = now;
 
-
         // remove all timers that are zero and below
         timers.entrySet().stream().filter(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle <= 0).forEach(stringPairEntry -> setVariable(stringPairEntry.getKey(), "--"));
+        // notify everybody about timers that ran out
+        timers.entrySet().stream().filter(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle < 0).forEach(stringPairEntry ->
+                fireStateReached(new PropertyChangeEvent(this, stringPairEntry.getKey(), stringPairEntry.getValue().getLeft(), 0l)));
         timers.entrySet().removeIf(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle < 0);
         // recalculate all timers
         timers.replaceAll((key, longPair) -> new ImmutablePair<>(longPair.getLeft(), longPair.getRight() - time_difference_since_last_cycle));
@@ -263,6 +265,14 @@ public class MyLCD implements Runnable {
         log.trace("setting timer {} to {}", key, time);
         long initial_value = time * 1000l;
         timers.put(key, new ImmutablePair<>(initial_value, initial_value));
+    }
+
+    public void clear_timers() {
+        timers.forEach((key, longLongPair) -> {
+            setVariable(key, "--");
+            fireStateReached(new PropertyChangeEvent(this, key, 0l, 0l));
+        }); // tidy up first
+        timers.clear();
     }
 
     public void setVariable(String key, String var) {

@@ -8,9 +8,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -320,7 +317,7 @@ public class Tools {
         return text;
     }
 
-    public static boolean fping(HashMap<String, String> current_network_values, String address,  int tries, int timeout) {
+    public static boolean fping(HashMap<String, String> current_network_values, String address, int tries, int timeout) {
         if (address.trim().isEmpty()) return false;
         boolean success;
         try {
@@ -372,6 +369,45 @@ public class Tools {
 
         return success;
 
+    }
+
+    public static String getGametimeBlinkingScheme(LocalDateTime remainingTime) {
+        String scheme = "infty:on,75;off,75;on,75;off,1000;";
+        log.debug("remaining time for blinking scheme: {}", remainingTime);
+        int minutes = remainingTime.getMinute();
+
+        int hours = remainingTime.getHour();
+        int tenminutes = minutes / 10;
+        int remminutes = minutes - tenminutes * 10; // restliche Minuten ausrechnen
+
+        if (hours > 0 || minutes > 0) {
+            if (hours > 0) {
+                for (int h = 0; h < hours; h++) {
+                    scheme += "on,1000;off,250;";
+                }
+            }
+
+            if (tenminutes > 0) {
+                for (int tm = 0; tm < tenminutes; tm++) {
+                    scheme += "on,625;off,250;";
+                }
+            }
+
+            if (remminutes > 0) {
+                for (int rm = 0; rm < remminutes; rm++) {
+                    scheme += "on,250;off,250;";
+                }
+            }
+
+            scheme += "off,2500;";
+
+        } else {
+            scheme += "on,100;off,250;";
+        }
+
+        log.debug("time blinking scheme: {}", scheme);
+
+        return scheme;
     }
 
 }

@@ -13,13 +13,9 @@ import java.util.ArrayList;
 @Log4j2
 public class PinBlinkModel implements GenericBlinkModel {
     //public static final String SCHEME_TEST_REGEX = "^(\\d+|∞|infty):(((on|off){1},\\d+)+(;((on|off){1},\\d+))*)$";
-
-
     MyPin pin;
     private ArrayList<PinScheduleEvent> onOffScheme;
     int repeat;
-
-
 
     public PinBlinkModel(MyPin pin) {
 

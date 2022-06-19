@@ -252,6 +252,11 @@ extensive use of these "macros", as they cover most of its needs.
 
 Hence, a signal with a payload like `{"led_red":"slow"}` would translate to `{"led_red":"infty:on,1000;off,2000"}`.
 
+### Dynamic signal schemes
+
+- Progress
+- Time
+
 ### Devices
 
 The agent abstracts devices from their GPIO counterparts on the Raspi. The following devices are

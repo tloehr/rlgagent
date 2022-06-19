@@ -2,15 +2,10 @@ package de.flashheart.rlgagent.misc;
 
 import com.pi4j.io.gpio.RaspiPin;
 import de.flashheart.rlgagent.Main;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 
-import javax.swing.text.html.Option;
 import java.io.File;
-import java.io.FileFilter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
@@ -53,7 +48,12 @@ public class Configs extends AbstractConfigs {
     public static final String WIFI_CMD_LINE = "wifi_cmd";
     public static final String MPG321_BIN = "mpg321_bin";
     public static final String MY_ID = "myid";
-    protected final Properties blink_schemes;
+
+    public Properties get_blink_schemes() {
+        return blink_schemes;
+    }
+
+    private final Properties blink_schemes;
 
     public Configs() throws IOException {
         super(System.getProperties().getProperty("workspace"));
@@ -75,7 +75,6 @@ public class Configs extends AbstractConfigs {
         blink_schemes.setProperty("fast", "infty:on,500;off,500");
         blink_schemes.setProperty("very_fast", "infty:on,250;off,250");
         blink_schemes.setProperty("netstatus", "infty:on,250;off,750");
-
 
         // for sirens
         blink_schemes.setProperty("single_buzz", "1:on,75;off,75");

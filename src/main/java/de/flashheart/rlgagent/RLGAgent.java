@@ -13,6 +13,8 @@ import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.json.JSONArray;
@@ -27,6 +29,7 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -61,6 +64,11 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
     private AudioPlayer audioPlayer;
     private Optional<String> progress_timer;
+    // Pair(Timerkey, led_grn, last_change as millis in long)
+    private Optional<Pair<String, String>> blinking_timer;
+
+    private String[] PROGRESS_SCHEMES;
+    private int prev_progress_timer = -1;
 
     public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
@@ -68,12 +76,21 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         log.info("RLG-Agent {}b{} {}", configs.getBuildProperties("my.version"), configs.getBuildProperties("buildNumber"), configs.getBuildProperties("buildDate"));
 
         progress_timer = Optional.empty();
+        blinking_timer = Optional.empty();
         this.myUI = myUI;
         this.gpio = gpio;
         this.pinHandler = pinHandler;
         this.configs = configs;
         this.myLCD = myLCD;
         this.myLCD.addPropertyChangeListener(this);
+        PROGRESS_SCHEMES = new String[]{
+                configs.get_blink_schemes().getProperty("normal"),
+                configs.get_blink_schemes().getProperty("normal"),
+                configs.get_blink_schemes().getProperty("fast"),
+                configs.get_blink_schemes().getProperty("fast"),
+                configs.get_blink_schemes().getProperty("very_fast"),
+        };
+
 
         potential_brokers = Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"));
         current_network_stats = new HashMap<>();
@@ -217,7 +234,12 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     private void procTimers(JSONObject json) {
-        json.keySet().forEach(sKey -> myLCD.setTimer(sKey, json.getLong(sKey)));
+        prev_progress_timer = -1;
+        Set<String> keys = json.keySet();
+        if (keys.contains("_clearall")) {
+            myLCD.clear_timers();
+        } else
+            json.keySet().forEach(sKey -> myLCD.setTimer(sKey, json.getLong(sKey)));
     }
 
     private void procVars(JSONObject json) {
@@ -236,25 +258,38 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         }
         if (keys.contains("led_all")) {
             String value = json.getString("led_all");
+            prev_progress_timer = -1;
+            progress_timer = Optional.empty();
+            blinking_timer = Optional.empty();
             if (value.startsWith("progress:")) {
-                //progress_timer = Optional.of();
-                
+                progress_timer = Optional.of(value.split(":")[1]);
             } else {
-                progress_timer = Optional.empty();
                 set_pins_to(Configs.ALL_LEDS, value);
             }
         }
         if (keys.contains("sir_all")) {
             set_pins_to(Configs.ALL_SIRENS, json.getString("sir_all"));
         }
+
         keys.remove("led_all");
         keys.remove("sir_all");
         keys.remove("all");
-        keys.remove("progress");
 
         keys.forEach(signal_key -> {
             String signal = json.getString(signal_key);
-            pinHandler.setScheme(signal_key, signal);
+            if (signal.startsWith("timer:")) {
+                prev_progress_timer = -1;
+                progress_timer = Optional.empty();
+                blinking_timer = Optional.of(new ImmutablePair<>(signal_key, signal.split(":")[1]));
+            } else {
+                // if a new scheme for a led is set which was formerly used as a timer signal - it will be overwritten hence the blinking_timer will be set empty()
+                if (blinking_timer.orElseGet(() -> new ImmutablePair<>("", "")).getKey().equalsIgnoreCase(signal_key)) {
+                    prev_progress_timer = -1;
+                    blinking_timer = Optional.empty();
+                }
+
+                pinHandler.setScheme(signal_key, signal);
+            }
         });
     }
 
@@ -354,9 +389,11 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         }
     }
 
-    private void set_pins_to(String[] pins, String scheme) {
-        for (String pin : pins) {
-            pinHandler.setScheme(pin, scheme);
+
+    private void set_pins_to(Object[] pins, String scheme) {
+        log.trace("set_pins_to {} with scheme {}", Arrays.asList(pins).toString(), scheme);
+        for (Object pin : pins) {
+            pinHandler.setScheme(pin.toString(), scheme);
         }
     }
 
@@ -494,20 +531,58 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     /**
-     * for progressing signals with a specific timer
+     * for progressing signals with a specific timer.
+     * this method is called from MyLCD.java which is in charge of calculating all timers.
      *
      * @param evt A PropertyChangeEvent object describing the event source and the property that has changed.
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (!progress_timer.isPresent()) return;
+        if (progress_timer.isPresent()) led_progress_bar(evt);
+        if (blinking_timer.isPresent()) led_blinking_timer(evt);
+    }
+
+    private void led_blinking_timer(PropertyChangeEvent evt) {
+        // left is the timer key from mylcd
+        if (!evt.getPropertyName().equalsIgnoreCase(blinking_timer.get().getRight())) return;
+        if (((Long) evt.getNewValue()) == 0l) {
+            pinHandler.setScheme(blinking_timer.get().getLeft(), "off");
+            return;
+        }
+        LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli((Long) evt.getNewValue()),
+                TimeZone.getTimeZone("UTC").toZoneId());
+        // update timer only when minutes change
+        if (prev_progress_timer == remainingTime.getMinute()) return;
+        prev_progress_timer = remainingTime.getMinute();
+        pinHandler.setScheme(blinking_timer.get().getLeft(), Tools.getGametimeBlinkingScheme(remainingTime));
+    }
+
+    void led_progress_bar(PropertyChangeEvent evt) {
         if (!evt.getPropertyName().equalsIgnoreCase(progress_timer.get())) return;
+        if (((Long) evt.getNewValue()) == 0l) {
+            set_pins_to(Configs.ALL_LEDS, "off");
+            return;
+        }
         BigDecimal initial_timer = BigDecimal.valueOf((Long) evt.getOldValue());
         BigDecimal current_timer = BigDecimal.valueOf((Long) evt.getNewValue());
         BigDecimal ratio = BigDecimal.ONE.subtract(current_timer.divide(initial_timer, 2, RoundingMode.UP));
-        log.debug("timer progress ratio {}", ratio);
-        log.debug("scaled to 5 led stripes {}", ratio.multiply(BigDecimal.valueOf(5l)).intValue());
-        log.debug(Arrays.stream(Arrays.copyOfRange(Configs.ALL_LEDS, 0, ratio.multiply(BigDecimal.valueOf(5l)).intValue() + 1)).collect(Collectors.toList()));
-        // todo - signale nur anpassen wenn sich liste der LEDs geändert hat. Sonst nichts machen.
+        int progress_steps = Configs.ALL_LEDS.length;
+        int progress = ratio.multiply(BigDecimal.valueOf(progress_steps)).intValue();
+        log.trace("timer progress ratio {}", ratio);
+        //progress = Math.min(progress, progress_steps);
+        log.trace("scaled to {} led stripes {}", progress_steps, progress);
+        if (progress == prev_progress_timer) return; // only set LEDs when necessary
+        prev_progress_timer = progress;
+
+        List<String> leds_to_use = new ArrayList<>(Arrays.asList(Arrays.copyOfRange(Configs.ALL_LEDS, 0, progress + 1)));
+        List<String> leds_to_set_off = new ArrayList<>(Arrays.asList(Configs.ALL_LEDS));
+        leds_to_set_off.removeAll(leds_to_use); // set difference
+        log.debug("leds to use {} with progress {}", leds_to_use, progress);
+        log.debug("leds to be off {}", leds_to_set_off);
+
+        set_pins_to(leds_to_set_off.toArray(), "off");
+        set_pins_to(leds_to_use.toArray(), PROGRESS_SCHEMES[progress]);
     }
+
+
 }
