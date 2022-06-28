@@ -41,7 +41,6 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 @Log4j2
 public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
-    private static final int DEBOUNCE = 200; //ms
     private int NETWORKING_MONITOR_INTERVAL = 10;
     private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 6;
     private final String EVENTS, CMD4ME;//, CMD4ALL;
@@ -307,7 +306,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         // Hardware Buttons
         gpio.ifPresent(gpioController -> {
             GpioPinDigitalInput btn01 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN01)), PinPullResistance.PULL_UP);
-            btn01.setDebounce(DEBOUNCE);
+            btn01.setDebounce(configs.getInt(Configs.BUTTON_DEBOUNCE));
             btn01.addListener((GpioPinListenerDigital) event -> {
                 log.trace("button event: {}; State: {}; Edge: {}", "btn01", event.getState(), event.getEdge());
                 if (event.getState() == PinState.HIGH)
@@ -317,7 +316,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             });
 
             GpioPinDigitalInput btn02 = gpioController.provisionDigitalInputPin(RaspiPin.getPinByName(configs.get(Configs.IN_BTN02)), PinPullResistance.PULL_UP);
-            btn02.setDebounce(DEBOUNCE);
+            btn02.setDebounce(configs.getInt(Configs.BUTTON_DEBOUNCE));
             btn02.addListener((GpioPinListenerDigital) event -> {
                 log.trace("button event: {}; State: {}; Edge: {}", "btn02", event.getState(), event.getEdge());
                 if (event.getState() == PinState.HIGH)
