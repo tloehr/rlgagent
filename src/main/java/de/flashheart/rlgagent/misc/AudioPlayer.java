@@ -46,7 +46,7 @@ public class AudioPlayer {
         file.ifPresent(file1 -> {
             try {
                 ProcessBuilder processBuilder = new ProcessBuilder();
-                String cmd = String.format("%s %s", configs.get(Configs.MPG321_BIN), "\"" + file1.getAbsoluteFile() + "\"");
+                String cmd = String.format("%s %s %s", configs.get(Configs.MPG321_BIN), configs.get(Configs.MPG321_OPTIONS), "\"" + file1.getAbsoluteFile() + "\"");
                 processBuilder.command("bash", "-c", cmd);
                 process = Optional.of(processBuilder.start());
             } catch (IOException e) {

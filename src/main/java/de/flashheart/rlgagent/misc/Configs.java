@@ -48,6 +48,7 @@ public class Configs extends AbstractConfigs {
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
     public static final String MPG321_BIN = "mpg321_bin";
+    public static final String MPG321_OPTIONS = "mpg321_options";
     public static final String MY_ID = "myid";
 
     public Properties get_blink_schemes() {
@@ -172,6 +173,7 @@ public class Configs extends AbstractConfigs {
 
         configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1");
         configs.setProperty(MPG321_BIN, "");
+        configs.setProperty(MPG321_OPTIONS, "");
 
 
 
