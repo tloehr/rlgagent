@@ -254,7 +254,8 @@ public class MyLCD implements Runnable {
         // re-set all variables
         timers.entrySet().forEach(stringPairEntry -> {
             log.trace("time {} is now {}", stringPairEntry.getKey(), stringPairEntry.getValue().getRight());
-            String new_time_value = LocalTime.ofSecondOfDay(stringPairEntry.getValue().getRight() / 1000l).format(DateTimeFormatter.ofPattern("mm:ss"));
+            String pattern = stringPairEntry.getValue().getRight() / 1000l >= 3600 ? "HH:mm:ss" : "mm:ss";
+            String new_time_value = LocalTime.ofSecondOfDay(stringPairEntry.getValue().getRight() / 1000l).format(DateTimeFormatter.ofPattern(pattern));
             setVariable(stringPairEntry.getKey(), new_time_value);
             // this event will be sent out to realize a Progress Bar via the LEDs.
             fireStateReached(new PropertyChangeEvent(this, stringPairEntry.getKey(), stringPairEntry.getValue().getLeft(), stringPairEntry.getValue().getRight()));
