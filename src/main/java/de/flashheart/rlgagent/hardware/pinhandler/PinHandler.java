@@ -16,6 +16,14 @@ import java.util.concurrent.locks.ReentrantLock;
  * handle collision between pins that must not be run at the same time. Dieser Handler läuft parallel zum Hauptprogramm.
  * Er steuert alles Relais und achtet auch auf widersprüchliche Befehle und Kollisionen (falls bestimmte Relais nicht
  * gleichzeitig anziehen dürfen, gibt mittlerweile nicht mehr).
+ *
+ * barrel organ - every segment is 50ms
+ * led_wht 1,1,1,1,0,0,0,0,1,1
+ * led_red 1,1,1,1,0,0,0,0,1,1
+ * led_ylw 1,1,1,1,0,0,0,0,1,1
+ * led_grn 1,1,1,1,0,0,0,0,1,1
+ * led_blu 1,1,1,1,0,0,0,0,1,1
+ * hmmm - noch nicht brauchbar
  */
 @Log4j2
 public class PinHandler {
@@ -35,7 +43,7 @@ public class PinHandler {
     }
 
     /**
-     * adds a a relay to the handler.
+     * adds a pin to the handler.
      *
      * @param myPin der betreffende Pin
      */

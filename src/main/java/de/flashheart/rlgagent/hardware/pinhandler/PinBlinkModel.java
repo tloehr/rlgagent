@@ -18,7 +18,6 @@ public class PinBlinkModel implements GenericBlinkModel {
     int repeat;
 
     public PinBlinkModel(MyPin pin) {
-
         this.onOffScheme = new ArrayList<>();
         this.pin = pin;
         this.repeat = Integer.MAX_VALUE;
