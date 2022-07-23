@@ -163,6 +163,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             options.setConnectionTimeout(configs.getInt(Configs.MQTT_TIMEOUT));
             options.setMaxInflight(configs.getInt(Configs.MQTT_MAX_INFLIGHT));
 
+
             if (iMqttClient.isPresent()) {
                 iMqttClient.get().connect(options);
                 iMqttClient.get().setCallback(this);
@@ -170,11 +171,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
             if (mqtt_connected()) {
                 log.info("Connected to the broker @{} with ID: {}", iMqttClient.get().getServerURI(), iMqttClient.get().getClientId());
-
-                // if the connection is lost, these subscriptions are lost too.
-                // we need to (re)subscribe
-                //iMqttClient.get().subscribe(CMD4ALL, (topic, receivedMessage) -> proc(topic, receivedMessage));
-                iMqttClient.get().subscribe(CMD4ME, (topic, receivedMessage) -> proc(topic, receivedMessage));
+                iMqttClient.get().subscribe(CMD4ME, configs.getInt(Configs.MQTT_QOS), (topic, receivedMessage) -> proc(topic, receivedMessage));
 
                 success = true;
             }
@@ -530,8 +527,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     /**
-     * for progressing signals with a specific timer.
-     * this method is called from MyLCD.java which is in charge of calculating all timers.
+     * for progressing signals with a specific timer. this method is called from MyLCD.java which is in charge of
+     * calculating all timers.
      *
      * @param evt A PropertyChangeEvent object describing the event source and the property that has changed.
      */

@@ -138,7 +138,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(MQTT_CLEAN_SESSION, "true");
         configs.setProperty(MQTT_TIMEOUT, "10");
         configs.setProperty(MQTT_RECONNECT, "true");
-        configs.setProperty(MQTT_QOS, "1"); // QOS1 is good enough - QOS2 can cause some lag
+        configs.setProperty(MQTT_QOS, "2");
         configs.setProperty(MQTT_RETAINED, "true");
 
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
