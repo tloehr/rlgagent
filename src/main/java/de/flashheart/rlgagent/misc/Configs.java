@@ -21,11 +21,11 @@ public class Configs extends AbstractConfigs {
     public static final String MQTT_CLEAN_SESSION = "mqtt_clean_session";
     public static final String MQTT_QOS = "mqtt_qos";
     public static final String MQTT_RETAINED = "mqtt_retained";
-    public static final String OUT_LED_WHITE = "led_wht";
-    public static final String OUT_LED_RED = "led_red";
-    public static final String OUT_LED_BLUE = "led_blu";
-    public static final String OUT_LED_YELLOW = "led_ylw";
-    public static final String OUT_LED_GREEN = "led_grn";
+    public static final String OUT_LED_WHITE = "wht";
+    public static final String OUT_LED_RED = "red";
+    public static final String OUT_LED_BLUE = "blu";
+    public static final String OUT_LED_YELLOW = "ylw";
+    public static final String OUT_LED_GREEN = "grn";
     public static final String OUT_SIREN1 = "sir1";
     public static final String OUT_SIREN2 = "sir2";
     public static final String OUT_SIREN3 = "sir3";

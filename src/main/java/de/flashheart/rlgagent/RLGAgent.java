@@ -195,8 +195,10 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             // <cmd/> => paged|signals|timers|vars
             if (cmd.equalsIgnoreCase("paged")) {
                 procPaged(json);
-            } else if (cmd.equalsIgnoreCase("signals")) {
-                procSignals(json);
+            } else if (cmd.equalsIgnoreCase("visual")) {
+                procVisual(json);
+            } else if (cmd.equalsIgnoreCase("acoustic")) {
+                procAcoustic(json);
             } else if (cmd.equalsIgnoreCase("play")) {
                 procPlay(json);
             } else if (cmd.equalsIgnoreCase("timers")) {
@@ -246,29 +248,13 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         audioPlayer.play(json.getString("subpath"), json.getString("soundfile"));
     }
 
-    private void procSignals(JSONObject json) {
+    private void procAcoustic(JSONObject json) {
         Set<String> keys = json.keySet();
 
         if (keys.contains("all")) {
-            set_pins_to(Configs.ALL, json.getString("all"));
-        }
-        if (keys.contains("led_all")) {
-            String value = json.getString("led_all");
-            prev_progress_timer = -1;
-            progress_timer = Optional.empty();
-            blinking_timer = Optional.empty();
-            if (value.startsWith("progress:")) {
-                progress_timer = Optional.of(value.split(":")[1]);
-            } else {
-                set_pins_to(Configs.ALL_LEDS, value);
-            }
-        }
-        if (keys.contains("sir_all")) {
-            set_pins_to(Configs.ALL_SIRENS, json.getString("sir_all"));
+            set_pins_to(Configs.ALL_SIRENS, json.getString("all"));
         }
 
-        keys.remove("led_all");
-        keys.remove("sir_all");
         keys.remove("all");
 
         keys.forEach(signal_key -> {
@@ -287,6 +273,30 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 pinHandler.setScheme(signal_key, signal);
             }
         });
+    }
+
+    private void procVisual(JSONObject json) {
+        Set<String> keys = json.keySet();
+
+        if (keys.contains("all")) {
+            String value = json.getString("all");
+            prev_progress_timer = -1;
+            progress_timer = Optional.empty();
+            blinking_timer = Optional.empty();
+            if (value.startsWith("progress:")) {
+                progress_timer = Optional.of(value.split(":")[1]);
+            } else {
+                set_pins_to(Configs.ALL_LEDS, value);
+            }
+        }
+
+        keys.remove("all");
+
+        keys.forEach(signal_key -> {
+            String signal = json.getString(signal_key);
+            pinHandler.setScheme(signal_key, signal);
+        });
+
     }
 
     private void procPaged(JSONObject json) {
