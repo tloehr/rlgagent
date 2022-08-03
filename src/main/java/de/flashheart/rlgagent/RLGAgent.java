@@ -257,22 +257,19 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
         keys.remove("all");
 
+        if (keys.stream().noneMatch(signal_key -> signal_key.matches(
+                Configs.OUT_SIREN1 +
+                        "|" + Configs.OUT_SIREN2 +
+                        "|" + Configs.OUT_SIREN3 +
+                        "|" + Configs.OUT_SIREN4 +
+                        "|" + Configs.OUT_BUZZER)))
+            return;
+
         keys.forEach(signal_key -> {
             String signal = json.getString(signal_key);
-            if (signal.startsWith("timer:")) {
-                prev_progress_timer = -1;
-                progress_timer = Optional.empty();
-                blinking_timer = Optional.of(new ImmutablePair<>(signal_key, signal.split(":")[1]));
-            } else {
-                // if a new scheme for a led is set which was formerly used as a timer signal - it will be overwritten hence the blinking_timer will be set empty()
-                if (blinking_timer.orElseGet(() -> new ImmutablePair<>("", "")).getKey().equalsIgnoreCase(signal_key)) {
-                    prev_progress_timer = -1;
-                    blinking_timer = Optional.empty();
-                }
-
-                pinHandler.setScheme(signal_key, signal);
-            }
+            pinHandler.setScheme(signal_key, signal);
         });
+
     }
 
     private void procVisual(JSONObject json) {
@@ -292,10 +289,31 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
         keys.remove("all");
 
+        if (keys.stream().noneMatch(signal_key -> signal_key.matches(
+                Configs.OUT_LED_WHITE +
+                        "|" + Configs.OUT_LED_RED +
+                        "|" + Configs.OUT_LED_YELLOW +
+                        "|" + Configs.OUT_LED_GREEN +
+                        "|" + Configs.OUT_LED_BLUE)))
+            return;
+
         keys.forEach(signal_key -> {
             String signal = json.getString(signal_key);
-            pinHandler.setScheme(signal_key, signal);
+            if (signal.startsWith("timer:")) {
+                prev_progress_timer = -1;
+                progress_timer = Optional.empty();
+                blinking_timer = Optional.of(new ImmutablePair<>(signal_key, signal.split(":")[1]));
+            } else {
+                // if a new scheme for a led is set which was formerly used as a timer signal - it will be overwritten hence the blinking_timer will be set empty()
+                if (blinking_timer.orElseGet(() -> new ImmutablePair<>("", "")).getKey().equalsIgnoreCase(signal_key)) {
+                    prev_progress_timer = -1;
+                    blinking_timer = Optional.empty();
+                }
+
+                pinHandler.setScheme(signal_key, signal);
+            }
         });
+
 
     }
 
