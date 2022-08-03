@@ -163,6 +163,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             options.setConnectionTimeout(configs.getInt(Configs.MQTT_TIMEOUT));
             options.setMaxInflight(configs.getInt(Configs.MQTT_MAX_INFLIGHT));
 
+
             if (iMqttClient.isPresent()) {
                 iMqttClient.get().connect(options);
                 iMqttClient.get().setCallback(this);
@@ -170,11 +171,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
             if (mqtt_connected()) {
                 log.info("Connected to the broker @{} with ID: {}", iMqttClient.get().getServerURI(), iMqttClient.get().getClientId());
-
-                // if the connection is lost, these subscriptions are lost too.
-                // we need to (re)subscribe
-                //iMqttClient.get().subscribe(CMD4ALL, (topic, receivedMessage) -> proc(topic, receivedMessage));
-                iMqttClient.get().subscribe(CMD4ME, (topic, receivedMessage) -> proc(topic, receivedMessage));
+                iMqttClient.get().subscribe(CMD4ME, configs.getInt(Configs.MQTT_QOS), (topic, receivedMessage) -> proc(topic, receivedMessage));
 
                 success = true;
             }
@@ -198,8 +195,10 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             // <cmd/> => paged|signals|timers|vars
             if (cmd.equalsIgnoreCase("paged")) {
                 procPaged(json);
-            } else if (cmd.equalsIgnoreCase("signals")) {
-                procSignals(json);
+            } else if (cmd.equalsIgnoreCase("visual")) {
+                procVisual(json);
+            } else if (cmd.equalsIgnoreCase("acoustic")) {
+                procAcoustic(json);
             } else if (cmd.equalsIgnoreCase("play")) {
                 procPlay(json);
             } else if (cmd.equalsIgnoreCase("timers")) {
@@ -249,14 +248,35 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         audioPlayer.play(json.getString("subpath"), json.getString("soundfile"));
     }
 
-    private void procSignals(JSONObject json) {
+    private void procAcoustic(JSONObject json) {
         Set<String> keys = json.keySet();
 
         if (keys.contains("all")) {
-            set_pins_to(Configs.ALL, json.getString("all"));
+            set_pins_to(Configs.ALL_SIRENS, json.getString("all"));
         }
-        if (keys.contains("led_all")) {
-            String value = json.getString("led_all");
+
+        keys.remove("all");
+
+        if (keys.stream().noneMatch(signal_key -> signal_key.matches(
+                Configs.OUT_SIREN1 +
+                        "|" + Configs.OUT_SIREN2 +
+                        "|" + Configs.OUT_SIREN3 +
+                        "|" + Configs.OUT_SIREN4 +
+                        "|" + Configs.OUT_BUZZER)))
+            return;
+
+        keys.forEach(signal_key -> {
+            String signal = json.getString(signal_key);
+            pinHandler.setScheme(signal_key, signal);
+        });
+
+    }
+
+    private void procVisual(JSONObject json) {
+        Set<String> keys = json.keySet();
+
+        if (keys.contains("all")) {
+            String value = json.getString("all");
             prev_progress_timer = -1;
             progress_timer = Optional.empty();
             blinking_timer = Optional.empty();
@@ -266,13 +286,16 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 set_pins_to(Configs.ALL_LEDS, value);
             }
         }
-        if (keys.contains("sir_all")) {
-            set_pins_to(Configs.ALL_SIRENS, json.getString("sir_all"));
-        }
 
-        keys.remove("led_all");
-        keys.remove("sir_all");
         keys.remove("all");
+
+        if (keys.stream().noneMatch(signal_key -> signal_key.matches(
+                Configs.OUT_LED_WHITE +
+                        "|" + Configs.OUT_LED_RED +
+                        "|" + Configs.OUT_LED_YELLOW +
+                        "|" + Configs.OUT_LED_GREEN +
+                        "|" + Configs.OUT_LED_BLUE)))
+            return;
 
         keys.forEach(signal_key -> {
             String signal = json.getString(signal_key);
@@ -290,6 +313,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 pinHandler.setScheme(signal_key, signal);
             }
         });
+
+
     }
 
     private void procPaged(JSONObject json) {
@@ -530,8 +555,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     /**
-     * for progressing signals with a specific timer.
-     * this method is called from MyLCD.java which is in charge of calculating all timers.
+     * for progressing signals with a specific timer. this method is called from MyLCD.java which is in charge of
+     * calculating all timers.
      *
      * @param evt A PropertyChangeEvent object describing the event source and the property that has changed.
      */
