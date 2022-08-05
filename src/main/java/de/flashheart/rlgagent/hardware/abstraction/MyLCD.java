@@ -268,6 +268,16 @@ public class MyLCD implements Runnable {
         timers.put(key, new ImmutablePair<>(initial_value, initial_value));
     }
 
+    public void clear_variables() {
+        variables.clear();
+        setVariable("wifi", "--");
+        setVariable("ssid", "--");
+        setVariable("agversion", configs.getBuildProperties("my.version"));
+        setVariable("agbuild", configs.getBuildProperties("buildNumber"));
+        setVariable("agbdate", configs.getBuildProperties("buildDate"));
+        setVariable("agentname", configs.get(Configs.MY_ID));
+    }
+
     public void clear_timers() {
         timers.forEach((key, longLongPair) -> {
             setVariable(key, "--");
