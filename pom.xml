@@ -31,7 +31,7 @@
         <log4j2.version>2.17.1</log4j2.version>
         <lombok.version>1.18.22</lombok.version>
         <lang3.version>3.12.0</lang3.version>
-        <json.version>20211205</json.version>
+        <json.version>20220320</json.version>
         <quartz.version>2.3.2</quartz.version>
         <cli.version>1.5.0</cli.version>
         <ant.version>1.9.6</ant.version>

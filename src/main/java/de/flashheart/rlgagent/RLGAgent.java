@@ -241,7 +241,11 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     private void procVars(JSONObject json) {
-        json.keySet().forEach(sKey -> myLCD.setVariable(sKey, json.getString(sKey)));
+        Set<String> keys = json.keySet();
+        if (keys.contains("_clearall")) {
+            myLCD.clear_timers();
+        } else
+            json.keySet().forEach(sKey -> myLCD.setVariable(sKey, json.getString(sKey)));
     }
 
     private void procPlay(JSONObject json) throws IOException {
