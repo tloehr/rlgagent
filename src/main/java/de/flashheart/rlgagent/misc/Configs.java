@@ -44,12 +44,23 @@ public class Configs extends AbstractConfigs {
     public static final String MCP23017_I2C_ADDRESS = "mcp23017_i2c_address";
     public static final String LOGLEVEL = "loglevel";
     public static final String[] ALL_LEDS = new String[]{OUT_LED_WHITE, OUT_LED_RED, OUT_LED_YELLOW, OUT_LED_GREEN, OUT_LED_BLUE};
+
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4};
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
     public static final String MPG321_BIN = "mpg321_bin";
     public static final String MPG321_OPTIONS = "mpg321_options";
     public static final String MY_ID = "myid";
+    public static final String VISUALS = Configs.OUT_LED_WHITE +
+            "|" + Configs.OUT_LED_RED +
+            "|" + Configs.OUT_LED_YELLOW +
+            "|" + Configs.OUT_LED_GREEN +
+            "|" + Configs.OUT_LED_BLUE;
+    public static final String ACOUSTICS = Configs.OUT_SIREN1 +
+            "|" + Configs.OUT_SIREN2 +
+            "|" + Configs.OUT_SIREN3 +
+            "|" + Configs.OUT_SIREN4 +
+            "|" + Configs.OUT_BUZZER;
 
     public Properties get_blink_schemes() {
         return blink_schemes;

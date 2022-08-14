@@ -29,6 +29,7 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.InetAddress;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -56,8 +57,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     private final Agent me;
     private SimpleTrigger networkMonitoringTrigger;
     private final JobKey networkMonitoringJob;
-    private long mqtt_connect_tries = 0l;
-    private long netmonitor_cycle = -1l;
+    private long mqtt_connect_tries = 0L;
+    private long netmonitor_cycle = 0L;
     private String active_broker = "";
     private HashMap<String, String> current_network_stats;
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
@@ -205,6 +206,10 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 procTimers(json);
             } else if (cmd.equalsIgnoreCase("vars")) {
                 procVars(json);
+            } else if (cmd.equalsIgnoreCase("status")) {
+                // will trigger a status message NOW
+                netmonitor_cycle = 0L;
+                scheduler.triggerJob(networkMonitoringJob);
             } else if (cmd.equalsIgnoreCase("shutdown")) {
                 procShutdown(true);
             } else {
@@ -254,31 +259,18 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
     private void procAcoustic(JSONObject json) {
         Set<String> keys = json.keySet();
-
         if (keys.contains("all")) {
             set_pins_to(Configs.ALL_SIRENS, json.getString("all"));
         }
-
         keys.remove("all");
-
-        if (keys.stream().noneMatch(signal_key -> signal_key.matches(
-                Configs.OUT_SIREN1 +
-                        "|" + Configs.OUT_SIREN2 +
-                        "|" + Configs.OUT_SIREN3 +
-                        "|" + Configs.OUT_SIREN4 +
-                        "|" + Configs.OUT_BUZZER)))
-            return;
-
-        keys.forEach(signal_key -> {
+        keys.stream().filter(s -> s.matches(Configs.ACOUSTICS)).forEach(signal_key -> {
             String signal = json.getString(signal_key);
             pinHandler.setScheme(signal_key, signal);
         });
-
     }
 
     private void procVisual(JSONObject json) {
         Set<String> keys = json.keySet();
-
         if (keys.contains("all")) {
             String value = json.getString("all");
             prev_progress_timer = -1;
@@ -290,18 +282,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 set_pins_to(Configs.ALL_LEDS, value);
             }
         }
-
         keys.remove("all");
-
-        if (keys.stream().noneMatch(signal_key -> signal_key.matches(
-                Configs.OUT_LED_WHITE +
-                        "|" + Configs.OUT_LED_RED +
-                        "|" + Configs.OUT_LED_YELLOW +
-                        "|" + Configs.OUT_LED_GREEN +
-                        "|" + Configs.OUT_LED_BLUE)))
-            return;
-
-        keys.forEach(signal_key -> {
+        keys.stream().filter(s -> s.matches(Configs.VISUALS)).forEach(signal_key -> {
             String signal = json.getString(signal_key);
             if (signal.startsWith("timer:")) {
                 prev_progress_timer = -1;
@@ -313,12 +295,9 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     prev_progress_timer = -1;
                     blinking_timer = Optional.empty();
                 }
-
                 pinHandler.setScheme(signal_key, signal);
             }
         });
-
-
     }
 
     private void procPaged(JSONObject json) {
@@ -444,8 +423,6 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
 
-        netmonitor_cycle++;
-
         // we assume that a raspi only uses WIFI
         //if (me.getWifi() == 0) return; // no wifi - no chance
 
@@ -457,6 +434,13 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             while (reachable_host.isEmpty() && brokers.hasNext()) {
                 String broker = brokers.next();
                 reachable_host = Tools.fping(current_network_stats, broker, 1, 500) ? broker : "";
+                try {
+                    InetAddress localMachine = InetAddress.getLocalHost();
+                    current_network_stats.put("ip", localMachine.getHostAddress());
+                } catch (java.net.UnknownHostException uhe) {
+                    log.warn(uhe);
+                    current_network_stats.put("ip", "no-ip");
+                }
             }
         } else {
             reachable_host = active_broker;
@@ -480,7 +464,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     set_pins_to(Configs.ALL_LEDS, "off");
                     pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
                     pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
-                    netmonitor_cycle = 0; // to inform commander right away
+                    netmonitor_cycle = 0L; // to inform commander right away
                 }
             }
             // get a better ping statistics out of 5 pings to the current WORKING broker
@@ -512,7 +496,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         }
 
         // this reports a status message. very useful to see if all the agents are doing well during the game
-        if (netmonitor_cycle == 0 || netmonitor_cycle % STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES == 0) {
+        if (netmonitor_cycle == 0L || netmonitor_cycle % STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES == 0) {
             if (mqtt_connected()) {
                 JSONObject status = new JSONObject(current_network_stats);
                 status.put("wifi", Tools.WIFI[me.getWifi()])
@@ -524,6 +508,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 reportEvent("status", status.toString());
             }
         }
+
+        netmonitor_cycle++;
     }
 
 
