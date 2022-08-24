@@ -105,8 +105,6 @@ public class MyLCD implements Runnable {
             pages.clear();
             pages.add(new LCDPage("page0"));
             visible_page_index = 0;
-            //timers.clear();
-            //variables.clear();
             // set defaults for variables
             setVariable("wifi", "--");
             setVariable("ssid", "--");
@@ -255,7 +253,7 @@ public class MyLCD implements Runnable {
         timers.entrySet().forEach(stringPairEntry -> {
             log.trace("time {} is now {}", stringPairEntry.getKey(), stringPairEntry.getValue().getRight());
             String pattern = stringPairEntry.getValue().getRight() / 1000l >= 3600 ? "HH:mm:ss" : "mm:ss";
-            String new_time_value = LocalTime.ofSecondOfDay(stringPairEntry.getValue().getRight() / 1000l).format(DateTimeFormatter.ofPattern(pattern));
+            String new_time_value = LocalTime.ofSecondOfDay(stringPairEntry.getValue().getRight() / 1000l + 1).format(DateTimeFormatter.ofPattern(pattern)); // for the display always add a second
             setVariable(stringPairEntry.getKey(), new_time_value);
             // this event will be sent out to realize a Progress Bar via the LEDs.
             fireStateReached(new PropertyChangeEvent(this, stringPairEntry.getKey(), stringPairEntry.getValue().getLeft(), stringPairEntry.getValue().getRight()));

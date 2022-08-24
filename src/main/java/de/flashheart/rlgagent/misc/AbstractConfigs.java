@@ -111,7 +111,7 @@ public abstract class AbstractConfigs {
         try {
             File configFile = new File(CONFIGFILE);
             FileOutputStream out = new FileOutputStream(configFile);
-            configs.store(out, "Settings " + getProjectName());
+            configs.store(out, "Settings " + getProjectName() + " v" + getBuildProperties("my.version") + "b" + getBuildProperties("buildNumber"));
             out.close();
         } catch (Exception ex) {
             log.debug(ex);
