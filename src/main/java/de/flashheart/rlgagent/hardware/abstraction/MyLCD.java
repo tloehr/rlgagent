@@ -253,7 +253,7 @@ public class MyLCD implements Runnable {
         timers.entrySet().forEach(stringPairEntry -> {
             log.trace("time {} is now {}", stringPairEntry.getKey(), stringPairEntry.getValue().getRight());
             String pattern = stringPairEntry.getValue().getRight() / 1000l >= 3600 ? "HH:mm:ss" : "mm:ss";
-            String new_time_value = LocalTime.ofSecondOfDay(stringPairEntry.getValue().getRight() / 1000l + 1).format(DateTimeFormatter.ofPattern(pattern)); // for the display always add a second
+            String new_time_value = LocalTime.ofSecondOfDay(stringPairEntry.getValue().getRight() / 1000l).format(DateTimeFormatter.ofPattern(pattern));
             setVariable(stringPairEntry.getKey(), new_time_value);
             // this event will be sent out to realize a Progress Bar via the LEDs.
             fireStateReached(new PropertyChangeEvent(this, stringPairEntry.getKey(), stringPairEntry.getValue().getLeft(), stringPairEntry.getValue().getRight()));
@@ -262,7 +262,7 @@ public class MyLCD implements Runnable {
 
     public void setTimer(String key, long time) {
         log.trace("setting timer {} to {}", key, time);
-        long initial_value = time * 1000l;
+        long initial_value = (time+1) * 1000l; // we have to add one second here so the display fits to the timer notion of the players.
         timers.put(key, new ImmutablePair<>(initial_value, initial_value));
     }
 
