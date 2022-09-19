@@ -93,6 +93,10 @@ public class Configs extends AbstractConfigs {
         blink_schemes.setProperty("single_buzz", "1:on,75;off,75");
         blink_schemes.setProperty("double_buzz", "2:on,75;off,75");
         blink_schemes.setProperty("triple_buzz", "3:on,75;off,75");
+
+        // some defaults
+        blink_schemes.setProperty("game_starts", "1:on,5000;off,1");
+        blink_schemes.setProperty("game_ends", "1:on,1500;off,750;on,1500;off,750;on,5000;off,1");
     }
 
 
@@ -185,7 +189,6 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1");
         configs.setProperty(MPG321_BIN, "");
         configs.setProperty(MPG321_OPTIONS, "");
-
 
 
     }
