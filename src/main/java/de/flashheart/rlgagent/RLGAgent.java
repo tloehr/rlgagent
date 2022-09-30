@@ -57,6 +57,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     private final JobKey networkMonitoringJob, statusJob;
     private long mqtt_connect_tries = 0L;
     private long netmonitor_cycle = 0L;
+    private long failed_pings_with_mqtt_connection = 0L;
     private String active_broker = "";
     private HashMap<String, String> current_network_stats;
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
@@ -452,10 +453,19 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         netmonitor_cycle++;
 
         if (mqtt_connected()) {
-            // only for statistics
-            Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT));
-            log.debug("we are already connected - done here");
-            return;
+
+
+            if (Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)))
+                failed_pings_with_mqtt_connection = 0; // success
+            else
+                failed_pings_with_mqtt_connection++; // fail
+
+            // too many fails
+            if (failed_pings_with_mqtt_connection > configs.getLong(Configs.NETWORKING_MONITOR_DISCONNECT_AFTER_FAILED_PINGS)) {
+                log.debug("too many fails - breaking up with broker {} for now", active_broker);
+                disconnect_from_mqtt_broker();
+            } else log.debug("we are already connected - done here");
+            return; // will be reconnected with the next call to this method
         }
 
         String reachable_host = "";

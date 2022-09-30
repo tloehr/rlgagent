@@ -65,7 +65,7 @@ public class Configs extends AbstractConfigs {
             "|" + Configs.OUT_BUZZER;
     public static final String NETWORKING_MONITOR_INTERVAL_IN_SECONDS = "network_monitor_interval_in_seconds";
     public static final String STATUS_INTERVAL_IN_SECONDS = "status_interval_in_seconds";
-    public static final String NETWORKING_MONITOR_CHECK_EXISTING_CONNECTION_CYCLES = "networking_monitor_check_existing_connection_cycles";
+    public static final String NETWORKING_MONITOR_DISCONNECT_AFTER_FAILED_PINGS = "networking_monitor_disconnect_after_failed_pings";
 
     public Properties get_blink_schemes() {
         return blink_schemes;
@@ -163,7 +163,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(PING_TRIES, "1");
         configs.setProperty(PING_TIMEOUT, "500");
         configs.setProperty(NETWORKING_MONITOR_INTERVAL_IN_SECONDS, "10");
-        configs.setProperty(NETWORKING_MONITOR_CHECK_EXISTING_CONNECTION_CYCLES, "3");
+        configs.setProperty(NETWORKING_MONITOR_DISCONNECT_AFTER_FAILED_PINGS, "3");
         configs.setProperty(STATUS_INTERVAL_IN_SECONDS, "60");
 
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
