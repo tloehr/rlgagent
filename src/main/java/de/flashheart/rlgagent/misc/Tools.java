@@ -171,7 +171,7 @@ public class Tools {
      * @param iwconfig_output
      * @return
      */
-    public static void getWifiParams(HashMap<String, String> current_network_values, String iwconfig_output) {
+    public static void check_iwconfig(HashMap<String, String> current_network_values, String iwconfig_output) {
         if (!Tools.isArm()) {
             // a regular desktop has always good connection
             current_network_values.put("essid", "!DESKTOP!");
@@ -322,6 +322,14 @@ public class Tools {
 //    }
 
 
+    /**
+     * does a fping to the specific address. stores the statistics in the provided map
+     * @param current_network_values map to store the statistics into
+     * @param address the host(s) to be checked
+     * @param tries number of pings - parameter for fping
+     * @param timeout timeout in ms before failing - parameter for fping
+     * @return true if address was reached
+     */
     public static boolean fping(HashMap<String, String> current_network_values, String address, int tries, int timeout) {
         if (address.trim().isEmpty()) return false;
         boolean success;
@@ -342,6 +350,10 @@ public class Tools {
                 output.append(line);
             }
 
+            /*
+             Exit status is 0 if all the hosts are reachable, 1 if some hosts were unreachable, 2 if any IP addresses
+             were not found, 3 for invalid command line arguments, and 4 for a system call failure.
+             */
             int exitVal = process.waitFor();
             success = exitVal == 0;
 
@@ -358,9 +370,9 @@ public class Tools {
                     current_network_values.put("ping_max", tokens.get(12).trim());
                 }
 
-                log.trace("fping returned \n\n {}", output);
+                log.debug("fping returned \n\n {} - return code {}", output, exitVal);
             } else {
-                log.trace("fping failed to contact {}", address);
+                log.debug("fping failed to contact {} - return code {}", address, exitVal);
                 current_network_values.put("ping_loss", "100%");
                 current_network_values.put("ping_min", "--");
                 current_network_values.put("ping_avg", "--");

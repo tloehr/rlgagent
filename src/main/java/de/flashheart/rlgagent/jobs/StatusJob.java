@@ -6,16 +6,16 @@ import org.quartz.*;
 
 @Log4j2
 @DisallowConcurrentExecution
-public class NetworkMonitoringJob implements InterruptableJob {
+public class StatusJob implements InterruptableJob {
 
-    public static final String name = "networkingmonitor";
+    public static final String name = "statusmessage";
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) {
         try {
             log.trace(jobExecutionContext.getJobDetail().getKey() + " executed");
             RLGAgent rlgAgent = (RLGAgent) jobExecutionContext.getScheduler().getContext().get("rlgAgent");
-            rlgAgent.network_connection();
+            rlgAgent.send_status_message();
         } catch (SchedulerException e) {
             log.fatal(e);
             System.exit(0);
