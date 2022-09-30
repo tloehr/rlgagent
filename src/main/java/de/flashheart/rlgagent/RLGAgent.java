@@ -29,7 +29,6 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.InetAddress;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -42,7 +41,6 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 @Log4j2
 public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
-    private int NETWORKING_MONITOR_INTERVAL = 10;
     private static final int STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES = 6;
     private final String EVENTS, CMD4ME;//, CMD4ALL;
     private final Optional<MyUI> myUI;
@@ -138,7 +136,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             }
         });
         iMqttClient = Optional.empty();
-        log.debug("disconnected from mqtt");
+        log.info("disconnected from mqtt");
     }
 
     /**
@@ -374,7 +372,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         networkMonitoringTrigger = newTrigger()
                 .withIdentity(NetworkMonitoringJob.name + "-trigger", "group1")
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(NETWORKING_MONITOR_INTERVAL)
+                        .withIntervalInSeconds(configs.getInt(Configs.NETWORKING_MONITOR_INTERVAL_IN_SECONDS))
                         .repeatForever())
                 .build();
         scheduler.scheduleJob(job, networkMonitoringTrigger);
@@ -406,14 +404,16 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
     /**
      * this method is called every NETWORKING_MONITOR_INTERVAL seconds to check if network is still good. maintains a
-     * global map with necessary parameters to describe the current state of the network. ** reads wifi parameters and
-     * stores them ** pings the last reachable host first. if no luck, it tries out all given potential brokers from the
-     * config.txt ** if the host answers the ping, and we are connected to a broker on that host -> WE ARE GOOD ** if
-     * the host answers the ping, and we are NOT connected to a broker, then we try to connect to the broker on that
-     * host. ** if nobody answers to our pings -> we are CLOSE a potential connection to any MQTT broker we were
-     * connected to before. ** When there is No MQTT Broker connection, the agent displays the connection status on the
-     * LCD and the LEDs. ** every STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES cycles a status message is sent out the
-     * broker (if there is one)
+     * global map with necessary parameters to describe the current state of the network.
+     * <ul>
+     * <li>reads wifi parameters and stores them</li>
+     * <li>pings the last reachable host first. if no luck, it tries out all given potential brokers from the config.txt</li>
+     * <li>if the host answers the ping, and we are connected to a broker on that host -> WE ARE GOOD</li>
+     * <li>if the host answers the ping, and we are NOT connected to a broker, then we try to connect to the broker on that host.</li>
+     * <li>if nobody answers to our pings -> we CLOSE a potential connection to any MQTT broker we were connected to before.</li>
+     * <li>When there is No MQTT Broker connection, the agent displays the connection status on the LCD and the LEDs.</li>
+     * <li>every STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES cycles a status message is sent out the broker (if there is one)</li>
+     * </ul>
      *
      * @throws SchedulerException
      */
@@ -423,33 +423,21 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
 
-        // we assume that a raspi only uses WIFI
-        //if (me.getWifi() == 0) return; // no wifi - no chance
-
         String reachable_host = "";
-        // if we already have an active broker, we check it first
-
-        if (!Tools.fping(current_network_stats, active_broker, 1, 500)) {
+        if (!Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT))) {
             ListIterator<String> brokers = potential_brokers.listIterator();
             while (reachable_host.isEmpty() && brokers.hasNext()) {
                 String broker = brokers.next();
-                reachable_host = Tools.fping(current_network_stats, broker, 1, 500) ? broker : "";
-                try {
-                    InetAddress localMachine = InetAddress.getLocalHost();
-                    current_network_stats.put("ip", localMachine.getHostAddress());
-                } catch (java.net.UnknownHostException uhe) {
-                    log.warn(uhe);
-                    current_network_stats.put("ip", "no-ip");
-                }
+                reachable_host = Tools.fping(current_network_stats, broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)) ? broker : "";
             }
         } else {
             reachable_host = active_broker;
         }
 
+        // inform LCD about the current measurements
         current_network_stats.forEach((k, v) -> myLCD.setVariable(k, v));
 
         // if a broker is reachable but the MQTTClient is not yet connected. Try it.
-        // todo: continue searching when ping is good but broker is missing
         if (!reachable_host.isEmpty()) { // somebody answered
             if (!mqtt_connected()) { // but we don't have a mqtt connection yet
                 myLCD.setLine("page0", 2, "Searching for broker");

@@ -175,7 +175,7 @@ public class Tools {
         if (!Tools.isArm()) {
             // a regular desktop has always good connection
             current_network_values.put("essid", "!DESKTOP!");
-            current_network_values.put("ap", "!DESKTOP!");
+            current_network_values.put("ap", "00223F97A198");
             current_network_values.put("bitrate", "--");
             current_network_values.put("txpower", "--");
             current_network_values.put("link", "--");
@@ -317,6 +317,11 @@ public class Tools {
         return text;
     }
 
+//    public static boolean  nmap(HashMap<String, String> current_network_values, String address, int tries, int timeout) {
+//
+//    }
+
+
     public static boolean fping(HashMap<String, String> current_network_values, String address, int tries, int timeout) {
         if (address.trim().isEmpty()) return false;
         boolean success;
@@ -353,7 +358,7 @@ public class Tools {
                     current_network_values.put("ping_max", tokens.get(12).trim());
                 }
 
-                log.trace("fping returned \n\n {} ", output);
+                log.trace("fping returned \n\n {}", output);
             } else {
                 log.trace("fping failed to contact {}", address);
                 current_network_values.put("ping_loss", "100%");

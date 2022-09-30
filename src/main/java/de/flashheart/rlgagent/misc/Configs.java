@@ -42,7 +42,7 @@ public class Configs extends AbstractConfigs {
     public static final String LCD_ROWS = "lcd_rows";
     public static final String LCD_COLS = "lcd_cols";
     public static final String MCP23017_I2C_ADDRESS = "mcp23017_i2c_address";
-    public static final String LOGLEVEL = "loglevel";
+    //    public static final String LOGLEVEL = "loglevel";
     public static final String[] ALL_LEDS = new String[]{OUT_LED_WHITE, OUT_LED_RED, OUT_LED_YELLOW, OUT_LED_GREEN, OUT_LED_BLUE};
 
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4};
@@ -51,6 +51,8 @@ public class Configs extends AbstractConfigs {
     public static final String MPG321_BIN = "mpg321_bin";
     public static final String MPG321_OPTIONS = "mpg321_options";
     public static final String MY_ID = "myid";
+    public static final String PING_TRIES = "ping_tries";
+    public static final String PING_TIMEOUT = "ping_timeout";
     public static final String VISUALS = Configs.OUT_LED_WHITE +
             "|" + Configs.OUT_LED_RED +
             "|" + Configs.OUT_LED_YELLOW +
@@ -61,6 +63,7 @@ public class Configs extends AbstractConfigs {
             "|" + Configs.OUT_SIREN3 +
             "|" + Configs.OUT_SIREN4 +
             "|" + Configs.OUT_BUZZER;
+    public static final String NETWORKING_MONITOR_INTERVAL_IN_SECONDS = "network_monitor_interval_in_seconds";
 
     public Properties get_blink_schemes() {
         return blink_schemes;
@@ -154,7 +157,10 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(MQTT_TIMEOUT, "10");
         configs.setProperty(MQTT_RECONNECT, "true");
         configs.setProperty(MQTT_QOS, "2");
-        configs.setProperty(MQTT_RETAINED, "true");
+        configs.setProperty(MQTT_RETAINED, "false");
+        configs.setProperty(PING_TRIES, "5");
+        configs.setProperty(PING_TIMEOUT, "500");
+        configs.setProperty(NETWORKING_MONITOR_INTERVAL_IN_SECONDS, "10");
 
         configs.setProperty(LCD_I2C_ADDRESS, "0x27");
         configs.setProperty(MCP23017_I2C_ADDRESS, "0x20");

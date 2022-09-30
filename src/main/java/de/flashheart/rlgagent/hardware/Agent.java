@@ -17,10 +17,6 @@ public class Agent {
     private LocalDateTime lastheartbeat;
     private int wifi;
 
-    public int getWifi() {
-        return wifi;
-    }
-
     public Agent(JSONObject jsonObject) {
         this.agentid = jsonObject.getString("agentid");
         this.lastheartbeat = JavaTimeConverter.from_iso8601(jsonObject.getString("timestamp"));

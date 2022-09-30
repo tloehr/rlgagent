@@ -33,7 +33,7 @@
         <Logger name="org.quartz" level="INFO" additivity="false">
             <AppenderRef ref="STDOUT"/>
         </Logger>
-        <Root level="${sys:loglevel:-DEBUG}">
+        <Root level="${sys:loglevel:-INFO}">
             <AppenderRef ref="RollingFile"/>
             <AppenderRef ref="STDOUT"/>
         </Root>
