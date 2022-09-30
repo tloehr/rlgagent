@@ -188,7 +188,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         if (tokens.size() < 4 || tokens.size() > 5) return;
         String cmd = tokens.get(tokens.size() - 1);
 
-        log.debug("received {} from {} cmd {}", receivedMessage, topic, cmd);
+        log.trace("received {} from {} cmd {}", receivedMessage, topic, cmd);
         try {
             String payload = new String(receivedMessage.getPayload());
             final JSONObject json = new JSONObject(payload.isEmpty() ? "{}" : payload);
@@ -401,7 +401,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 msg.setRetained(configs.is(Configs.MQTT_RETAINED));
                 if (!payload.isEmpty()) msg.setPayload(payload.getBytes());
                 iMqttClient.get().publish(EVENTS + src, msg);
-                log.info(EVENTS);
+                log.trace("reporting {} to topic {}", EVENTS + src, msg);
             } catch (MqttException mqe) {
                 log.warn(mqe);
             }
@@ -428,7 +428,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             reportEvent("status", status.toString());
         }
     }
-    
+
     public void network_connection() throws SchedulerException {
         if (System.getProperties().getProperty("network_connection", "new").equalsIgnoreCase("new")) {
             network_connection_new();
@@ -453,7 +453,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
      * @throws SchedulerException
      */
     private void network_connection_legacy() {
-        log.trace("checking network status");
+        log.debug("network_connection_legacy()");
         Tools.check_iwconfig(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
         me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
@@ -523,15 +523,13 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
     private void network_connection_new() {
         // some statistics only
-        log.trace("checking network status");
+        log.debug("network_connection_new()");
         Tools.check_iwconfig(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
         me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
         netmonitor_cycle++;
 
         if (mqtt_connected()) {
-
-
             if (Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)))
                 failed_pings_with_mqtt_connection = 0; // success
             else
@@ -678,8 +676,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         List<String> leds_to_use = new ArrayList<>(Arrays.asList(Arrays.copyOfRange(Configs.ALL_LEDS, 0, progress + 1)));
         List<String> leds_to_set_off = new ArrayList<>(Arrays.asList(Configs.ALL_LEDS));
         leds_to_set_off.removeAll(leds_to_use); // set difference
-        log.debug("leds to use {} with progress {}", leds_to_use, progress);
-        log.debug("leds to be off {}", leds_to_set_off);
+        log.trace("leds to use {} with progress {}", leds_to_use, progress);
+        log.trace("leds to be off {}", leds_to_set_off);
 
         set_pins_to(leds_to_set_off.toArray(), "off");
         set_pins_to(leds_to_use.toArray(), PROGRESS_SCHEMES[progress]);
