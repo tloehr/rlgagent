@@ -58,6 +58,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     private long mqtt_connect_tries = 0L;
     private long netmonitor_cycle = 0L;
     private long failed_pings_with_mqtt_connection = 0L;
+    private long num_of_reconnects = 0L;
+    private long sum_of_failed_pings = 0L;
     private String active_broker = "";
     private HashMap<String, String> current_network_stats;
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
@@ -424,7 +426,9 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     .put("mqtt-broker", active_broker)
                     .put("timestamp", JavaTimeConverter.to_iso8601(LocalDateTime.now()))
                     .put("mqtt_connect_tries", mqtt_connect_tries)
-                    .put("netmonitor_cycle", netmonitor_cycle);
+                    .put("netmonitor_cycle", netmonitor_cycle)
+                    .put("reconnects", num_of_reconnects)
+                    .put("failed_pings", sum_of_failed_pings);
             reportEvent("status", status.toString());
         }
     }
@@ -487,7 +491,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     set_pins_to(Configs.ALL_LEDS, "off");
                     pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
                     pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
-                    netmonitor_cycle = 0L; // to inform commander right away
+                    send_status_message(); // tell commander immediately
                 }
             }
             // get a better ping statistics out of 5 pings to the current WORKING broker
@@ -532,12 +536,15 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         if (mqtt_connected()) {
             if (Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)))
                 failed_pings_with_mqtt_connection = 0; // success
-            else
+            else {
                 failed_pings_with_mqtt_connection++; // fail
+                sum_of_failed_pings++;
+            }
 
             // too many fails
             if (failed_pings_with_mqtt_connection > configs.getLong(Configs.NETWORKING_MONITOR_DISCONNECT_AFTER_FAILED_PINGS)) {
-                log.debug("too many fails - breaking up with broker {} for now", active_broker);
+                num_of_reconnects++;
+                log.warn("too many fails - breaking up with broker {} for now", active_broker);
                 disconnect_from_mqtt_broker();
             } else log.debug("we are already connected - done here");
             return; // will be reconnected with the next call to this method
@@ -586,13 +593,14 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             myLCD.setLine("page0", 3, "@" + reachable_host);
             disconnect_from_mqtt_broker();
             if (try_mqtt_broker(String.format("tcp://%s:%s", reachable_host, configs.get(Configs.MQTT_PORT)))) {
+                active_broker = reachable_host;
                 myLCD.init();
                 myLCD.setLine("page0", 2, "MQTT connected to");
                 myLCD.setLine("page0", 3, active_broker);
                 myLCD.setLine("page0", 4, "");
                 pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
                 pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
-                active_broker = reachable_host;
+                send_status_message(); // tell commander immediately
             }
         }
     }

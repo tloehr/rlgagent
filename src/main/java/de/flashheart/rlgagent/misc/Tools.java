@@ -369,14 +369,13 @@ public class Tools {
                     current_network_values.put("ping_avg", tokens.get(11).trim());
                     current_network_values.put("ping_max", tokens.get(12).trim());
                 }
-
-                log.debug("fping returned \n\n {} - return code {}", output, exitVal);
+                log.trace("fping returned \n\n {} - return code {}", output, exitVal);
             } else {
-                log.debug("fping failed to contact {} - return code {}", address, exitVal);
                 current_network_values.put("ping_loss", "100%");
                 current_network_values.put("ping_min", "--");
                 current_network_values.put("ping_avg", "--");
                 current_network_values.put("ping_max", "--");
+                log.warn("fping returned \n\n {} - return code {}", output, exitVal);
             }
 
         } catch (IOException | InterruptedException io) {
