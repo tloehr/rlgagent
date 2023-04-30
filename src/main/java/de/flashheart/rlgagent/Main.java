@@ -89,6 +89,11 @@ public class Main {
         if (!GraphicsEnvironment.isHeadless()) {
             UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
             myUI = Optional.of(new MyUI(configs.getAgentname()));
+            int locationX = configs.getInt("frameLocationX");
+            int locationY = configs.getInt("frameLocationY");
+            if (locationX >= 0){
+                myUI.get().setLocation(locationX, locationY);
+            }
             myUI.get().setVisible(true);
         }
     }

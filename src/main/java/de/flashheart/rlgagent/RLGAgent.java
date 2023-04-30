@@ -207,6 +207,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 procTimers(json);
             } else if (cmd.equalsIgnoreCase("vars")) {
                 procVars(json);
+            } else if (cmd.equalsIgnoreCase("reset_status")) {
+                resetStatus();
             } else if (cmd.equalsIgnoreCase("status")) {
                 scheduler.triggerJob(statusJob);
             } else if (cmd.equalsIgnoreCase("shutdown")) {
@@ -217,6 +219,11 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         } catch (Exception e) {
             log.error(e.toString());
         }
+    }
+
+    private void resetStatus() {
+        num_of_reconnects = 0L;
+        sum_of_failed_pings = 0L;
     }
 
     public void procShutdown(boolean system_shutdown) {

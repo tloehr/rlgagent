@@ -133,6 +133,7 @@ public class MyUI extends JFrame {
 
         //======== this ========
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setPreferredSize(new Dimension(235, 323));
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
@@ -190,7 +191,7 @@ public class MyUI extends JFrame {
             dialogPane.add(buttonBar, BorderLayout.SOUTH);
         }
         contentPane.add(dialogPane, BorderLayout.CENTER);
-        setSize(230, 325);
+        setSize(237, 325);
         setLocationRelativeTo(getOwner());
         // JFormDesigner - End of component initialization  //GEN-END:initComponents
     }

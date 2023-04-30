@@ -53,6 +53,8 @@ public class Configs extends AbstractConfigs {
     public static final String MY_ID = "myid";
     public static final String PING_TRIES = "ping_tries";
     public static final String PING_TIMEOUT = "ping_timeout";
+    public static final String FRAME_LOCATION_X = "frameLocationX";
+    public static final String FRAME_LOCATION_Y = "frameLocationY";
     public static final String VISUALS = Configs.OUT_LED_WHITE +
             "|" + Configs.OUT_LED_RED +
             "|" + Configs.OUT_LED_YELLOW +
@@ -186,7 +188,7 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(OUT_SIREN1, RaspiPin.GPIO_07.getName()); // 7
         configs.setProperty(OUT_SIREN2, RaspiPin.GPIO_00.getName()); // 11
         configs.setProperty(OUT_SIREN3, RaspiPin.GPIO_06.getName()); // 22
-        configs.setProperty(OUT_SIREN4, RaspiPin.GPIO_23.getName()); // 33
+        configs.setProperty(OUT_SIREN4, RaspiPin.GPIO_29.getName()); // 33
 
         configs.setProperty(TRIGGER_ON_HIGH_SIREN1, "true");
         configs.setProperty(TRIGGER_ON_HIGH_SIREN2, "true");
@@ -199,6 +201,9 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1");
         configs.setProperty(MPG321_BIN, "");
         configs.setProperty(MPG321_OPTIONS, "");
+
+        configs.setProperty(FRAME_LOCATION_X, "-1");
+        configs.setProperty(FRAME_LOCATION_Y, "-1");
 
 
     }

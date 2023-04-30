@@ -1,4 +1,4 @@
-JFDML JFormDesigner: "7.0.5.1.409" Java: "11.0.13" encoding: "UTF-8"
+JFDML JFormDesigner: "8.0.3.0.246" Java: "17.0.6" encoding: "UTF-8"
 
 new FormModel {
 	contentType: "form/swing"
@@ -7,6 +7,7 @@ new FormModel {
 			name: "this"
 			"defaultCloseOperation": 3
 			"$sizePolicy": 1
+			"preferredSize": new java.awt.Dimension( 235, 323 )
 			add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.BorderLayout ) ) {
 				name: "dialogPane"
 				"border": new javax.swing.border.EmptyBorder( 12, 12, 12, 12 )
@@ -68,7 +69,7 @@ new FormModel {
 			} )
 		}, new FormLayoutConstraints( null ) {
 			"location": new java.awt.Point( 0, 0 )
-			"size": new java.awt.Dimension( 230, 325 )
+			"size": new java.awt.Dimension( 190, 260 )
 		} )
 	}
 }
