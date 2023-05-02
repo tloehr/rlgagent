@@ -91,6 +91,10 @@ public abstract class AbstractConfigs {
         return Integer.parseInt(configs.containsKey(key) ? configs.get(key).toString() : "-1");
     }
 
+    public void setInt(Object key, int value) {
+        configs.setProperty(String.valueOf(key), Integer.toString(value));
+    }
+
     public long getLong(Object key) {
         return Long.parseLong(configs.containsKey(key) ? configs.get(key).toString() : "-1");
     }

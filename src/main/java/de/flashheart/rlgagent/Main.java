@@ -19,6 +19,8 @@ import org.apache.commons.cli.*;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -89,11 +91,22 @@ public class Main {
         if (!GraphicsEnvironment.isHeadless()) {
             UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
             myUI = Optional.of(new MyUI(configs.getAgentname()));
-            int locationX = configs.getInt("frameLocationX");
-            int locationY = configs.getInt("frameLocationY");
+            // made this especially for the simulation environment.
+            // restores the window to the last used position.
+            // great for screen setups with MANY agent JFrames
+            int locationX = configs.getInt(Configs.FRAME_LOCATION_X);
+            int locationY = configs.getInt(Configs.FRAME_LOCATION_Y);
             if (locationX >= 0){
                 myUI.get().setLocation(locationX, locationY);
             }
+            myUI.get().addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentMoved(ComponentEvent e) {
+                    configs.setInt(Configs.FRAME_LOCATION_X, e.getComponent().getX());
+                    configs.setInt(Configs.FRAME_LOCATION_Y, e.getComponent().getY());
+                }
+            });
+            // show me what You've got
             myUI.get().setVisible(true);
         }
     }

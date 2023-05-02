@@ -4,6 +4,7 @@
 
 package de.flashheart.rlgagent.ui;
 
+import java.awt.event.*;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import de.flashheart.rlgagent.misc.Configs;
@@ -116,6 +117,15 @@ public class MyUI extends JFrame {
 
     public void addActionListenerToBTN02(ActionListener actionListener) {
         btn02.addActionListener(actionListener);
+    }
+
+    /**
+     * the position of the frame was changed. storing new position in configs.
+     * @param e
+     */
+    private void thisComponentMoved(ComponentEvent e) {
+
+
     }
 
 
