@@ -4,7 +4,8 @@
 
 package de.flashheart.rlgagent.ui;
 
-import java.awt.event.*;
+import javax.swing.event.*;
+
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import de.flashheart.rlgagent.misc.Configs;
@@ -14,8 +15,11 @@ import org.apache.commons.lang3.StringUtils;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 
@@ -24,12 +28,20 @@ import java.util.HashMap;
  */
 @Log4j2
 public class MyUI extends JFrame {
+    private final Configs configs;
     HashMap<String, MyLED> pinMap;
     ArrayList<JLabel> lineList;
+    private JPanel leds, sirens;
+    private boolean first_run = true;
 
-    public MyUI(String title) {
+    public MyUI(Configs configs) {
+        this.configs = configs;
+        // made this especially for the simulation environment.
+        // restores the window to the last used position.
+        // great for screen setups with MANY agent JFrames
+        int locationX = configs.getInt(Configs.FRAME_LOCATION_X);
+        int locationY = configs.getInt(Configs.FRAME_LOCATION_Y);
 
-        //Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.getLevel(configs.get(Configs.LOGLEVEL)));
         try {
             UIManager.setLookAndFeel(new FlatLightLaf());
             FlatDarkLaf.setup();
@@ -38,9 +50,14 @@ public class MyUI extends JFrame {
             System.exit(0);
         }
         initComponents();
-        setTitle(title);
+        setTitle(configs.getAgentname());
         initLEDs();
         initLCD();
+
+        if (locationX >= 0) {
+            setLocation(locationX, locationY);
+        }
+
     }
 
     private void initLCD() {
@@ -60,17 +77,11 @@ public class MyUI extends JFrame {
         pinMap.put(Configs.OUT_SIREN4, new MyLED(Configs.OUT_SIREN4, Color.DARK_GRAY));
         pinMap.put(Configs.OUT_BUZZER, new MyLED(Configs.OUT_BUZZER, Color.DARK_GRAY));
 
-        JPanel page = new JPanel();
-        page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
-
-        JPanel leds = new JPanel();
+        leds = new JPanel();
         leds.setLayout(new BoxLayout(leds, BoxLayout.PAGE_AXIS));
-        JPanel sirens = new JPanel();
+        leds.setAlignmentX(Component.CENTER_ALIGNMENT);
+        sirens = new JPanel();
         sirens.setLayout(new BoxLayout(sirens, BoxLayout.PAGE_AXIS));
-
-        page.add(leds);
-        page.add(Box.createRigidArea(new Dimension(20, 0)));
-        page.add(sirens);
 
         leds.add(pinMap.get(Configs.OUT_LED_WHITE));
         leds.add(pinMap.get(Configs.OUT_LED_RED));
@@ -82,7 +93,68 @@ public class MyUI extends JFrame {
         sirens.add(pinMap.get(Configs.OUT_SIREN3));
         sirens.add(pinMap.get(Configs.OUT_SIREN4));
         sirens.add(pinMap.get(Configs.OUT_BUZZER));
-        content1.add(page, BorderLayout.CENTER);
+
+        tabPanel.setSelectedIndex(configs.getInt(Configs.SELECTED_TAB));
+        set_page_content_for_tab(configs.getInt(Configs.SELECTED_TAB));
+
+//        content1.add(page, BorderLayout.CENTER);
+        //content2.add(page2, BorderLayout.CENTER);
+    }
+
+    JPanel get_flag_page() {
+        JPanel page = new JPanel();
+        page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
+        set_led_icon_size(48);
+        page.add(leds);
+        return page;
+    }
+
+    JPanel get_full_page() {
+        JPanel page = new JPanel();
+        page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
+        set_led_icon_size(22);
+        page.add(leds);
+        page.add(Box.createRigidArea(new Dimension(20, 0)));
+        page.add(sirens);
+        return page;
+    }
+
+    void set_led_icon_size(int size) {
+        Arrays.stream(Configs.ALL_LEDS).forEach(s -> pinMap.get(s).setIconSize(size));
+    }
+
+    private void tabPanelStateChanged(ChangeEvent e) {
+        if (leds == null) return;
+        configs.setInt(Configs.SELECTED_TAB, tabPanel.getSelectedIndex());
+        set_page_content_for_tab(tabPanel.getSelectedIndex());
+
+    }
+
+    void set_page_content_for_tab(int tab) {
+        SwingUtilities.invokeLater(() -> {
+            content1.removeAll();
+            content2.removeAll();
+            if (tab == 0) {
+                content1.add(get_full_page(), BorderLayout.CENTER);
+                content1.add(pnlLCD, BorderLayout.SOUTH);
+                int width = configs.getInt(Configs.FRAME_WIDTH0);
+                int height = configs.getInt(Configs.FRAME_HEIGHT0);
+                if (width >= 0) setSize(new Dimension(width, height));
+            } else {
+                JLabel lbl = new JLabel(configs.getAgentname());
+                lbl.setFont(new Font(".SF NS Text", Font.BOLD, 20));
+                lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
+                content2.add(lbl);
+                content2.add(get_flag_page(), BorderLayout.CENTER);
+                int width = configs.getInt(Configs.FRAME_WIDTH1);
+                int height = configs.getInt(Configs.FRAME_HEIGHT1);
+                if (width >= 0) setSize(new Dimension(width, height));
+            }
+//            if (first_run) first_run = false;
+//            else pack();
+            revalidate();
+            repaint();
+        });
     }
 
     public void setState(String name, boolean on) {
@@ -107,26 +179,41 @@ public class MyUI extends JFrame {
         return btn01;
     }
 
-    public JButton getBtn02() {
-        return btn02;
+    private void thisComponentResized(ComponentEvent e) {
+        if (tabPanel.getSelectedIndex() == 0) {
+            configs.setInt(Configs.FRAME_WIDTH0, e.getComponent().getWidth());
+            configs.setInt(Configs.FRAME_HEIGHT0, e.getComponent().getHeight());
+        } else if (tabPanel.getSelectedIndex() == 1) {
+            configs.setInt(Configs.FRAME_WIDTH1, e.getComponent().getWidth());
+            configs.setInt(Configs.FRAME_HEIGHT1, e.getComponent().getHeight());
+        }
     }
 
-    public void addActionListenerToBTN01(ActionListener actionListener) {
-        btn01.addActionListener(actionListener);
-    }
-
-    public void addActionListenerToBTN02(ActionListener actionListener) {
-        btn02.addActionListener(actionListener);
-    }
-
-    /**
-     * the position of the frame was changed. storing new position in configs.
-     * @param e
-     */
     private void thisComponentMoved(ComponentEvent e) {
-
-
+        configs.setInt(Configs.FRAME_LOCATION_X, e.getComponent().getX());
+        configs.setInt(Configs.FRAME_LOCATION_Y, e.getComponent().getY());
     }
+
+//    public JButton getBtn02() {
+//        return btn02;
+//    }
+//
+//    public void addActionListenerToBTN01(ActionListener actionListener) {
+//        btn01.addActionListener(actionListener);
+//    }
+
+//    public void addActionListenerToBTN02(ActionListener actionListener) {
+//        btn02.addActionListener(actionListener);
+//    }
+
+//    /**
+//     * the position of the frame was changed. storing new position in configs.
+//     * @param e
+//     */
+//    private void thisComponentMoved(ComponentEvent e) {
+//
+//
+//    }
 
 
     private void initComponents() {
@@ -134,16 +221,24 @@ public class MyUI extends JFrame {
         dialogPane = new JPanel();
         tabPanel = new JTabbedPane();
         content1 = new JPanel();
-        pnlLCD = new JPanel();
         content2 = new JPanel();
-        scrlMatrix = new JScrollPane();
         buttonBar = new JPanel();
         btn01 = new JButton();
-        btn02 = new JButton();
+        pnlLCD = new JPanel();
 
         //======== this ========
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        setPreferredSize(new Dimension(235, 323));
+        setPreferredSize(null);
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                thisComponentMoved(e);
+            }
+            @Override
+            public void componentResized(ComponentEvent e) {
+                thisComponentResized(e);
+            }
+        });
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
@@ -154,28 +249,19 @@ public class MyUI extends JFrame {
 
             //======== tabPanel ========
             {
+                tabPanel.addChangeListener(e -> tabPanelStateChanged(e));
 
                 //======== content1 ========
                 {
                     content1.setLayout(new BorderLayout(2, 2));
-
-                    //======== pnlLCD ========
-                    {
-                        pnlLCD.setBackground(Color.gray);
-                        pnlLCD.setForeground(Color.black);
-                        pnlLCD.setLayout(new BoxLayout(pnlLCD, BoxLayout.PAGE_AXIS));
-                    }
-                    content1.add(pnlLCD, BorderLayout.SOUTH);
                 }
-                tabPanel.addTab("Main", content1);
+                tabPanel.addTab("Full", content1);
 
                 //======== content2 ========
                 {
                     content2.setLayout(new BoxLayout(content2, BoxLayout.PAGE_AXIS));
-                    content2.add(scrlMatrix);
                 }
-                tabPanel.addTab("Matrix", content2);
-                tabPanel.setEnabledAt(1, false);
+                tabPanel.addTab("Flag", content2);
             }
             dialogPane.add(tabPanel, BorderLayout.CENTER);
 
@@ -185,24 +271,23 @@ public class MyUI extends JFrame {
                 buttonBar.setLayout(new GridLayout());
 
                 //---- btn01 ----
-                btn01.setText("BTN01");
+                btn01.setText(null);
                 btn01.setAlignmentY(0.0F);
                 btn01.setFont(new Font(".SF NS Text", Font.BOLD, 20));
+                btn01.setIcon(new ImageIcon(getClass().getResource("/artwork/48x48/button.png")));
                 buttonBar.add(btn01);
-
-                //---- btn02 ----
-                btn02.setText("BTN02");
-                btn02.setAlignmentY(0.0F);
-                btn02.setFont(new Font(".SF NS Text", Font.BOLD, 20));
-                btn02.setEnabled(false);
-                btn02.setToolTipText("reserved for later use");
-                buttonBar.add(btn02);
             }
             dialogPane.add(buttonBar, BorderLayout.SOUTH);
         }
         contentPane.add(dialogPane, BorderLayout.CENTER);
-        setSize(237, 325);
         setLocationRelativeTo(getOwner());
+
+        //======== pnlLCD ========
+        {
+            pnlLCD.setBackground(Color.gray);
+            pnlLCD.setForeground(Color.black);
+            pnlLCD.setLayout(new BoxLayout(pnlLCD, BoxLayout.PAGE_AXIS));
+        }
         // JFormDesigner - End of component initialization  //GEN-END:initComponents
     }
 
@@ -210,11 +295,9 @@ public class MyUI extends JFrame {
     private JPanel dialogPane;
     private JTabbedPane tabPanel;
     private JPanel content1;
-    private JPanel pnlLCD;
     private JPanel content2;
-    private JScrollPane scrlMatrix;
     private JPanel buttonBar;
     private JButton btn01;
-    private JButton btn02;
+    private JPanel pnlLCD;
     // JFormDesigner - End of variables declaration  //GEN-END:variables
 }

@@ -92,6 +92,7 @@ public abstract class AbstractConfigs {
     }
 
     public void setInt(Object key, int value) {
+        log.debug("{}: {}", key, value);
         configs.setProperty(String.valueOf(key), Integer.toString(value));
     }
 
@@ -112,6 +113,7 @@ public abstract class AbstractConfigs {
     }
 
     public void saveConfigs() {
+        log.debug("saving configs to file");
         try {
             File configFile = new File(CONFIGFILE);
             FileOutputStream out = new FileOutputStream(configFile);

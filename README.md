@@ -1,27 +1,6 @@
 RLG Agent
 =========
 
-* [Preface](#preface)
-* [Hard- and Software](#hard--and-software)
-* [Workspace](#workspace)
-    * [Logfiles](#logfiles)
-    * [Configs](#configs)
-* [Messaging](#messaging)
-* [Commands](#commands)
-    * [Signals](#signals)
-        * [Schemes](#schemes)
-        * [Standard signal schemes](#standard-signal-schemes)
-        * [Devices](#devices)
-    * [Paged Displays](#paged-displays)
-        * [Setting the page content](#setting-the-page-content)
-        * [Variables and template expressions](#variables-and-template-expressions)
-            * [Preset variables](#preset-variables)
-            * [Dynamic variables](#dynamic-variables)
-            * [Timers](#timers)
-* [Events](#events)
-    * [Buttons](#buttons)
-    * [Status](#status)
-
 ---
 # Preface
 The purpose of the **RLGS** (Real Life Gaming System) is to realize games for **tactical sports** like paintball,
@@ -447,3 +426,5 @@ are working correctly during a match.
   "timestamp": "2022-03-16T15:06:27.107081+01:00[Europe/Berlin]"
 }
 ``` 
+# Other people's material
+<a href="https://www.flaticon.com/free-icons/buzzer" title="buzzer icons">Buzzer icons created by Freepik - Flaticon</a>

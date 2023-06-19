@@ -1,7 +1,10 @@
 package de.flashheart.rlgagent.ui;
 
+import de.flashheart.rlgagent.misc.Configs;
+
 import javax.swing.*;
 import java.awt.*;
+import java.util.Arrays;
 
 /**
  * Created by tloehr on 16.03.16.
@@ -10,25 +13,26 @@ public class MyLED extends JLabel {
     private Icon imageOn;
     private Icon imageOff;
 
-    public final Icon icon22ledOrangeOn = new ImageIcon(getClass().getResource("/artwork/22x22/ledorange.png"));
-    public final Icon icon22ledOrangeOff = new ImageIcon(getClass().getResource("/artwork/22x22/leddarkorange.png"));
-    public final Icon icon22ledPurpleOff = new ImageIcon(getClass().getResource("/artwork/22x22/leddarkpurple.png"));
-    public final Icon icon22ledPurpleOn = new ImageIcon(getClass().getResource("/artwork/22x22/ledpurple.png"));
-    public final Icon icon22ledBlueOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-blue-off.png"));
-    public final Icon icon22ledBlueOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-blue-on.png"));
-    public final Icon icon22ledGreenOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-green-off.png"));
-    public final Icon icon22ledGreenOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-green-on.png"));
-    public final Icon icon22ledYellowOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-yellow-off.png"));
-    public final Icon icon22ledYellowOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-yellow-on.png"));
-    public final Icon icon22ledRedOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-red-off.png"));
-    public final Icon icon22ledRedOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-red-on.png"));
-    public final Icon icon22ledWhiteOff = new ImageIcon(getClass().getResource("/artwork/22x22/led-white-off.png"));
-    public final Icon icon22ledWhiteOn = new ImageIcon(getClass().getResource("/artwork/22x22/led-white-on.png"));
-    public final Icon iconSpeakerOn = new ImageIcon(getClass().getResource("/artwork/22x22/speaker-on.png"));
-    public final Icon iconSpeakerOff = new ImageIcon(getClass().getResource("/artwork/22x22/speaker-off.png"));
+    public final String icon_ledOrangeOn = "ledorange.png";
+    public final String icon_ledOrangeOff = "leddarkorange.png";
+    public final String icon_ledPurpleOff = "leddarkpurple.png";
+    public final String icon_ledPurpleOn = "ledpurple.png";
+    public final String icon_ledBlueOff = "led-blue-off.png";
+    public final String icon_ledBlueOn = "led-blue-on.png";
+    public final String icon_ledGreenOff = "led-green-off.png";
+    public final String icon_ledGreenOn = "led-green-on.png";
+    public final String icon_ledYellowOff = "led-yellow-off.png";
+    public final String icon_ledYellowOn = "led-yellow-on.png";
+    public final String icon_ledRedOff = "led-red-off.png";
+    public final String icon_ledRedOn = "led-red-on.png";
+    public final String icon_ledWhiteOff = "led-white-off.png";
+    public final String icon_ledWhiteOn = "led-white-on.png";
+    public final String iconSpeakerOn = "speaker-on.png";
+    public final String iconSpeakerOff = "speaker-off.png";
 
     private Color color;
     private boolean state;
+    private String size = "22x22";
 
 //    public MyLED() {
 //        this(null, Color.WHITE);
@@ -37,65 +41,87 @@ public class MyLED extends JLabel {
     public MyLED(String text, Color color) {
         super(text);
         this.color = color;
-        super.setText(text);
-        setColor(color);
+        setText(text);
+        setColor();
         setState(false);
         setSize(getWidth(), 22);
+        setAlignmentX(Component.CENTER_ALIGNMENT);
     }
 
     @Override
     public void setText(String text) {
-        setToolTipText(text); // kein Platz auf dem Bildschirm
+        if (Arrays.stream(Configs.ALL_LEDS).anyMatch(s -> s.equals(text))) {
+            setToolTipText(text); // kein Platz auf dem Bildschirm
+        } else {
+            super.setText(text);
+        }
+
+
+    }
+
+    public void setIconSize(int size) {
+        this.size = size + "x" + size;
+        SwingUtilities.invokeLater(() -> {
+            setColor();
+            setState(state);
+            revalidate();
+            repaint();
+        });
     }
 
     public Color getColor() {
         return color;
     }
 
-    public void setColor(Color color) {
+    private Icon get_icon(String icon_string) {
+        return new ImageIcon(getClass().getResource("/artwork/" + size + "/" + icon_string));
+    }
+
+    private void setColor() {
         if (color.equals(Color.WHITE)) {
-            imageOn = icon22ledWhiteOn;
-            imageOff = icon22ledWhiteOff;
+            imageOn = get_icon(icon_ledWhiteOn);
+            imageOff = get_icon(icon_ledWhiteOff);
             return;
         }
         if (color.equals(Color.BLUE)) {
-            imageOn = icon22ledBlueOn;
-            imageOff = icon22ledBlueOff;
+            imageOn = get_icon(icon_ledBlueOn);
+            imageOff = get_icon(icon_ledBlueOff);
             return;
         }
         if (color.equals(Color.RED)) {
-            imageOn = icon22ledRedOn;
-            imageOff = icon22ledRedOff;
+            imageOn = get_icon(icon_ledRedOn);
+            imageOff = get_icon(icon_ledRedOff);
             return;
         }
         if (color.equals(Color.YELLOW)) {
-            imageOn = icon22ledYellowOn;
-            imageOff = icon22ledYellowOff;
+            imageOn = get_icon(icon_ledYellowOn);
+            imageOff = get_icon(icon_ledYellowOff);
             return;
         }
         if (color.equals(Color.GREEN)) {
-            imageOn = icon22ledGreenOn;
-            imageOff = icon22ledGreenOff;
+            imageOn = get_icon(icon_ledGreenOn);
+            imageOff = get_icon(icon_ledGreenOff);
             return;
         }
         if (color.equals(Color.ORANGE)) {
-            imageOn = icon22ledOrangeOn;
-            imageOff = icon22ledOrangeOff;
+            imageOn = get_icon(icon_ledOrangeOn);
+            imageOff = get_icon(icon_ledOrangeOff);
             return;
         }
         if (color.equals(Color.MAGENTA)) {
-            imageOn = icon22ledPurpleOn;
-            imageOff = icon22ledPurpleOff;
+            imageOn = get_icon(icon_ledPurpleOn);
+            imageOff = get_icon(icon_ledPurpleOff);
             return;
         }
         if (color.equals(Color.DARK_GRAY)) { // kleiner trick.
-            imageOn = iconSpeakerOn;
-            imageOff = iconSpeakerOff;
+            imageOn = get_icon(iconSpeakerOn);
+            imageOff = get_icon(iconSpeakerOff);
             return;
         }
     }
 
     public void setState(boolean on) {
+        this.state = on;
         SwingUtilities.invokeLater(() -> {
             setIcon(on ? imageOn : imageOff);
             revalidate();

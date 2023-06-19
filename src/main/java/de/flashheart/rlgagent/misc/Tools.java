@@ -324,10 +324,11 @@ public class Tools {
 
     /**
      * does a fping to the specific address. stores the statistics in the provided map
+     *
      * @param current_network_values map to store the statistics into
-     * @param address the host(s) to be checked
-     * @param tries number of pings - parameter for fping
-     * @param timeout timeout in ms before failing - parameter for fping
+     * @param address                the host(s) to be checked
+     * @param tries                  number of pings - parameter for fping
+     * @param timeout                timeout in ms before failing - parameter for fping
      * @return true if address was reached
      */
     public static boolean fping(HashMap<String, String> current_network_values, String address, int tries, int timeout) {
@@ -375,7 +376,7 @@ public class Tools {
                 current_network_values.put("ping_min", "--");
                 current_network_values.put("ping_avg", "--");
                 current_network_values.put("ping_max", "--");
-                log.warn("fping returned \n\n {} - return code {}", output, exitVal);
+                log.trace("fping returned \n\n {} - return code {}", output, exitVal);
             }
 
         } catch (IOException | InterruptedException io) {
@@ -387,9 +388,38 @@ public class Tools {
 
     }
 
+    public static String get_ipaddress(String cmd) {
+        if (!Tools.isArm()) return "1.2.3.4/24";
+
+        String result = "no_ip_info";
+
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command("bash", "-c", cmd);
+
+            Process process = processBuilder.start();
+            StringBuilder output = new StringBuilder();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line);
+            }
+
+            int exitVal = process.waitFor();
+            if (exitVal == 0 && !output.toString().trim().isEmpty()) {
+                log.trace("command {} returned \n\n {} ", cmd, output);
+                result = output.toString();
+            }
+        } catch (IOException | InterruptedException io) {
+            log.error(io);
+        }
+        return result;
+    }
+
     public static String getGametimeBlinkingScheme(LocalDateTime remainingTime) {
         String scheme = "infty:on,75;off,75;on,75;off,1000;";
-        log.debug("remaining time for blinking scheme: {}", remainingTime);
+        log.trace("remaining time for blinking scheme: {}", remainingTime);
         int minutes = remainingTime.getMinute();
 
         int hours = remainingTime.getHour();

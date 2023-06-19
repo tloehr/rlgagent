@@ -48,6 +48,7 @@ public class Configs extends AbstractConfigs {
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4};
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
+    public static final String IP_CMD_LINE = "ip_address_cmd";
     public static final String MPG321_BIN = "mpg321_bin";
     public static final String MPG321_OPTIONS = "mpg321_options";
     public static final String MY_ID = "myid";
@@ -55,6 +56,11 @@ public class Configs extends AbstractConfigs {
     public static final String PING_TIMEOUT = "ping_timeout";
     public static final String FRAME_LOCATION_X = "frameLocationX";
     public static final String FRAME_LOCATION_Y = "frameLocationY";
+    public static final String SELECTED_TAB = "selected_tab";
+    public static final String FRAME_WIDTH0 = "frameWidth0";
+    public static final String FRAME_HEIGHT0 = "frameHeight0";
+    public static final String FRAME_WIDTH1 = "frameWidth1";
+    public static final String FRAME_HEIGHT1 = "frameHeight1";
     public static final String VISUALS = Configs.OUT_LED_WHITE +
             "|" + Configs.OUT_LED_RED +
             "|" + Configs.OUT_LED_YELLOW +
@@ -100,6 +106,7 @@ public class Configs extends AbstractConfigs {
         blink_schemes.setProperty("single_buzz", "1:on,75;off,75");
         blink_schemes.setProperty("double_buzz", "2:on,75;off,75");
         blink_schemes.setProperty("triple_buzz", "3:on,75;off,75");
+        blink_schemes.setProperty("annoying", "infty:on,75;off,75;on,75;off,5000");
 
         // some defaults
         blink_schemes.setProperty("game_starts", "1:on,5000;off,1");
@@ -198,12 +205,18 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(IN_BTN01, RaspiPin.GPIO_03.getName()); // 15
         configs.setProperty(IN_BTN02, RaspiPin.GPIO_04.getName()); // 16
 
-        configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan1");
+        configs.setProperty(WIFI_CMD_LINE, "iwconfig wlan0");
+        configs.setProperty(IP_CMD_LINE, "ip a s wlan0|grep -i 'inet '|awk '{print $2}'");
         configs.setProperty(MPG321_BIN, "");
         configs.setProperty(MPG321_OPTIONS, "");
 
         configs.setProperty(FRAME_LOCATION_X, "-1");
         configs.setProperty(FRAME_LOCATION_Y, "-1");
+        configs.setProperty(SELECTED_TAB, "0");
+        configs.setProperty(FRAME_WIDTH0, "275");
+        configs.setProperty(FRAME_HEIGHT0, "382");
+        configs.setProperty(FRAME_WIDTH1, "105");
+        configs.setProperty(FRAME_HEIGHT1, "592");
 
 
     }

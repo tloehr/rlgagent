@@ -218,7 +218,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             }
         } catch (Exception e) {
             log.error(e.toString());
-        }
+        } 
     }
 
     private void resetStatus() {
@@ -354,17 +354,17 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 }
             });
 
-            myUI1.getBtn02().addMouseListener(new MouseAdapter() {
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    reportEvent("btn02", new JSONObject().put("button", "down").toString());
-                }
-
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    reportEvent("btn02", new JSONObject().put("button", "up").toString());
-                }
-            });
+//            myUI1.getBtn02().addMouseListener(new MouseAdapter() {
+//                @Override
+//                public void mousePressed(MouseEvent e) {
+//                    reportEvent("btn02", new JSONObject().put("button", "down").toString());
+//                }
+//
+//                @Override
+//                public void mouseReleased(MouseEvent e) {
+//                    reportEvent("btn02", new JSONObject().put("button", "up").toString());
+//                }
+//            });
         });
 
         current_network_stats.put("link", "100/100");
@@ -436,17 +436,18 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     .put("netmonitor_cycle", netmonitor_cycle)
                     .put("reconnects", num_of_reconnects)
                     .put("failed_pings", sum_of_failed_pings);
+
             reportEvent("status", status.toString());
         }
     }
 
-    public void network_connection() throws SchedulerException {
-        if (System.getProperties().getProperty("network_connection", "new").equalsIgnoreCase("new")) {
-            network_connection_new();
-        } else {
-            network_connection_legacy();
-        }
-    }
+//    public void network_connection() throws SchedulerException {
+//        if (System.getProperties().getProperty("network_connection", "new").equalsIgnoreCase("new")) {
+//            network_connection_new();
+//        } else {
+//            network_connection_legacy();
+//        }
+//    }
 
     /**
      * this method is called every NETWORKING_MONITOR_INTERVAL seconds to check if network is still good. maintains a
@@ -463,79 +464,81 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
      *
      * @throws SchedulerException
      */
-    private void network_connection_legacy() {
-        log.debug("network_connection_legacy()");
-        Tools.check_iwconfig(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
-        me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
-        myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
+//    private void network_connection_legacy() {
+//        log.debug("network_connection_legacy()");
+//        Tools.check_iwconfig(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
+//        current_network_stats.put("ip", Tools.get_ipaddress(configs.get(Configs.IP_CMD_LINE)));
+//        me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
+//        myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
+//
+//        String reachable_host = "";
+//        if (!Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT))) {
+//            ListIterator<String> brokers = potential_brokers.listIterator();
+//            while (reachable_host.isEmpty() && brokers.hasNext()) {
+//                String broker = brokers.next();
+//                reachable_host = Tools.fping(current_network_stats, broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)) ? broker : "";
+//            }
+//        } else {
+//            reachable_host = active_broker;
+//        }
+//
+//        // inform LCD about the current measurements
+//        current_network_stats.forEach((k, v) -> myLCD.setVariable(k, v));
+//
+//        // if a broker is reachable but the MQTTClient is not yet connected. Try it.
+//        if (!reachable_host.isEmpty()) { // somebody answered
+//            if (!mqtt_connected()) { // but we don't have a mqtt connection yet
+//                myLCD.setLine("page0", 2, "Searching for broker");
+//                myLCD.setLine("page0", 3, "@" + reachable_host);
+//                active_broker = try_mqtt_broker(String.format("tcp://%s:%s", reachable_host, configs.get(Configs.MQTT_PORT))) ? reachable_host : "";
+//                // SUCCESS!!
+//                if (!active_broker.isEmpty()) {
+//                    myLCD.init();
+//                    myLCD.setLine("page0", 2, "MQTT connected to");
+//                    myLCD.setLine("page0", 3, active_broker);
+//                    myLCD.setLine("page0", 4, "");
+//                    set_pins_to(Configs.ALL_LEDS, "off");
+//                    pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
+//                    pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
+//                    send_status_message(); // tell commander immediately
+//                }
+//            }
+//            // get a better ping statistics out of 5 pings to the current WORKING broker
+//            //Tools.fping(current_network_stats, active_broker, 5, 500);
+//        } else {
+//            disconnect_from_mqtt_broker();
+//        }
+//
+//        if (!mqtt_connected()) {
+//            set_pins_to(Configs.ALL_LEDS, "off");
+//            pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
+//            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "netstatus");
+//            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "netstatus");
+//            if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, "netstatus");
+//
+//            if (!myLCD.pageExists("network1")) {
+//                myLCD.welcome_page();
+//
+//                myLCD.setLine("network1", 1, "ssid:${essid}");
+//                myLCD.setLine("network1", 2, "AP:${ap}");
+//                myLCD.setLine("network1", 3, "IP:${ip}");
+//                myLCD.setLine("network1", 4, "wifi:${wifi}");
+//
+//                myLCD.setLine("network2", 1, "${ping_host} ${ping_success}");
+//                myLCD.setLine("network2", 2, "ping:${ping_avg} ms");
+//                myLCD.setLine("network2", 3, "last ping");
+//                myLCD.setLine("network2", 4, "${last_ping}");
+//            }
+//        }
+//
+//        netmonitor_cycle++;
+//    }
 
-        String reachable_host = "";
-        if (!Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT))) {
-            ListIterator<String> brokers = potential_brokers.listIterator();
-            while (reachable_host.isEmpty() && brokers.hasNext()) {
-                String broker = brokers.next();
-                reachable_host = Tools.fping(current_network_stats, broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)) ? broker : "";
-            }
-        } else {
-            reachable_host = active_broker;
-        }
-
-        // inform LCD about the current measurements
-        current_network_stats.forEach((k, v) -> myLCD.setVariable(k, v));
-
-        // if a broker is reachable but the MQTTClient is not yet connected. Try it.
-        if (!reachable_host.isEmpty()) { // somebody answered
-            if (!mqtt_connected()) { // but we don't have a mqtt connection yet
-                myLCD.setLine("page0", 2, "Searching for broker");
-                myLCD.setLine("page0", 3, "@" + reachable_host);
-                active_broker = try_mqtt_broker(String.format("tcp://%s:%s", reachable_host, configs.get(Configs.MQTT_PORT))) ? reachable_host : "";
-                // SUCCESS!!
-                if (!active_broker.isEmpty()) {
-                    myLCD.init();
-                    myLCD.setLine("page0", 2, "MQTT connected to");
-                    myLCD.setLine("page0", 3, active_broker);
-                    myLCD.setLine("page0", 4, "");
-                    set_pins_to(Configs.ALL_LEDS, "off");
-                    pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
-                    pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
-                    send_status_message(); // tell commander immediately
-                }
-            }
-            // get a better ping statistics out of 5 pings to the current WORKING broker
-            //Tools.fping(current_network_stats, active_broker, 5, 500);
-        } else {
-            disconnect_from_mqtt_broker();
-        }
-
-        if (!mqtt_connected()) {
-            set_pins_to(Configs.ALL_LEDS, "off");
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
-            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "netstatus");
-            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "netstatus");
-            if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, "netstatus");
-
-            if (!myLCD.pageExists("network1")) {
-                myLCD.welcome_page();
-
-                myLCD.setLine("network1", 1, "ssid:${essid}");
-                myLCD.setLine("network1", 2, "AP: ${ap}");
-                myLCD.setLine("network1", 3, "signal:${signal}");
-                myLCD.setLine("network1", 4, "wifi:${wifi}");
-
-                myLCD.setLine("network2", 1, "${ping_host} ${ping_success}");
-                myLCD.setLine("network2", 2, "ping:${ping_avg} ms");
-                myLCD.setLine("network2", 3, "last ping");
-                myLCD.setLine("network2", 4, "${last_ping}");
-            }
-        }
-
-        netmonitor_cycle++;
-    }
-
-    private void network_connection_new() {
+    public void network_connection() {
         // some statistics only
-        log.debug("network_connection_new()");
+        log.trace("network_connection_new()");
         Tools.check_iwconfig(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
+        current_network_stats.put("ip", Tools.get_ipaddress(configs.get(Configs.IP_CMD_LINE)));
         me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
         myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
         netmonitor_cycle++;
@@ -553,7 +556,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 num_of_reconnects++;
                 log.warn("too many fails - breaking up with broker {} for now", active_broker);
                 disconnect_from_mqtt_broker();
-            } else log.debug("we are already connected - done here");
+            } else log.trace("we are already connected - done here");
             return; // will be reconnected with the next call to this method
         }
 
@@ -585,8 +588,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 myLCD.welcome_page();
 
                 myLCD.setLine("network1", 1, "ssid:${essid}");
-                myLCD.setLine("network1", 2, "AP: ${ap}");
-                myLCD.setLine("network1", 3, "signal:${signal}");
+                myLCD.setLine("network1", 2, "AP:${ap}");
+                myLCD.setLine("network1", 3, "IP:${ip}");
                 myLCD.setLine("network1", 4, "wifi:${wifi}");
 
                 myLCD.setLine("network2", 1, "${ping_host} ${ping_success}");

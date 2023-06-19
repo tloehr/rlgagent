@@ -1,6 +1,5 @@
 package de.flashheart.rlgagent;
 
-import com.formdev.flatlaf.FlatLightLaf;
 import com.pi4j.gpio.extension.mcp.MCP23017GpioProvider;
 import com.pi4j.io.gpio.GpioController;
 import com.pi4j.io.gpio.GpioFactory;
@@ -90,22 +89,7 @@ public class Main {
         myUI = Optional.empty();
         if (!GraphicsEnvironment.isHeadless()) {
             UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-            myUI = Optional.of(new MyUI(configs.getAgentname()));
-            // made this especially for the simulation environment.
-            // restores the window to the last used position.
-            // great for screen setups with MANY agent JFrames
-            int locationX = configs.getInt(Configs.FRAME_LOCATION_X);
-            int locationY = configs.getInt(Configs.FRAME_LOCATION_Y);
-            if (locationX >= 0){
-                myUI.get().setLocation(locationX, locationY);
-            }
-            myUI.get().addComponentListener(new ComponentAdapter() {
-                @Override
-                public void componentMoved(ComponentEvent e) {
-                    configs.setInt(Configs.FRAME_LOCATION_X, e.getComponent().getX());
-                    configs.setInt(Configs.FRAME_LOCATION_Y, e.getComponent().getY());
-                }
-            });
+            myUI = Optional.of(new MyUI(configs));
             // show me what You've got
             myUI.get().setVisible(true);
         }
