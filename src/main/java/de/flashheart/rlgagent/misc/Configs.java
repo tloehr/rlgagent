@@ -44,8 +44,7 @@ public class Configs extends AbstractConfigs {
     public static final String MCP23017_I2C_ADDRESS = "mcp23017_i2c_address";
     //    public static final String LOGLEVEL = "loglevel";
     public static final String[] ALL_LEDS = new String[]{OUT_LED_WHITE, OUT_LED_RED, OUT_LED_YELLOW, OUT_LED_GREEN, OUT_LED_BLUE};
-
-    public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4};
+    public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4, OUT_BUZZER};
     public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
     public static final String IP_CMD_LINE = "ip_address_cmd";
@@ -61,6 +60,8 @@ public class Configs extends AbstractConfigs {
     public static final String FRAME_HEIGHT0 = "frameHeight0";
     public static final String FRAME_WIDTH1 = "frameWidth1";
     public static final String FRAME_HEIGHT1 = "frameHeight1";
+    public static final String FRAME_WIDTH2 = "frameWidth2";
+    public static final String FRAME_HEIGHT2 = "frameHeight2";
     public static final String VISUALS = Configs.OUT_LED_WHITE +
             "|" + Configs.OUT_LED_RED +
             "|" + Configs.OUT_LED_YELLOW +
@@ -217,6 +218,8 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(FRAME_HEIGHT0, "382");
         configs.setProperty(FRAME_WIDTH1, "105");
         configs.setProperty(FRAME_HEIGHT1, "592");
+        configs.setProperty(FRAME_WIDTH2, "192");
+        configs.setProperty(FRAME_HEIGHT2, "420");
 
 
     }

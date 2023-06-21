@@ -17,7 +17,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,6 +32,7 @@ public class MyUI extends JFrame {
     ArrayList<JLabel> lineList;
     private JPanel leds, sirens;
     private boolean first_run = true;
+    private final Font large, normal;
 
     public MyUI(Configs configs) {
         this.configs = configs;
@@ -41,6 +41,8 @@ public class MyUI extends JFrame {
         // great for screen setups with MANY agent JFrames
         int locationX = configs.getInt(Configs.FRAME_LOCATION_X);
         int locationY = configs.getInt(Configs.FRAME_LOCATION_Y);
+        large = new Font(".SF NS Text", Font.BOLD, 20);
+        normal = new Font(".SF NS Text", Font.BOLD, 14);
 
         try {
             UIManager.setLookAndFeel(new FlatLightLaf());
@@ -79,7 +81,7 @@ public class MyUI extends JFrame {
 
         leds = new JPanel();
         leds.setLayout(new BoxLayout(leds, BoxLayout.PAGE_AXIS));
-        leds.setAlignmentX(Component.CENTER_ALIGNMENT);
+        leds.setAlignmentX(Component.LEFT_ALIGNMENT);
         sirens = new JPanel();
         sirens.setLayout(new BoxLayout(sirens, BoxLayout.PAGE_AXIS));
 
@@ -104,23 +106,37 @@ public class MyUI extends JFrame {
     JPanel get_flag_page() {
         JPanel page = new JPanel();
         page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
-        set_led_icon_size(48);
+        set_icon_size(Configs.ALL_LEDS, 48);
         page.add(leds);
+        return page;
+    }
+
+    JPanel get_siren_page() {
+        JPanel page = new JPanel();
+        page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
+        set_icon_size(Configs.ALL_SIRENS, 48);
+        set_font(Configs.ALL_SIRENS, large);
+        page.add(sirens);
         return page;
     }
 
     JPanel get_full_page() {
         JPanel page = new JPanel();
         page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
-        set_led_icon_size(22);
+        set_icon_size(Configs.ALL, 22);
+        set_font(Configs.ALL_SIRENS, normal);
         page.add(leds);
         page.add(Box.createRigidArea(new Dimension(20, 0)));
         page.add(sirens);
         return page;
     }
 
-    void set_led_icon_size(int size) {
-        Arrays.stream(Configs.ALL_LEDS).forEach(s -> pinMap.get(s).setIconSize(size));
+    void set_icon_size(String[] list, int size) {
+        Arrays.stream(list).forEach(s -> pinMap.get(s).setIconSize(size));
+    }
+
+    void set_font(String[] list, Font font) {
+        Arrays.stream(list).forEach(s -> pinMap.get(s).setFont(font));
     }
 
     private void tabPanelStateChanged(ChangeEvent e) {
@@ -134,24 +150,30 @@ public class MyUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             content1.removeAll();
             content2.removeAll();
-            if (tab == 0) {
+            content3.removeAll();
+            JLabel lbl = new JLabel(configs.getAgentname());
+            lbl.setFont(large);
+            lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+            if (tab == 0) { // main
                 content1.add(get_full_page(), BorderLayout.CENTER);
+                content1.add(lbl, BorderLayout.EAST);
                 content1.add(pnlLCD, BorderLayout.SOUTH);
                 int width = configs.getInt(Configs.FRAME_WIDTH0);
                 int height = configs.getInt(Configs.FRAME_HEIGHT0);
                 if (width >= 0) setSize(new Dimension(width, height));
-            } else {
-                JLabel lbl = new JLabel(configs.getAgentname());
-                lbl.setFont(new Font(".SF NS Text", Font.BOLD, 20));
-                lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
+            } else if (tab == 1) { // flag
                 content2.add(lbl);
-                content2.add(get_flag_page(), BorderLayout.CENTER);
+                content2.add(get_flag_page());
                 int width = configs.getInt(Configs.FRAME_WIDTH1);
                 int height = configs.getInt(Configs.FRAME_HEIGHT1);
                 if (width >= 0) setSize(new Dimension(width, height));
+            } else { // sirens
+                content3.add(lbl);
+                content3.add(get_siren_page());
+                int width = configs.getInt(Configs.FRAME_WIDTH2);
+                int height = configs.getInt(Configs.FRAME_HEIGHT2);
+                if (width >= 0) setSize(new Dimension(width, height));
             }
-//            if (first_run) first_run = false;
-//            else pack();
             revalidate();
             repaint();
         });
@@ -186,6 +208,9 @@ public class MyUI extends JFrame {
         } else if (tabPanel.getSelectedIndex() == 1) {
             configs.setInt(Configs.FRAME_WIDTH1, e.getComponent().getWidth());
             configs.setInt(Configs.FRAME_HEIGHT1, e.getComponent().getHeight());
+        } else {
+            configs.setInt(Configs.FRAME_WIDTH2, e.getComponent().getWidth());
+            configs.setInt(Configs.FRAME_HEIGHT2, e.getComponent().getHeight());
         }
     }
 
@@ -222,6 +247,7 @@ public class MyUI extends JFrame {
         tabPanel = new JTabbedPane();
         content1 = new JPanel();
         content2 = new JPanel();
+        content3 = new JPanel();
         buttonBar = new JPanel();
         btn01 = new JButton();
         pnlLCD = new JPanel();
@@ -249,6 +275,7 @@ public class MyUI extends JFrame {
 
             //======== tabPanel ========
             {
+                tabPanel.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
                 tabPanel.addChangeListener(e -> tabPanelStateChanged(e));
 
                 //======== content1 ========
@@ -262,6 +289,12 @@ public class MyUI extends JFrame {
                     content2.setLayout(new BoxLayout(content2, BoxLayout.PAGE_AXIS));
                 }
                 tabPanel.addTab("Flag", content2);
+
+                //======== content3 ========
+                {
+                    content3.setLayout(new BoxLayout(content3, BoxLayout.PAGE_AXIS));
+                }
+                tabPanel.addTab("Sirens", content3);
             }
             dialogPane.add(tabPanel, BorderLayout.CENTER);
 
@@ -296,6 +329,7 @@ public class MyUI extends JFrame {
     private JTabbedPane tabPanel;
     private JPanel content1;
     private JPanel content2;
+    private JPanel content3;
     private JPanel buttonBar;
     private JButton btn01;
     private JPanel pnlLCD;

@@ -428,3 +428,5 @@ are working correctly during a match.
 ``` 
 # Other people's material
 <a href="https://www.flaticon.com/free-icons/buzzer" title="buzzer icons">Buzzer icons created by Freepik - Flaticon</a>
+
+<a href="https://www.flaticon.com/de/kostenlose-icons/volumen" title="volumen Icons">Volumen Icons erstellt von apien - Flaticon</a>

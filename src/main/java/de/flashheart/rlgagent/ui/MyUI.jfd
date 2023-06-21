@@ -15,6 +15,7 @@ new FormModel {
 				"border": new javax.swing.border.EmptyBorder( 12, 12, 12, 12 )
 				add( new FormContainer( "javax.swing.JTabbedPane", new FormLayoutManager( class javax.swing.JTabbedPane ) ) {
 					name: "tabPanel"
+					"tabLayoutPolicy": 1
 					addEvent( new FormEvent( "javax.swing.event.ChangeListener", "stateChanged", "tabPanelStateChanged", true ) )
 					add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.BorderLayout ) {
 						"hgap": 2
@@ -30,6 +31,13 @@ new FormModel {
 						name: "content2"
 					}, new FormLayoutConstraints( null ) {
 						"title": "Flag"
+					} )
+					add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class javax.swing.BoxLayout ) {
+						"axis": 3
+					} ) {
+						name: "content3"
+					}, new FormLayoutConstraints( null ) {
+						"title": "Sirens"
 					} )
 				}, new FormLayoutConstraints( class java.lang.String ) {
 					"value": "Center"

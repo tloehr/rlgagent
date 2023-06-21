@@ -45,18 +45,16 @@ public class MyLED extends JLabel {
         setColor();
         setState(false);
         setSize(getWidth(), 22);
-        setAlignmentX(Component.CENTER_ALIGNMENT);
+        setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
     @Override
     public void setText(String text) {
         if (Arrays.stream(Configs.ALL_LEDS).anyMatch(s -> s.equals(text))) {
-            setToolTipText(text); // kein Platz auf dem Bildschirm
+            setToolTipText(text); // kein Platz auf dem Bildschirm für LED Beschriftungen
         } else {
             super.setText(text);
         }
-
-
     }
 
     public void setIconSize(int size) {
