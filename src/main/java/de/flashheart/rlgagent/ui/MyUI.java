@@ -123,7 +123,7 @@ public class MyUI extends JFrame {
     JPanel get_full_page() {
         JPanel page = new JPanel();
         page.setLayout(new BoxLayout(page, BoxLayout.LINE_AXIS));
-        set_icon_size(Configs.ALL, 22);
+        set_icon_size(Configs.ALL_PINS, 22);
         set_font(Configs.ALL_SIRENS, normal);
         page.add(leds);
         page.add(Box.createRigidArea(new Dimension(20, 0)));

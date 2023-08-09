@@ -2,6 +2,7 @@ package de.flashheart.rlgagent.misc;
 
 import de.flashheart.rlgagent.RLGAgent;
 import lombok.extern.log4j.Log4j2;
+import org.json.JSONObject;
 
 import java.awt.*;
 import java.io.BufferedReader;
@@ -455,5 +456,12 @@ public class Tools {
 
         return scheme;
     }
+
+    public static JSONObject merge(JSONObject... jsons) {
+        HashMap<String, Object> map = new HashMap<>();
+        Arrays.stream(jsons).forEach(json -> map.putAll(json.toMap()));
+        return new JSONObject(map);
+    }
+
 
 }

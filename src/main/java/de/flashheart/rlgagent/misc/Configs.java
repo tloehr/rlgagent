@@ -45,7 +45,7 @@ public class Configs extends AbstractConfigs {
     //    public static final String LOGLEVEL = "loglevel";
     public static final String[] ALL_LEDS = new String[]{OUT_LED_WHITE, OUT_LED_RED, OUT_LED_YELLOW, OUT_LED_GREEN, OUT_LED_BLUE};
     public static final String[] ALL_SIRENS = new String[]{OUT_SIREN1, OUT_SIREN2, OUT_SIREN3, OUT_SIREN4, OUT_BUZZER};
-    public static final String[] ALL = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
+    public static final String[] ALL_PINS = ArrayUtils.addAll(ALL_LEDS, ALL_SIRENS);
     public static final String WIFI_CMD_LINE = "wifi_cmd";
     public static final String IP_CMD_LINE = "ip_address_cmd";
     public static final String MPG321_BIN = "mpg321_bin";
@@ -89,11 +89,11 @@ public class Configs extends AbstractConfigs {
 
         blink_schemes = new Properties();
 
-        blink_schemes.setProperty("very_long", "1:on,5000;off,1");
-        blink_schemes.setProperty("long", "1:on,2500;off,1");
-        blink_schemes.setProperty("medium", "1:on,1000;off,1");
-        blink_schemes.setProperty("short", "1:on,500;off,1");
-        blink_schemes.setProperty("very_short", "1:on,250;off,1");
+        blink_schemes.setProperty("very_long", "1:on,5000;off,0");
+        blink_schemes.setProperty("long", "1:on,2500;off,0");
+        blink_schemes.setProperty("medium", "1:on,1000;off,0");
+        blink_schemes.setProperty("short", "1:on,500;off,0");
+        blink_schemes.setProperty("very_short", "1:on,250;off,0");
 
         // recurring signals
         blink_schemes.setProperty("very_slow", "infty:on,1000;off,5000");
@@ -121,7 +121,8 @@ public class Configs extends AbstractConfigs {
     }
 
     public Optional<File> getAudioFile(String subpath, String filename) {
-        File file = new File(getWORKSPACE() + File.separator + "audio" + File.separator + subpath + File.separator + filename + ".mp3");
+        String filesep = subpath.isEmpty() ? "" : File.separator;
+        File file = new File(getWORKSPACE() + File.separator + "audio" + File.separator + subpath + filesep + filename + ".mp3");
         return file.exists() ? Optional.of(file) : Optional.empty();
     }
 
@@ -133,9 +134,10 @@ public class Configs extends AbstractConfigs {
      */
     public Optional<File> pickRandomAudioFile(String subpath) {
         Optional<File> chosen;
+        String filesep = subpath.isEmpty() ? "" : File.separator;
         try {
             // pick a random file from that list.
-            File[] files = new File(getWORKSPACE() + File.separator + "audio" + File.separator + subpath).listFiles((dir, name) -> name.endsWith("mp3"));
+            File[] files = new File(getWORKSPACE() + File.separator + "audio" + filesep + subpath).listFiles((dir, name) -> name.endsWith("mp3"));
             Random r = new Random();
             chosen = Optional.of(files[r.nextInt(files.length)]);
         } catch (Exception e) {

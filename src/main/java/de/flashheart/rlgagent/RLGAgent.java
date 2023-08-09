@@ -19,6 +19,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
@@ -218,7 +219,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             }
         } catch (Exception e) {
             log.error(e.toString());
-        } 
+        }
     }
 
     private void resetStatus() {
@@ -260,7 +261,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     private void procPlay(JSONObject json) throws IOException {
-        audioPlayer.play(json.getString("subpath"), json.getString("soundfile"));
+        audioPlayer.play(json.optString("channel", AudioPlayer.MUSIC), json.getString("subpath"), json.getString("soundfile"));
     }
 
     private void procAcoustic(JSONObject json) {
@@ -275,8 +276,49 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         });
     }
 
+    private JSONObject convert_legacy_to_json(String legacy_scheme) {
+
+        JSONObject result;
+
+        try {
+            result = new JSONObject(legacy_scheme);
+        } catch (JSONException jsonException) {
+            // {"sir1":"off"} => {"sir1":{"repeat":0}}
+            // {"wht":"infty:on,500;off,500"} => {"wht":{"repeat":"forever","scheme_on":[500,500]}}
+            // {"wht":"infty:off,500;on,500"} => {"wht":{"repeat":"forever","scheme_off":[500,500]}}
+
+            // zuerst wiederholungen vom muster trennen
+            String my_scheme = configs.getScheme(legacy_scheme);
+            String[] splitFirstTurn = my_scheme.trim().split(":");
+            String repeatString = splitFirstTurn[0];
+            int repeat_num = repeatString.equals("∞") || repeatString.equalsIgnoreCase("infty") ? Integer.MAX_VALUE : Integer.parseInt(repeatString);
+            JSONArray jsonArray = new JSONArray();
+
+            if (repeat_num > 0) {
+                // Hier trennen wir die einzelnen muster voneinander
+                String scheme_pattern = splitFirstTurn[1];
+
+                String[] splitSecondTurn = scheme_pattern.trim().split(";");
+
+                for (String pattern : splitSecondTurn) {
+                    String[] splitThirdTurn = pattern.trim().split(",");
+                    jsonArray.put(Integer.parseInt(splitThirdTurn[1]));
+                }
+                result = new JSONObject().put("repeat", repeat_num).put(scheme_pattern.startsWith("off") ? "scheme_off" : "scheme_on", jsonArray);
+            } else {
+                result = new JSONObject().put("repeat", repeat_num);
+            }
+
+        }
+
+        return result;
+    }
+
+
     private void procVisual(JSONObject json) {
         Set<String> keys = json.keySet();
+        JSONObject converted = new JSONObject();
+
         if (keys.contains("all")) {
             String value = json.getString("all");
             prev_progress_timer = -1;
@@ -285,9 +327,14 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             if (value.startsWith("progress:")) {
                 progress_timer = Optional.of(value.split(":")[1]);
             } else {
+                for (String pin : Configs.ALL_LEDS) {
+                    converted.put(pin, convert_legacy_to_json(value));
+                }
                 set_pins_to(Configs.ALL_LEDS, value);
+
             }
         }
+
         keys.remove("all");
         keys.stream().filter(s -> s.matches(Configs.VISUALS)).forEach(signal_key -> {
             String signal = json.getString(signal_key);
@@ -301,9 +348,12 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     prev_progress_timer = -1;
                     blinking_timer = Optional.empty();
                 }
+                converted.put(signal_key, convert_legacy_to_json(signal));
                 pinHandler.setScheme(signal_key, signal);
             }
         });
+
+        log.debug(converted.toString(4));
     }
 
     private void procPaged(JSONObject json) {
@@ -533,7 +583,6 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 //
 //        netmonitor_cycle++;
 //    }
-
     public void network_connection() {
         // some statistics only
         log.trace("network_connection_new()");

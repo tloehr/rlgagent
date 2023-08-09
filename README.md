@@ -4,8 +4,7 @@ RLG Agent
 ---
 # Preface
 The purpose of the **RLGS** (Real Life Gaming System) is to realize games for **tactical sports** like paintball,
-airsoft, Nerf or Laser Tag. RLGS adapts well known multiplayer modes from games like Battlefield, Call of Duty, FarCry,
-Planetside 2 oder Counterstrike to be played in real life.
+airsoft, Nerf or Laser Tag.
 
 The RLGS concept consists of two basic elements: the [commander](https://github.com/tloehr/rlgcommander) and one or more
 agents (this project).
@@ -17,9 +16,9 @@ situation.
 The concept of an agent contains the following in- and output devices.
 
 - 5 light signals, colored in "white, red, yelllow, green, blue"
-- 3 Sirens
+- 4 Sirens
 - a buzzer for local player feedback
-- 2 Buttons for player interaction
+- 2 Buttons for player interaction (currently only 1 Button is used)
 - and a 20x4 Textdisplay
 
 An agent **does not have to be fully equipped** with every device possible. Such an *complete* system, should not be
@@ -31,10 +30,7 @@ The agent is written in Java and therefor available on nearly any platform. Ther
 
 # Hard- and Software
 
-Agents are supposed to run on Raspberry Pi computers with several input and output devices connected to them. Like LED
-stripes, sirens (switched by relay boards), push buttons, LCDs etc. But it is also possible to run them on a standard
-desktop computers (Mac, Windows, Linux). In this case, they start up a Swing GUI to simulate the aforementioned devices
-on the screen or via the sound card.
+The Agent-Software usually runs on Raspberry Pi computers with several input and output devices connected to them. Like LED stripes, sirens (switched by relay boards), push buttons, LCDs etc. But it is also possible to run them on a standard desktop computers (Mac, Windows, Desktop Linux). In this case, they start up with a graphical user interface to simulate the aforementioned devices on the screen or via the sound card.
 
 ![agent-gui](src/main/resources/docs/agent-gui.gif)
 
@@ -43,49 +39,67 @@ about to change drastically with the version 2. But for now we stick to Version 
 deprecated [WiringPi](http://wiringpi.com/) project, as it runs very well. Please note, that the Pin numbering used in
 the config files are named according to the WiringPi scheme.
 
-WiringPi is not available in Raspbian anymore or as sourcecode in https://git.drogon.net/?p=wiringPi;a=summary
-Until we are moving on to pi4j 2.0 (which based on pigpio), we stick with a source code mirror for WiringPi on GitHub.
-Which works very well for us.
+WiringPi is not available in Raspbian anymore or as sourcecode. Until we are moving on to pi4j 2.0 (which based on pigpio), we stick with a source code mirror for WiringPi on GitHub. Which works very well for us. A stable deb version of WiringPi is also available via our APT repository.
 
 There is also a standard PCB which works best for a Raspberry Pi setup. You can get Your
 own [PCBs here](https://easyeda.com/tloehr/rlg-mainboard-v11_copy).
 
 # Workspace
 
-The agent creates a workspace folder (if missing). The folder's location **has to be specified via a -D argument** on
-the java command line.
+Upon start the agent software creates a workspace folder (if missing). The folder's location **has to be specified via a -D argument** on the java command line.
 
 `java -jar -Dworkspace=/home/pi/rlgagent`
 
-The standard installation packages contain this setting in the `rlgagent.vmoptions` file located in the installation
-folder.
+The standard installation packages contain this setting in the `rlgagent.vmoptions` file located in the installation folder.
 
-- Linux: `/opt/rlgagent` or `/opt/rlagentd`. The latter for an installation as a service or deamon.
-- Mac: `/Applications/rlgagent`
+* Linux: `/opt/rlgagent` or `/opt/rlagentd`. The latter for an installation as a service or deamon.
+* Mac: `/Applications/rlgagent`
 
-This folder contains the **config.txt**  file, the log file directory and the mqtt persistence folder. It usually looks
-like this:
+The workspace folder contains the **config.txt** file, the log file directory and the mqtt persistence folder. It usually looks something like this:
+
 
 ```
-rlgagent
-|--rlgagent-385d8f4a-a0b7-496a-b3ca-7fe0f1cf20a0-tcplocalhost1883
-| |--.lck
-|--config.txt
-|--logs
-| |--2022-03-08.rlgagent.log.gz
-| |--2022-03-11.rlgagent.log.gz
-| |--2022-03-07.rlgagent.log.gz
-| |--2022-03-01.rlgagent.log.gz
-| |--2022-03-09.rlgagent.log.gz
-| |--2022-01-20.rlgagent.log.gz
-| |--2022-02-11.rlgagent.log.gz
-| |--rlgagent.log
+├── ag30-026bae8b-2b63-4578-ab87-240046d7d3bb-tcplocalhost1883
+├── audio
+│   ├── announce
+│   │   ├── countdown.mp3
+│   │   ├── defeat.mp3
+│   │   ├── doublekill.mp3
+│   │   ├── enemydoublekill.mp3
+│   │   ├── enemypentakill.mp3
+│   │   ├── enemyquadrakill.mp3
+│   │   ├── enemyspree.mp3
+│   │   ├── enemytriplekill.mp3
+│   │   ├── firstblood.mp3
+│   │   ├── overtime.mp3
+│   │   ├── pentakill.mp3
+│   │   ├── quadrakill.mp3
+│   │   ├── selfdestruct.mp3
+│   │   ├── shutdown.mp3
+│   │   ├── spree.mp3
+│   │   ├── triplekill.mp3
+│   │   ├── victory.mp3
+│   │   └── welcome.mp3
+│   ├── intro
+│   │   └── bf3.mp3
+
+│   └── pause
+│       ├── aquatic-ambiance.mp3
+│       ├── dire-docks.mp3
+│       ├── frosty-frolics.mp3
+│       ├── snes-waterworld.mp3
+│       └── stickerbush-symphony.mp3
+├── config.txt
+└── logs
+    ├── 2023-07-16.rlgagent.log.gz
+    ├── 2023-08-04.rlgagent.log.gz
+    └── rlgagent.log
 ```
 
 ## Logfiles
 
 Logfiles are stored in the **logs** subdirectory. The agent archives a log file from a previous day on startup (see
-above). The current day's file is always named `rlgagent.log`
+above). The current file is always named `rlgagent.log`
 
 ## Configs
 
@@ -93,11 +107,30 @@ The **config.txt** is a standard Java properties file. If it is missing either s
 created and filled up with the following default settings:
 
 ```properties
-#Settings rlgagent
-#Sun Mar 13 20:19:11 CET 2022
+#Settings rlgagent v1.5b6
+#Wed Jun 21 14:52:29 CEST 2023
+#
+# UI settings
+#
+selected_tab=0
+frameHeight0=350
+frameHeight1=607
+frameHeight2=420
+frameLocationX=2795
+frameLocationY=126
+frameWidth0=239
+frameWidth1=125
+frameWidth2=192
+#
+# hardware settings and addresses
+# defaults to the RLGAgent PCB
+#
+blu=GPIO 22
 btn01=GPIO 3
 btn02=GPIO 4
+button_debounce=200
 buzzer=GPIO 26
+grn=GPIO 21
 lcd_cols=20
 lcd_i2c_address=0x27
 lcd_rows=4
@@ -106,30 +139,58 @@ led_grn=GPIO 21
 led_red=GPIO 1
 led_wht=GPIO 2
 led_ylw=GPIO 5
-loglevel=DEBUG
+red=GPIO 1
+wht=GPIO 2
+ylw=GPIO 5
+sir1=GPIO 7
+sir2=GPIO 0
+sir3=GPIO 6
+sir4=GPIO 23
 mcp23017_i2c_address=0x20
+#
+# multimedia settings
+#
+mpg321_bin=
+mpg321_options=
+#
+# MQTT settings
+#
 mqtt_broker=localhost
 mqtt_clean_session=true
 mqtt_max_inflight=1000
 mqtt_port=1883
-mqtt_qos=2
+mqtt_qos=1
 mqtt_reconnect=true
 mqtt_retained=true
 mqtt_root=rlg
 mqtt_timeout=10
+#
+# network settings
+#
+network_monitor_interval_in_seconds=10
+networking_monitor_disconnect_after_failed_pings=3
+ping_timeout=500
+ping_tries=5
+ip_address_cmd=ip a s wlan1|grep -i 'inet '|awk '{print $2}'
+trigger_on_high_sir1=true
+trigger_on_high_sir2=true
+trigger_on_high_sir3=true
+trigger_on_high_sir4=true
+wifi_cmd=iwconfig wlan1
+#
+# MISC settings
+#
 myid=ag01
-sir1=GPIO 7
-sir2=GPIO 0
-sir3=GPIO 6
-uuid=d0cc8d4e-7a10-4762-8241-cfa79a932653
-wifi_cmd=iwconfig wlan0
+loglevel=DEBUG
+status_interval_in_seconds=60
+uuid=b2135176-d4e8-4250-823f-761291fa79b3
 ```
 
 - `loglevel` the verbosity of the log file. possible values: **OFF, DEBUG, TRACE, INFO, ERROR, WARN**
 - `uuid` a unique id which is used as part of the client id to connect to the MQTT broker. Will be created on startup,
   if missing. To get a new uuid on next startup, simply delete this line. **NEEDS TO BE UNIQUE WITHIN THE RLGS SETUP**
 - `myid` the agent name to be used. The default is **ag01**. **NEEDS TO BE UNIQUE WITHIN THE RLGS SETUP**
-- `led_wht, led_red, led_ylw, led_grn, led_blu, sir1, sir2, sir3, btn01, btn02, buzzer` the Raspi GPIO pin for the
+- `led_wht, led_red, led_ylw, led_grn, led_blu, sir1, sir2, sir3, sir4, btn01, btn02, buzzer` the Raspi GPIO pin for the
   corresponding devices (Wiring Pi numbering scheme). Default sets the assignment to the standard
   agent [PCB](https://easyeda.com/tloehr/rlg-mainboard-v11_copy).
 - `lcd_cols, lcd_rows` dimensions for the LCD.
@@ -154,7 +215,10 @@ wifi_cmd=iwconfig wlan0
     - [see here](https://www.eclipse.org/paho/files/javadoc/org/eclipse/paho/client/mqttv3/MqttConnectOptions.html#setConnectionTimeout-int-)
 - `wifi_cmd` only for Raspberry Pis. command line to be execute every 5 seconds. The results are parsed and sent to the
   commander via a status event message.
-
+- `frameHeight[0-2], frameWidth[0-2], frameLocation¢[X|Y]` **Only for UI usage.** Dimensions and upper left corner position of the agent's desktop window. Dimension 0-2 are different for the full, flag and siren tab.
+- `selected_tab` **Only for UI usage.** Last selected tab number.
+- `ip_address_cmd` shell command line that will retrieve the current ip address of the agent. Will be used in the status message to the commander.
+- `status_interval_in_seconds` the interval in seconds when the agent sends a status message to the commander.
 # Messaging
 
 The commander and the agents communicate via a [MQTT](https://en.wikipedia.org/wiki/MQTT) broker.
@@ -174,22 +238,23 @@ are both defined in **configs.txt**
 
 **EXAMPLE:** for a default installation these two channels are
 
-- **inbound command channel:** `/rlg/cmd/ag01`. Commands (sub-channels) can be: **signals, paged, timers, vars**.
-  Example: a command to switch off all LEDs would be sent to `/rlg/cmd/ag01/signals` with this JSON
+- **inbound command channel:** `/rlg/cmd/ag01`. Commands (sub-channels) can be: **acoustic, visual, play, paged, timers, vars**.
+  Example: a command to switch off all LEDs would be sent to `/rlg/cmd/ag01/visual` with this JSON
   payload `{"led_all":"off"}`
 - **outbound event channel:** `/rlg/evt/ag01`. Events (sub-channels) can be: **btn01, btn02, state**.
 
 # Commands
 
-Every command is sent to its own sub-topic below the agent's command channel. Signals to ag01 are sent
-to `/rlg/cmd/ag01/signals`, LCD content to `/rlg/cmd/ag01/paged` etc. The examples below are written with these default
+Every command is sent to its own sub-topic below the agent's command channel. Signals to ag01 are either sent
+to `/rlg/cmd/ag01/visual` or `/rlg/cmd/ag01/acoustic`, LCD content to `/rlg/cmd/ag01/paged` etc. The examples below are written with these default
 settings in mind.
 
 ## Signals
 
-Topic: `/rlg/cmd/ag01/signals`
+Topics: `/rlg/cmd/ag01/visual` or `/rlg/cmd/ag01/acoustic`
 
-Signals are sent out by the agent optically (LEDs) or accoustically (Sirens, Buzzer).
+Signals are sent out by the agent optically (LEDs) or acoustically (Sirens, Buzzer).
+
 
 ### Schemes
 
@@ -277,7 +342,28 @@ We can combine multiple payloads into one message. Also for the other commands, 
 }
 ```
 
-## Paged Displays
+## Audio Output
+Topic: `/rlg/cmd/ag01/play`
+
+The commander can instruct agents to play MP3 sound files via the `mpg321` player. There are 5 different "sound channels" handled by the agent.
+
+- music
+- voice1
+- voice2
+- sound1
+- sound2
+
+The agent doesn't care what type of sound is played via the channels. It's a logical separation to clear up things. The sound files must be located in the agents `audio` subfolder.
+
+```json
+{
+  "channel": "music",
+  "subpath":"intro",
+  "soundfile": "sirius"
+}
+```
+
+## Display Pages
 
 Topic: `/rlg/cmd/ag01/paged`
 
@@ -311,8 +397,7 @@ automatically removed, when this new page is missing from a later page content c
 }
 ```
 
-Content exceeding the supported display dimension (e.g. 20x4) will be ignored. Superfluous lines are discarded,
-exceeding lines are truncated.
+Text which exceeds the supported display dimension (e.g. 20x4) will be truncated.
 
 As You can see, we used template expressions in the last example like "${blue_l1}". These expressions refer to a
 variable [(see the next section)](#variables-and-template-expressions) and will be replaced by the bound variable

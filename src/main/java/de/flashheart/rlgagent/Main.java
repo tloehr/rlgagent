@@ -10,6 +10,7 @@ import de.flashheart.rlgagent.hardware.I2CLCD;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
 import de.flashheart.rlgagent.hardware.abstraction.MyPin;
 import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
+import de.flashheart.rlgagent.hardware.pinhandler.PinHandler2;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
@@ -84,6 +85,7 @@ public class Main {
         configs = new Configs();
 
         pinHandler = new PinHandler(configs);
+        //pinHandler2 = new PinHandler2(configs, 25);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> agent.procShutdown(false)));
 
         myUI = Optional.empty();
@@ -96,12 +98,25 @@ public class Main {
     }
 
     private static void initGameSystem() {
+//        pinHandler2.set_pin_list(
+//                new MyPin(Configs.OUT_LED_WHITE, configs, myUI, gpioController, mcp23017_1, -1, -1),
+//                new MyPin(Configs.OUT_LED_RED, configs, myUI, gpioController, mcp23017_1, -1, -1),
+//                new MyPin(Configs.OUT_LED_YELLOW, configs, myUI, gpioController, mcp23017_1, -1, -1),
+//                new MyPin(Configs.OUT_LED_GREEN, configs, myUI, gpioController, mcp23017_1, -1, -1),
+//                new MyPin(Configs.OUT_LED_BLUE, configs, myUI, gpioController, mcp23017_1, -1, -1),
+//                new MyPin(Configs.OUT_SIREN1, configs, myUI, gpioController, mcp23017_1, 70, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN1)),
+//                new MyPin(Configs.OUT_SIREN2, configs, myUI, gpioController, mcp23017_1, 50, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN2)),
+//                new MyPin(Configs.OUT_SIREN3, configs, myUI, gpioController, mcp23017_1, 50, 75, configs.is(Configs.TRIGGER_ON_HIGH_SIREN3)),
+//                new MyPin(Configs.OUT_SIREN4, configs, myUI, gpioController, mcp23017_1, 50, 67, configs.is(Configs.TRIGGER_ON_HIGH_SIREN4)),
+//                new MyPin(Configs.OUT_BUZZER, configs, myUI, gpioController, mcp23017_1, 70, 60)
+//        );
+
+
         pinHandler.add(new MyPin(Configs.OUT_LED_WHITE, configs, myUI, gpioController, mcp23017_1, -1, -1));
         pinHandler.add(new MyPin(Configs.OUT_LED_RED, configs, myUI, gpioController, mcp23017_1, -1, -1));
         pinHandler.add(new MyPin(Configs.OUT_LED_YELLOW, configs, myUI, gpioController, mcp23017_1, -1, -1));
         pinHandler.add(new MyPin(Configs.OUT_LED_GREEN, configs, myUI, gpioController, mcp23017_1, -1, -1));
         pinHandler.add(new MyPin(Configs.OUT_LED_BLUE, configs, myUI, gpioController, mcp23017_1, -1, -1));
-        // sirens
         pinHandler.add(new MyPin(Configs.OUT_SIREN1, configs, myUI, gpioController, mcp23017_1, 70, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN1)));
         pinHandler.add(new MyPin(Configs.OUT_SIREN2, configs, myUI, gpioController, mcp23017_1, 50, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN2)));
         pinHandler.add(new MyPin(Configs.OUT_SIREN3, configs, myUI, gpioController, mcp23017_1, 50, 75, configs.is(Configs.TRIGGER_ON_HIGH_SIREN3)));
