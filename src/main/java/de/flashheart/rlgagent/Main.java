@@ -10,7 +10,6 @@ import de.flashheart.rlgagent.hardware.I2CLCD;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
 import de.flashheart.rlgagent.hardware.abstraction.MyPin;
 import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
-import de.flashheart.rlgagent.hardware.pinhandler.PinHandler2;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
@@ -19,8 +18,6 @@ import org.apache.commons.cli.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.io.IOException;
 import java.util.Optional;
 

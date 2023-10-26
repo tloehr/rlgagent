@@ -187,6 +187,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     private void proc(String topic, MqttMessage receivedMessage) {
+        // last part of topic is the command
         List<String> tokens = Collections.list(new StringTokenizer(topic, "/")).stream().map(token -> (String) token).collect(Collectors.toList());
         if (tokens.size() < 4 || tokens.size() > 5) return;
         String cmd = tokens.get(tokens.size() - 1);
@@ -261,7 +262,11 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     private void procPlay(JSONObject json) throws IOException {
-        audioPlayer.play(json.optString("channel", AudioPlayer.MUSIC), json.getString("subpath"), json.getString("soundfile"));
+        if (json.optString("channel", "").equals("all")) {
+            Arrays.asList(AudioPlayer.MUSIC, AudioPlayer.SOUND1, AudioPlayer.SOUND2, AudioPlayer.VOICE1, AudioPlayer.VOICE2)
+                    .forEach(channel -> audioPlayer.play(channel, json.getString("subpath"), json.getString("soundfile")));
+        } else
+            audioPlayer.play(json.optString("channel", AudioPlayer.MUSIC), json.getString("subpath"), json.getString("soundfile"));
     }
 
     private void procAcoustic(JSONObject json) {
@@ -317,7 +322,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
     private void procVisual(JSONObject json) {
         Set<String> keys = json.keySet();
-        JSONObject converted = new JSONObject();
+        //JSONObject converted = new JSONObject();
 
         if (keys.contains("all")) {
             String value = json.getString("all");
@@ -327,9 +332,9 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             if (value.startsWith("progress:")) {
                 progress_timer = Optional.of(value.split(":")[1]);
             } else {
-                for (String pin : Configs.ALL_LEDS) {
-                    converted.put(pin, convert_legacy_to_json(value));
-                }
+//                for (String pin : Configs.ALL_LEDS) {
+//                    converted.put(pin, convert_legacy_to_json(value));
+//                }
                 set_pins_to(Configs.ALL_LEDS, value);
 
             }
@@ -348,12 +353,10 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     prev_progress_timer = -1;
                     blinking_timer = Optional.empty();
                 }
-                converted.put(signal_key, convert_legacy_to_json(signal));
+//                converted.put(signal_key, convert_legacy_to_json(signal));
                 pinHandler.setScheme(signal_key, signal);
             }
         });
-
-        log.debug(converted.toString(4));
     }
 
     private void procPaged(JSONObject json) {
