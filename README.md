@@ -3,34 +3,31 @@ RLG Agent
 
 ---
 # Preface
-The purpose of the **RLGS** (Real Life Gaming System) is to realize games for **tactical sports** like paintball,
-airsoft, Nerf or Laser Tag.
+The purpose of the **RLGS** (Real Life Gaming System) is to organize games for **tactical sports** like paintball, airsoft, Nerf or Laser Tag.
 
 The RLGS concept consists of two basic elements: the [commander](https://github.com/tloehr/rlgcommander) and one or more
-agents (this project).
+**agents** (this project).
 
-Agents can produce optical and acoustical signals and detect events (currently only the press of a button). They do **not know anything** about why they are flashing LEDs, sounding sirens or why somebody presses their buttons. They
-completely rely on the commander to tell them what to do. The commander is the only one who keeps track about the game
+Agents can produce optical and acoustical signals and detect events (currently only the press of a button). They do **not know anything** about the current game state. They are just doing as they are told by the commander. The commander is the only instanceto keep track about the game
 situation.
 
 The concept of an agent contains the following in- and output devices.
 
 - 5 light signals, colored in "white, red, yelllow, green, blue"
-- 4 Sirens
+- 4 Sirens (or relays)
 - a buzzer for local player feedback
 - 2 Buttons for player interaction (currently only 1 Button is used)
-- and a 20x4 Textdisplay
+- and a 20x4 [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) based text LCD.
 
-An agent **does not have to be fully equipped** with every device possible. Such an *complete* system, should not be
-necessary. Nevertheless, the software understands all signals, even if the addressed device is not connected. In this
+An agent **does not have to be fully equipped** with every device possible. Nevertheless, the software understands all signals, even if the addressed device is not connected. In this
 case the signal is accepted but ignored.
 
-#Installation
-The agent is written in Java and therefor available on nearly any platform. There are ready-made packages for Windows, Mac, Linux and Raspbian. The Raspbian version is only available as a service or demonized version. Linux versions are distributed via a package repository at flashheart.de. Refer to the [download page](https://www.flashheart.de/doku.php/de:downloads#linux) for more information.
+# Installation
+The agent is written in Java and therefor available on nearly any platform. There are ready-made packages for Windows, Mac, Linux and Raspbian. The Raspbian version is only available as a service or demonized version. The Linux version is distributed via a package repository at flashheart.de. Refer to the [download page](https://www.flashheart.de/doku.php/de:downloads#linux) for more information.
 
 # Hard- and Software
 
-The Agent-Software usually runs on Raspberry Pi computers with several input and output devices connected to them. Like LED stripes, sirens (switched by relay boards), push buttons, LCDs etc. But it is also possible to run them on a standard desktop computers (Mac, Windows, Desktop Linux). In this case, they start up with a graphical user interface to simulate the aforementioned devices on the screen or via the sound card.
+The Agent-Software usually runs on a Raspberry Pi computer with several input and output devices connected to them. Like LED stripes, sirens (switched by relay boards), push buttons, LCDs etc. But it is also possible to run them on a standard desktop computers (Mac, Windows, Desktop Linux). In this case, they start up with a graphical user interface to simulate the aforementioned devices on the screen or via the sound card.
 
 ![agent-gui](src/main/resources/docs/agent-gui.gif)
 
@@ -55,8 +52,7 @@ The standard installation packages contain this setting in the `rlgagent.vmoptio
 * Linux: `/opt/rlgagent` or `/opt/rlagentd`. The latter for an installation as a service or deamon.
 * Mac: `/Applications/rlgagent`
 
-The workspace folder contains the **config.txt** file, the log file directory and the mqtt persistence folder. It usually looks something like this:
-
+The workspace folder contains the `config.txt` file, the log file directory and the mqtt persistence folder. It usually looks something like this:
 
 ```
 ├── ag30-026bae8b-2b63-4578-ab87-240046d7d3bb-tcplocalhost1883
@@ -146,6 +142,7 @@ sir1=GPIO 7
 sir2=GPIO 0
 sir3=GPIO 6
 sir4=GPIO 23
+# Only if a port expander is used.
 mcp23017_i2c_address=0x20
 #
 # multimedia settings
@@ -181,8 +178,10 @@ wifi_cmd=iwconfig wlan1
 # MISC settings
 #
 myid=ag01
+# can be increased to TRACE or decreases to INFO or OFF
 loglevel=DEBUG
 status_interval_in_seconds=60
+# line will be recreated with a random value, if missing in the config file
 uuid=b2135176-d4e8-4250-823f-761291fa79b3
 ```
 
@@ -219,6 +218,7 @@ uuid=b2135176-d4e8-4250-823f-761291fa79b3
 - `selected_tab` **Only for UI usage.** Last selected tab number.
 - `ip_address_cmd` shell command line that will retrieve the current ip address of the agent. Will be used in the status message to the commander.
 - `status_interval_in_seconds` the interval in seconds when the agent sends a status message to the commander.
+- 
 # Messaging
 
 The commander and the agents communicate via a [MQTT](https://en.wikipedia.org/wiki/MQTT) broker.
@@ -253,53 +253,39 @@ settings in mind.
 
 Topics: `/rlg/cmd/ag01/visual` or `/rlg/cmd/ag01/acoustic`
 
-Signals are sent out by the agent optically (LEDs) or acoustically (Sirens, Buzzer).
-
+Signals are sent out by the agent optically (LEDs) or acoustically (Sirens, Buzzer). In the end, they all reach the same pin handler, but the acoustic topic is not **retained**. The latter config ensures, that a siren is not repeating the last signal if it is reconnecting on the field. This would confuse the players.
 
 ### Schemes
 
-Signal schemes are lists of **on** and **off** durations (in milliseconds) for the specific Raspi pin. Every list is
-preceded by the number of repeats. If a scheme should go on forever (until overwritten by a new command), the
-repeat_count can be replaced by the **infty** keyword (in fact, there is no infinity, it is **Long.MAX_VALUE**, but for our
-purpose this would take forever). A repeat_count of 0, turns off the signal. Like so: `0:` or the word `off` (which is
-also understood).
+Signal schemes are defined as JSON objects. The following scheme turns off all LEDs first, then set the blue LED to flash 5 times quickly and the red LED 3 times a bit slower. In the **scheme** array all values are times in milliseconds. Negative means **PIN on LOW**, positive means **PIN on HIGH**.
 
-The syntax of the scheme is:
+```json
+{
+  "led_all": "off",
+  "blu": {
+    "repeat": 5,
+    "scheme": [
+      50,
+      -50
+    ]
+  },
+  "red": {
+    "repeat": 3,
+    "scheme": [
+      1000,
+      -500
+    ]
+  }
+}
+```
 
-`<repeat_count>:[on|off],<period_in_ms>;[on|off],<period_in_ms>`
+A negative **repeat** value stands for **forever** (until overwritten by a new command). In fact is **Long.MAX_VALUE**, but for our purpose this would take forever). To simply turn off a PIN, we can send the "off" value as a scheme.
 
-Devices (like LEDs or sirens) connected to these pins via a MOSFET transistors or Relays are switched on and off
-accordingly.
+The **available device keys** are:
+* wht, red, ylw, grn, blu
+* sir1, sir2, sir3, sir4
+* buzzer
 
-### Standard signal schemes
-
-By default, an agent recognizes some standard schemes which are translated locally. In fact, the commander makes
-extensive use of these "macros", as they cover most of its needs.
-
-- Singles
-    - **very_long**  → `1:on,5000;off,1`
-    - **long**  → `1:on,2500;off,1`
-    - **medium** → `1:on,1000;off,1`
-    - **short** → `1:on,500;off,1`
-    - **very_short** → `1:on,250;off,1`
-- Recurring
-    - **very_slow** → `infty:on,1000;off,5000`
-    - **slow** → `infty:on,1000;off,2000`
-    - **normal** → `infty:on,1000;off,1000`
-    - **fast** → `infty:on,500;off,500`
-    - **very_fast** → `infty:on,250;off,250`
-    - **netstatus** → `infty:on,250;off,750`
-- Buzzer signals
-    - **single_buzz** → `1:on,75;off,75`
-    - **double_buzz** → `2:on,75;off,75`
-    - **triple_buzz** → `3:on,75;off,75`
-
-Hence, a signal with a payload like `{"led_red":"slow"}` would translate to `{"led_red":"infty:on,1000;off,2000"}`.
-
-### Dynamic signal schemes
-
-- Progress
-- Time
 
 ### Devices
 
@@ -309,36 +295,75 @@ siren. So the meaning of this list should be pretty obvious.
 
 There are 3 device groups:
 
-- `all` → All pins.
 - `led_all` → `led_wht, led_red, led_ylw, led_grn, led_blu`
 - `sir_all` → `sir1, sir2, sir3`
 
-**Example:**
+**Examples:**
 
 A signal which causes the agent to buzz two times (75 ms) would have a payload like this:
 
 ```json
-{"buzzer":"2:on,75;off,75"}
+{
+  "buzzer": {
+    "repeat" : 2,
+    "scheme" : [75,-75]        
+  }
+}
 ```
 
 If we want all LEDs to blink every second (until further notice), we would send this:
 
 ```json
-{"led_all":"infty:on,1000;off,1000"}
+{
+  "led_all": {
+    "repeat": -1,
+    "scheme": [
+      1000,
+      -1000
+    ]
+  }
+}
 ```
 
-or in short:
+or in short (using a standard signal scheme - see below):
 
 ```json
-{"led_all":"normal"}
+{
+  "led_all": "normal"
+}
 ```
 
 We can combine multiple payloads into one message. Also for the other commands, not only signals.
 
 ```json
 {
-  "led_all": "infty:on,250;off,2500",
+  "led_all": {
+    "repeat": -1,
+    "scheme": [
+      250,
+      -2500
+    ]
+  },
   "sir1": "long"
+}
+```
+
+Even though this may be a bad example, because usually we are not combining acoustic and visual commands.
+
+Devices (like LEDs or sirens) connected to these pins via a MOSFET transistors or Relays are switched on and off accordingly.
+
+### Standard signal schemes
+
+By default, an agent recognizes some standard schemes which are translated locally. In fact, the commander makes extensive use of these "macros", as they cover most of its needs. See the file [scheme_macros.json](src/main/resources/scheme_macros.json) for more details.
+
+### Dynamic signal schemes
+In contrast to static schemes, the agents can also handle dynamic signalling. We can show the remaining time as a progress bar running from 0% to 100%.
+
+#### Progress
+If we want to use the progress function to show a timer value, all LEDs are needed. 
+```json
+{
+  "progress": "remaining"
 }
 ```
 
@@ -369,16 +394,13 @@ Topic: `/rlg/cmd/ag01/paged`
 
 Agents can handle LCDs driven by the [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller)
 controller chip. LCDs with line/col should have a text screen dimension of 20x4. As You can see in
-the [JavaDoc for MyLCD](https://github.com/tloehr/rlgagent/blob/main/src/main/java/de/flashheart/rlgagent/hardware/abstraction/MyLCD.java),the
-display output is organized in pages, which cycle in order by their addition. Refer to the MyLCD class for more details.
+the [JavaDoc for MyLCD](https://github.com/tloehr/rlgagent/blob/main/src/main/java/de/flashheart/rlgagent/hardware/abstraction/MyLCD.java), the display output is organized in pages, which cycle in order by their addition. Refer to the MyLCD class for more details.
 
-Every screen page is identified by a string handle. Please note that there is always a starting page called **`page0`**,
-which cannot be removed.
+Every screen page is identified by a string handle. Please note that there is always a starting page called **`page0`**, which cannot be removed.
 
 ### Setting the page content
 
-The following payload will set the content of 2 pages. A new page will be created automatically when needed. It is also
-automatically removed, when this new page is missing from a later page content command.
+The following payload will set the content of 2 pages. A new page will be created automatically when needed. It is also automatically removed, when this new page is missing from a later page content command.
 
 ```json
 {

@@ -1,116 +1,118 @@
 package de.flashheart.rlgagent.hardware.pinhandler;
 
-
 import de.flashheart.rlgagent.hardware.abstraction.MyPin;
 import de.flashheart.rlgagent.misc.Configs;
 import lombok.extern.log4j.Log4j2;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-
 
 @Log4j2
 public class PinHandler2 implements Runnable {
+    private static final int PERIOD = 25;
 
-
-    ScheduledExecutorService executor;
-    LinkedList<Integer>[] schemes;
-    ReentrantLock lock;
-    final int period;
-    int iter = 0;
-    ArrayList<MyPin> pins;
-    int[] repeat;
-    boolean[] starts_with_ON;
     private final Configs configs;
-    JSONObject scheme_backup;
+    ScheduledExecutorService executor;
+    ReentrantLock lock;
 
-    List<String> all_pins;
+    // the registry has a Quartet with the Pin, the repeat number, the active scheme and the backup scheme
+    HashMap<String, PinScheme> pin_registry;
+    //List<String> keys = Arrays.asList("wht", "red", "ylw", "grn", "blu", "sir1", "sir2", "sir3", "sir4", "buzzer");
+    // contains a repeat number of every Linkes List available
 
-    public PinHandler2(Configs configs, int period) {
-        this.period = period;
-        this.scheme_backup = new JSONObject();
-
-        all_pins = new ArrayList<>(Arrays.asList(Configs.ALL_PINS));
-
+    public PinHandler2(Configs configs) {
         this.configs = configs;
-        schemes = new LinkedList[]{
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>(),
-                new LinkedList<Integer>()
-        };
+        pin_registry = new HashMap<>();
         lock = new ReentrantLock();
         executor = Executors.newScheduledThreadPool(1);
-        executor.scheduleAtFixedRate(this, 0, period, TimeUnit.MILLISECONDS);
+        executor.scheduleAtFixedRate(this, 0, PERIOD, TimeUnit.MILLISECONDS);
     }
 
-
-
-    public void setScheme(String pin_name, String scheme) {
-        if (lock.isLocked()) log.warn("setScheme() is currently locked. Delay will occur.");
-        if (scheme.equalsIgnoreCase("off")) scheme = "0:";
-        scheme = configs.getScheme(scheme); // replace with predefines scheme or leave it as it was
-
+    public void add(MyPin myPin) {
         lock.lock();
-
-
         try {
-
-
+            pin_registry.put(myPin.getName(), new PinScheme(myPin));
         } finally {
             lock.unlock();
         }
     }
 
+    public void parse_incoming(JSONObject incoming) {
 
-
-    private void parse_incoming(final JSONObject incoming) {
         lock.lock();
+
         try {
-            incoming.keys().forEachRemaining(key -> {
-                JSONObject my_incoming = incoming.getJSONObject(key);
-                scheme_backup.put(key, my_incoming);
-                parse_incoming(my_incoming, all_pins.indexOf(key));
+
+            // Preprocess sir_all and led_all device selectors
+            // off is processed first, and then removed from the message
+            // other schemes are duplicated to their devices names.
+            if (incoming.has("sir_all")) {
+                if (incoming.optString("sir_all").equalsIgnoreCase("off")) {
+                    Arrays.asList(Configs.ALL_SIRENS).forEach(this::off);
+                } else {
+                    Arrays.asList(Configs.ALL_SIRENS).forEach(key -> {
+                        incoming.remove(key);
+                        incoming.put(key, incoming.getJSONObject("sir_all"));
+                    });
+                }
+            }
+            incoming.remove("sir_all");
+            if (incoming.has("led_all")) {
+                if (incoming.optString("led_all").equalsIgnoreCase("off")) {
+                    Arrays.asList(Configs.ALL_LEDS).forEach(this::off);
+                } else {
+                    Arrays.asList(Configs.ALL_LEDS).forEach(key -> {
+                        incoming.remove(key);
+                        incoming.put(key, incoming.getJSONObject("led_all"));
+                    });
+                }
+            }
+            incoming.remove("led_all");
+
+            incoming.keySet().forEach(key -> {
+                log.trace("{} found", key);
+
+                if (incoming.get(key).toString().equalsIgnoreCase("off")) {
+                    off(key);
+                    return;
+                }
+
+                JSONObject json_scheme;
+                if (configs.getScheme_macros().keySet().contains(incoming.optString(key, "NOT_A_STRING"))) {
+                    // replace scheme with macro
+                    json_scheme = configs.getScheme_macros().getJSONObject(incoming.getString(key));
+                }  else {
+                    json_scheme = incoming.getJSONObject(key);
+                }
+
+                pin_registry.get(key).setRepeat(json_scheme.getInt("repeat") < 0 ? Integer.MAX_VALUE : json_scheme.getInt("repeat") - 1);
+
+                JSONArray my_scheme = json_scheme.getJSONArray("scheme");
+
+                pin_registry.get(key).getScheme().clear();
+                my_scheme.forEach(o -> {
+                    int value = Integer.parseInt(o.toString());
+                    int multiplier = Math.abs(value / PERIOD);
+                    int sign = value >= 0 ? 1 : -1;
+
+                    // add multiplies times the value to the list
+                    for (int i = 0; i < multiplier; i++)
+                        pin_registry.get(key).getScheme().add(PERIOD * sign);
+                });
+                pin_registry.get(key).init_template();
+
+                log.trace(pin_registry.get(key).getScheme());
+
+
             });
-
         } finally {
             lock.unlock();
         }
-    }
-
-    private void parse_incoming(JSONObject my_incoming, int key_index) {
-        String str_repeat = my_incoming.getString("repeat");
-        repeat[key_index] = (str_repeat.equalsIgnoreCase("forever") ? Integer.MAX_VALUE : Integer.parseInt(str_repeat)) - 1;
-
-//        grmof
-//        String scheme_tag = my_incom
-
-        JSONArray my_scheme = my_incoming.getJSONArray("scheme");
-        final LinkedList<Integer> my_linked_list = new LinkedList<>();
-        my_scheme.forEach(o -> my_linked_list.add(Integer.parseInt(o.toString())));
-        schemes[key_index] = my_linked_list;
-    }
-
-
-    public void off(String name) {
-        setScheme(name, "0:");
-    }
-
-    /**
-     * set all known pins to off
-     */
-    public void off() {
-        Arrays.asList(Configs.ALL_PINS).forEach(this::off);
     }
 
 
@@ -119,28 +121,26 @@ public class PinHandler2 implements Runnable {
         lock.lock();
         try {
             // check all pins and set their on/off state
-            all_pins.forEach(key -> {
-                int k = all_pins.indexOf(key);
-                LinkedList<Integer> scheme = schemes[k];
-                if (scheme.isEmpty()) return;
-
-                if (scheme.get(0) <= 0) {
-                    scheme.remove(); // head
-                    log.debug("removed head. NEW list {} : {}", key, scheme);
-                    // REPEAT functionality
-                    if (scheme.isEmpty() && repeat[k] > 0) { // last pop emptied the list but we need to repeat at least once more
-                        int saved_repeat = repeat[k] - 1;
-                        //parse_incoming(key); // recreate initial list for this key
-                        repeat[k] = saved_repeat;
-                    }
+            pin_registry.values().forEach(pinScheme -> {
+                if (pinScheme.is_empty()) { // this prevents, that we need to turn every pin off again
+                    if (pinScheme.getMyPin().isOn()) pinScheme.getMyPin().setState(false);
+                    return;
                 }
 
-                // if list size is EVEN => then head must be ON, if ODD => means OFF
-                boolean state = scheme.size() % 2 == 0;
-                pins.get(k).setState(state);
-                // no subtract the period time from the head of the list
-                scheme.set(0, scheme.get(0) - period);
-                log.debug("changed list to {} : {}", key, scheme);
+                log.trace("current list for {}: {}", pinScheme.getMyPin().getName(), pinScheme.getScheme());
+                log.trace("removing head {}", pinScheme.getScheme().get(0));
+
+                // if head of scheme > 0  then pin must be ON, < 0 means OFF
+                int head = pinScheme.pop();
+                pinScheme.getMyPin().setState(head >= 0);
+
+                log.trace("current list for {}: {}", pinScheme.getMyPin().getName(), pinScheme.getScheme());
+
+                if (pinScheme.is_empty() && pinScheme.getRepeat() > 0) { // last pop emptied the list but we need to repeat at least once more
+                    log.trace("list is empty - refilling for repeat {} ", pinScheme.getRepeat());
+                    // REPEAT functionality
+                    pinScheme.reset_scheme();
+                }
             });
         } catch (IndexOutOfBoundsException indexOutOfBoundsException) {
             // empty list, nothing to do
@@ -148,4 +148,24 @@ public class PinHandler2 implements Runnable {
             lock.unlock();
         }
     }
+
+    public void off(String key) {
+        lock.lock();
+        try {
+            pin_registry.get(key).clear();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void off() {
+        lock.lock();
+        try {
+            pin_registry.values().forEach(PinScheme::clear);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+
 }

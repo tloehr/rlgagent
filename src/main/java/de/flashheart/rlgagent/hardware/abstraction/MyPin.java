@@ -25,6 +25,7 @@ public class MyPin {
     private Synthesizer synthesizer = null;
     private MidiChannel[] channels;
     private final boolean trigger_on_high;
+    private boolean on = false;
 
 
     public MyPin(String name, Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, Optional<MCP23017GpioProvider> gpioProvider, int instrument, int note) {
@@ -90,6 +91,8 @@ public class MyPin {
     }
 
     public void setState(boolean on) {
+        if (this.on == on) return;
+        this.on = on;
         // trigger_on_high can invert the PinState / only for hardware not for UI
         // simplified trigger_on_high ? on : !on to trigger_on_high == on
         outputPin.ifPresent(gpioPinDigitalOutput -> gpioPinDigitalOutput.setState(trigger_on_high == on ? PinState.HIGH : PinState.LOW));
@@ -101,5 +104,9 @@ public class MyPin {
             if (on) channels[0].noteOn(note, 90);
             else channels[0].noteOff(note);
         }
+    }
+
+    public boolean isOn(){
+        return on;
     }
 }

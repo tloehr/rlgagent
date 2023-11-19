@@ -56,9 +56,8 @@ public class MyUI extends JFrame {
         initLEDs();
         initLCD();
 
-        if (locationX >= 0) {
-            setLocation(locationX, locationY);
-        }
+        setLocation(locationX, locationY);
+
 
     }
 
@@ -260,6 +259,7 @@ public class MyUI extends JFrame {
             public void componentMoved(ComponentEvent e) {
                 thisComponentMoved(e);
             }
+
             @Override
             public void componentResized(ComponentEvent e) {
                 thisComponentResized(e);

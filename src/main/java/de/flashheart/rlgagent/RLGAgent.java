@@ -4,7 +4,7 @@ import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import de.flashheart.rlgagent.hardware.Agent;
 import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
-import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
+import de.flashheart.rlgagent.hardware.pinhandler.PinHandler2;
 import de.flashheart.rlgagent.jobs.NetworkMonitoringJob;
 import de.flashheart.rlgagent.jobs.StatusJob;
 import de.flashheart.rlgagent.misc.AudioPlayer;
@@ -14,12 +14,9 @@ import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
@@ -31,7 +28,6 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -46,7 +42,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     private final String EVENTS, CMD4ME;//, CMD4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
-    private final PinHandler pinHandler;
+    private final PinHandler2 pinHandler;
     private final Configs configs;
     private final MyLCD myLCD;
     private Optional<IMqttClient> iMqttClient;
@@ -65,34 +61,26 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     private HashMap<String, String> current_network_stats;
     public static final DateTimeFormatter myformat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.MEDIUM);
     private AudioPlayer audioPlayer;
-    private Optional<String> progress_timer;
+    private Optional<String> progress_bar_timer;
     // Pair(Timerkey, led_grn, last_change as millis in long)
-    private Optional<Pair<String, String>> blinking_timer;
+    //private Optional<Pair<String, String>> blinking_timer;
 
-    private String[] PROGRESS_SCHEMES;
-    private int prev_progress_timer = -1;
+    private final String[] PROGRESS_SCHEMES = new String[]{"normal", "normal", "fast", "fast", "very_fast"};
+    private int prev_progress_bar_value = -1; // we will receive a lot of value updates is we use a progress bar. This will reduce the number of updates.
 
-    public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
+    public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler2 pinHandler2, MyLCD myLCD) throws SchedulerException {
         //this.lock = new ReentrantLock();
 
         log.info("RLG-Agent {}b{} {}", configs.getBuildProperties("my.version"), configs.getBuildProperties("buildNumber"), configs.getBuildProperties("buildDate"));
 
-        progress_timer = Optional.empty();
-        blinking_timer = Optional.empty();
+        progress_bar_timer = Optional.empty();
+        //blinking_timer = Optional.empty();
         this.myUI = myUI;
         this.gpio = gpio;
-        this.pinHandler = pinHandler;
+        this.pinHandler = pinHandler2;
         this.configs = configs;
         this.myLCD = myLCD;
         this.myLCD.addPropertyChangeListener(this);
-        PROGRESS_SCHEMES = new String[]{
-                configs.get_blink_schemes().getProperty("normal"),
-                configs.get_blink_schemes().getProperty("normal"),
-                configs.get_blink_schemes().getProperty("fast"),
-                configs.get_blink_schemes().getProperty("fast"),
-                configs.get_blink_schemes().getProperty("very_fast"),
-        };
-
 
         potential_brokers = Arrays.asList(configs.get(Configs.MQTT_BROKER).trim().split("\\s+"));
         current_network_stats = new HashMap<>();
@@ -200,9 +188,16 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             if (cmd.equalsIgnoreCase("paged")) {
                 procPaged(json);
             } else if (cmd.equalsIgnoreCase("visual")) {
-                procVisual(json);
+                if (json.has("progress")) {
+                    // we need all LEDs for this.
+                    prev_progress_bar_value = -1;
+                    progress_bar_timer = Optional.of(json.getString("progress"));
+                } else {
+                    progress_bar_timer = Optional.empty();
+                    pinHandler.parse_incoming(json);
+                }
             } else if (cmd.equalsIgnoreCase("acoustic")) {
-                procAcoustic(json);
+                pinHandler.parse_incoming(json);
             } else if (cmd.equalsIgnoreCase("play")) {
                 procPlay(json);
             } else if (cmd.equalsIgnoreCase("timers")) {
@@ -245,7 +240,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     private void procTimers(JSONObject json) {
-        prev_progress_timer = -1;
+        prev_progress_bar_value = -1;
         Set<String> keys = json.keySet();
         if (keys.contains("_clearall")) {
             myLCD.clear_timers();
@@ -267,96 +262,6 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                     .forEach(channel -> audioPlayer.play(channel, json.getString("subpath"), json.getString("soundfile")));
         } else
             audioPlayer.play(json.optString("channel", AudioPlayer.MUSIC), json.getString("subpath"), json.getString("soundfile"));
-    }
-
-    private void procAcoustic(JSONObject json) {
-        Set<String> keys = json.keySet();
-        if (keys.contains("all")) {
-            set_pins_to(Configs.ALL_SIRENS, json.getString("all"));
-        }
-        keys.remove("all");
-        keys.stream().filter(s -> s.matches(Configs.ACOUSTICS)).forEach(signal_key -> {
-            String signal = json.getString(signal_key);
-            pinHandler.setScheme(signal_key, signal);
-        });
-    }
-
-    private JSONObject convert_legacy_to_json(String legacy_scheme) {
-
-        JSONObject result;
-
-        try {
-            result = new JSONObject(legacy_scheme);
-        } catch (JSONException jsonException) {
-            // {"sir1":"off"} => {"sir1":{"repeat":0}}
-            // {"wht":"infty:on,500;off,500"} => {"wht":{"repeat":"forever","scheme_on":[500,500]}}
-            // {"wht":"infty:off,500;on,500"} => {"wht":{"repeat":"forever","scheme_off":[500,500]}}
-
-            // zuerst wiederholungen vom muster trennen
-            String my_scheme = configs.getScheme(legacy_scheme);
-            String[] splitFirstTurn = my_scheme.trim().split(":");
-            String repeatString = splitFirstTurn[0];
-            int repeat_num = repeatString.equals("∞") || repeatString.equalsIgnoreCase("infty") ? Integer.MAX_VALUE : Integer.parseInt(repeatString);
-            JSONArray jsonArray = new JSONArray();
-
-            if (repeat_num > 0) {
-                // Hier trennen wir die einzelnen muster voneinander
-                String scheme_pattern = splitFirstTurn[1];
-
-                String[] splitSecondTurn = scheme_pattern.trim().split(";");
-
-                for (String pattern : splitSecondTurn) {
-                    String[] splitThirdTurn = pattern.trim().split(",");
-                    jsonArray.put(Integer.parseInt(splitThirdTurn[1]));
-                }
-                result = new JSONObject().put("repeat", repeat_num).put(scheme_pattern.startsWith("off") ? "scheme_off" : "scheme_on", jsonArray);
-            } else {
-                result = new JSONObject().put("repeat", repeat_num);
-            }
-
-        }
-
-        return result;
-    }
-
-
-    private void procVisual(JSONObject json) {
-        Set<String> keys = json.keySet();
-        //JSONObject converted = new JSONObject();
-
-        if (keys.contains("all")) {
-            String value = json.getString("all");
-            prev_progress_timer = -1;
-            progress_timer = Optional.empty();
-            blinking_timer = Optional.empty();
-            if (value.startsWith("progress:")) {
-                progress_timer = Optional.of(value.split(":")[1]);
-            } else {
-//                for (String pin : Configs.ALL_LEDS) {
-//                    converted.put(pin, convert_legacy_to_json(value));
-//                }
-                set_pins_to(Configs.ALL_LEDS, value);
-
-            }
-        }
-
-        keys.remove("all");
-        keys.stream().filter(s -> s.matches(Configs.VISUALS)).forEach(signal_key -> {
-            String signal = json.getString(signal_key);
-            if (signal.startsWith("timer:")) {
-                prev_progress_timer = -1;
-                progress_timer = Optional.empty();
-                blinking_timer = Optional.of(new ImmutablePair<>(signal_key, signal.split(":")[1]));
-            } else {
-                // if a new scheme for a led is set which was formerly used as a timer signal - it will be overwritten hence the blinking_timer will be set empty()
-                if (blinking_timer.orElseGet(() -> new ImmutablePair<>("", "")).getKey().equalsIgnoreCase(signal_key)) {
-                    prev_progress_timer = -1;
-                    blinking_timer = Optional.empty();
-                }
-//                converted.put(signal_key, convert_legacy_to_json(signal));
-                pinHandler.setScheme(signal_key, signal);
-            }
-        });
     }
 
     private void procPaged(JSONObject json) {
@@ -470,14 +375,6 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         }
     }
 
-
-    private void set_pins_to(Object[] pins, String scheme) {
-        log.trace("set_pins_to {} with scheme {}", Arrays.asList(pins).toString(), scheme);
-        for (Object pin : pins) {
-            pinHandler.setScheme(pin.toString(), scheme);
-        }
-    }
-
     public void send_status_message() {
         if (mqtt_connected()) {
             JSONObject status = new JSONObject(current_network_stats);
@@ -494,98 +391,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         }
     }
 
-//    public void network_connection() throws SchedulerException {
-//        if (System.getProperties().getProperty("network_connection", "new").equalsIgnoreCase("new")) {
-//            network_connection_new();
-//        } else {
-//            network_connection_legacy();
-//        }
-//    }
 
-    /**
-     * this method is called every NETWORKING_MONITOR_INTERVAL seconds to check if network is still good. maintains a
-     * global map with necessary parameters to describe the current state of the network.
-     * <ul>
-     * <li>reads wifi parameters and stores them</li>
-     * <li>pings the last reachable host first. if no luck, it tries out all given potential brokers from the config.txt</li>
-     * <li>if the host answers the ping, and we are connected to a broker on that host -> WE ARE GOOD</li>
-     * <li>if the host answers the ping, and we are NOT connected to a broker, then we try to connect to the broker on that host.</li>
-     * <li>if nobody answers to our pings -> we CLOSE a potential connection to any MQTT broker we were connected to before.</li>
-     * <li>When there is No MQTT Broker connection, the agent displays the connection status on the LCD and the LEDs.</li>
-     * <li>every STATUS_INTERVAL_IN_NETWORKING_MONITOR_CYCLES cycles a status message is sent out the broker (if there is one)</li>
-     * </ul>
-     *
-     * @throws SchedulerException
-     */
-//    private void network_connection_legacy() {
-//        log.debug("network_connection_legacy()");
-//        Tools.check_iwconfig(current_network_stats, Tools.getIWConfig(configs.get(Configs.WIFI_CMD_LINE)));
-//        current_network_stats.put("ip", Tools.get_ipaddress(configs.get(Configs.IP_CMD_LINE)));
-//        me.setWifi(Tools.getWifiQuality(current_network_stats.get("signal")));
-//        myLCD.setVariable("wifi", Tools.WIFI[me.getWifi()]);
-//
-//        String reachable_host = "";
-//        if (!Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT))) {
-//            ListIterator<String> brokers = potential_brokers.listIterator();
-//            while (reachable_host.isEmpty() && brokers.hasNext()) {
-//                String broker = brokers.next();
-//                reachable_host = Tools.fping(current_network_stats, broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)) ? broker : "";
-//            }
-//        } else {
-//            reachable_host = active_broker;
-//        }
-//
-//        // inform LCD about the current measurements
-//        current_network_stats.forEach((k, v) -> myLCD.setVariable(k, v));
-//
-//        // if a broker is reachable but the MQTTClient is not yet connected. Try it.
-//        if (!reachable_host.isEmpty()) { // somebody answered
-//            if (!mqtt_connected()) { // but we don't have a mqtt connection yet
-//                myLCD.setLine("page0", 2, "Searching for broker");
-//                myLCD.setLine("page0", 3, "@" + reachable_host);
-//                active_broker = try_mqtt_broker(String.format("tcp://%s:%s", reachable_host, configs.get(Configs.MQTT_PORT))) ? reachable_host : "";
-//                // SUCCESS!!
-//                if (!active_broker.isEmpty()) {
-//                    myLCD.init();
-//                    myLCD.setLine("page0", 2, "MQTT connected to");
-//                    myLCD.setLine("page0", 3, active_broker);
-//                    myLCD.setLine("page0", 4, "");
-//                    set_pins_to(Configs.ALL_LEDS, "off");
-//                    pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
-//                    pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
-//                    send_status_message(); // tell commander immediately
-//                }
-//            }
-//            // get a better ping statistics out of 5 pings to the current WORKING broker
-//            //Tools.fping(current_network_stats, active_broker, 5, 500);
-//        } else {
-//            disconnect_from_mqtt_broker();
-//        }
-//
-//        if (!mqtt_connected()) {
-//            set_pins_to(Configs.ALL_LEDS, "off");
-//            pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
-//            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "netstatus");
-//            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "netstatus");
-//            if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, "netstatus");
-//
-//            if (!myLCD.pageExists("network1")) {
-//                myLCD.welcome_page();
-//
-//                myLCD.setLine("network1", 1, "ssid:${essid}");
-//                myLCD.setLine("network1", 2, "AP:${ap}");
-//                myLCD.setLine("network1", 3, "IP:${ip}");
-//                myLCD.setLine("network1", 4, "wifi:${wifi}");
-//
-//                myLCD.setLine("network2", 1, "${ping_host} ${ping_success}");
-//                myLCD.setLine("network2", 2, "ping:${ping_avg} ms");
-//                myLCD.setLine("network2", 3, "last ping");
-//                myLCD.setLine("network2", 4, "${last_ping}");
-//            }
-//        }
-//
-//        netmonitor_cycle++;
-//    }
     public void network_connection() {
         // some statistics only
         log.trace("network_connection_new()");
@@ -612,6 +418,9 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             return; // will be reconnected with the next call to this method
         }
 
+        pinHandler.off();
+        JSONObject netstatus_scheme = new JSONObject().put(Configs.OUT_LED_WHITE, "netstatus");  // white is always flashing
+        pinHandler.parse_incoming(netstatus_scheme); // start immediately
         String reachable_host = "";
         if (active_broker.isEmpty()) { // we only search for a new host when we weren't connected before
             log.debug("haven't had a broker yet - searching");
@@ -626,15 +435,16 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             reachable_host = Tools.fping(current_network_stats, active_broker, configs.getInt(Configs.PING_TRIES), configs.getInt(Configs.PING_TIMEOUT)) ? active_broker : "";
         }
         current_network_stats.forEach((k, v) -> myLCD.setVariable(k, v));
-        set_pins_to(Configs.ALL_LEDS, "off");
-        pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
+
         // still empty ?
         if (reachable_host.isEmpty()) {
             log.debug("nobody answered - failed");
-            pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
-            if (me.getWifi() > 0) pinHandler.setScheme(Configs.OUT_LED_RED, "netstatus");
-            if (me.getWifi() > 2) pinHandler.setScheme(Configs.OUT_LED_YELLOW, "netstatus");
-            if (me.getWifi() > 3) pinHandler.setScheme(Configs.OUT_LED_GREEN, "netstatus");
+
+            if (me.getWifi() > 0) netstatus_scheme.put(Configs.OUT_LED_RED, "netstatus");
+            if (me.getWifi() > 2) netstatus_scheme.put(Configs.OUT_LED_YELLOW, "netstatus");
+            if (me.getWifi() > 3) netstatus_scheme.put(Configs.OUT_LED_GREEN, "netstatus");
+
+            pinHandler.parse_incoming(netstatus_scheme);
 
             if (!myLCD.pageExists("network1")) {
                 myLCD.welcome_page();
@@ -660,13 +470,12 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 myLCD.setLine("page0", 2, "MQTT connected to");
                 myLCD.setLine("page0", 3, active_broker);
                 myLCD.setLine("page0", 4, "");
-                pinHandler.setScheme(Configs.OUT_LED_WHITE, "netstatus"); // white is always flashing
-                pinHandler.setScheme(Configs.OUT_LED_BLUE, "netstatus"); // white is always flashing
+                netstatus_scheme.put(Configs.OUT_LED_BLUE, "netstatus");
+                pinHandler.parse_incoming(netstatus_scheme);
                 send_status_message(); // tell commander immediately
             }
         }
     }
-
 
     private boolean mqtt_connected() {
         return iMqttClient.isPresent() && iMqttClient.get().isConnected();
@@ -707,41 +516,53 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (progress_timer.isPresent()) led_progress_bar(evt);
-        if (blinking_timer.isPresent()) led_blinking_timer(evt);
+        update_progress_bar(evt);
+        //if (blinking_timer.isPresent()) led_blinking_timer(evt); // set a blink scheme to show the remaining time
     }
 
-    private void led_blinking_timer(PropertyChangeEvent evt) {
-        // left is the timer key from mylcd
-        if (!evt.getPropertyName().equalsIgnoreCase(blinking_timer.get().getRight())) return;
-        if (((Long) evt.getNewValue()) == 0l) {
-            pinHandler.setScheme(blinking_timer.get().getLeft(), "off");
-            return;
-        }
-        LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli((Long) evt.getNewValue()),
-                TimeZone.getTimeZone("UTC").toZoneId());
-        // update timer only when minutes change
-        if (prev_progress_timer == remainingTime.getMinute()) return;
-        prev_progress_timer = remainingTime.getMinute();
-        pinHandler.setScheme(blinking_timer.get().getLeft(), Tools.getGametimeBlinkingScheme(remainingTime));
-    }
+    /**
+     * update the current "remaining timer" display on the pinhandler
+     *
+     * @param evt
+     */
+//    private void led_blinking_timer(PropertyChangeEvent evt) {
+//        // left is the timer key from mylcd
+//        if (!evt.getPropertyName().equalsIgnoreCase(blinking_timer.get().getRight())) return;
+//        if (((Long) evt.getNewValue()) == 0l) {
+//            pinHandler.setScheme(blinking_timer.get().getLeft(), "off");
+//            return;
+//        }
+//        LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli((Long) evt.getNewValue()),
+//                TimeZone.getTimeZone("UTC").toZoneId());
+//        // update timer only when minutes change
+//        if (prev_progress_bar_value == remainingTime.getMinute()) return;
+//        prev_progress_bar_value = remainingTime.getMinute();
+//        pinHandler.setScheme(blinking_timer.get().getLeft(), Tools.getGametimeBlinkingScheme(remainingTime));
+//    }
 
-    void led_progress_bar(PropertyChangeEvent evt) {
-        if (!evt.getPropertyName().equalsIgnoreCase(progress_timer.get())) return;
-        if (((Long) evt.getNewValue()) == 0l) {
-            set_pins_to(Configs.ALL_LEDS, "off");
+    void update_progress_bar(PropertyChangeEvent evt) {
+        if (!progress_bar_timer.isPresent()) return;
+        if (!progress_bar_timer.orElse("").equals(evt.getPropertyName())) return;
+
+        long new_value = (Long) evt.getNewValue();
+        long old_value = (Long) evt.getOldValue();
+
+        if (new_value == 0l) {
+            Arrays.asList(Configs.ALL_LEDS).forEach(pinHandler::off);
             return;
         }
-        BigDecimal initial_timer = BigDecimal.valueOf((Long) evt.getOldValue());
-        BigDecimal current_timer = BigDecimal.valueOf((Long) evt.getNewValue());
+
+        BigDecimal initial_timer = BigDecimal.valueOf(old_value);
+        BigDecimal current_timer = BigDecimal.valueOf(new_value);
         BigDecimal ratio = BigDecimal.ONE.subtract(current_timer.divide(initial_timer, 2, RoundingMode.UP));
+
         int progress_steps = Configs.ALL_LEDS.length;
         int progress = ratio.multiply(BigDecimal.valueOf(progress_steps)).intValue();
-        log.trace("timer progress ratio {}", ratio);
-        //progress = Math.min(progress, progress_steps);
-        log.trace("scaled to {} led stripes {}", progress_steps, progress);
-        if (progress == prev_progress_timer) return; // only set LEDs when necessary
-        prev_progress_timer = progress;
+//        log.trace("timer progress ratio {}", ratio);
+//        //progress = Math.min(progress, progress_steps);
+//        log.trace("scaled to {} led stripes {}", progress_steps, progress);
+        if (progress == prev_progress_bar_value) return; // only set LEDs when necessary
+        prev_progress_bar_value = progress;
 
         List<String> leds_to_use = new ArrayList<>(Arrays.asList(Arrays.copyOfRange(Configs.ALL_LEDS, 0, progress + 1)));
         List<String> leds_to_set_off = new ArrayList<>(Arrays.asList(Configs.ALL_LEDS));
@@ -749,9 +570,9 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         log.trace("leds to use {} with progress {}", leds_to_use, progress);
         log.trace("leds to be off {}", leds_to_set_off);
 
-        set_pins_to(leds_to_set_off.toArray(), "off");
-        set_pins_to(leds_to_use.toArray(), PROGRESS_SCHEMES[progress]);
+        // create a scheme json object to make the progress bar visible on the agents
+        JSONObject progress_scheme = new JSONObject().put("led_all", "off");  // white is always flashing
+        leds_to_use.forEach(key -> progress_scheme.put(key, configs.getScheme_macros().getJSONObject(PROGRESS_SCHEMES[progress])));
+        pinHandler.parse_incoming(progress_scheme);
     }
-
-
 }

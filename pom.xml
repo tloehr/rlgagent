@@ -6,7 +6,7 @@
 
     <groupId>de.flashheart</groupId>
     <artifactId>rlgagent</artifactId>
-    <version>1.5</version>
+    <version>1.6</version>
 
 
     <properties>
@@ -31,11 +31,12 @@
         <log4j2.version>2.17.1</log4j2.version>
         <lombok.version>1.18.22</lombok.version>
         <lang3.version>3.12.0</lang3.version>
-        <json.version>20220320</json.version>
+        <json.version>20231013</json.version>
         <quartz.version>2.3.2</quartz.version>
         <cli.version>1.5.0</cli.version>
         <ant.version>1.9.6</ant.version>
         <flatlaf.version>2.1</flatlaf.version>
+        <javatuples.version>1.2</javatuples.version>
     </properties>
 
 
@@ -124,6 +125,11 @@
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
             <version>${quartz.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.javatuples</groupId>
+            <artifactId>javatuples</artifactId>
+            <version>${javatuples.version}</version>
         </dependency>
     </dependencies>
 

@@ -2,15 +2,20 @@ package de.flashheart.rlgagent.misc;
 
 import com.pi4j.io.gpio.RaspiPin;
 import de.flashheart.rlgagent.Main;
+import lombok.extern.log4j.Log4j2;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
+import org.json.JSONObject;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 
+@Log4j2
 public class Configs extends AbstractConfigs {
     public static final String MQTT_BROKER = "mqtt_broker";
     public static final String MQTT_PORT = "mqtt_port";
@@ -81,6 +86,8 @@ public class Configs extends AbstractConfigs {
     }
 
     private final Properties blink_schemes;
+    private final JSONObject scheme_macros;
+
 
     public Configs() throws IOException {
         super(System.getProperties().getProperty("workspace"));
@@ -112,12 +119,25 @@ public class Configs extends AbstractConfigs {
         // some defaults
         blink_schemes.setProperty("game_starts", "1:on,5000;off,1");
         blink_schemes.setProperty("game_ends", "1:on,1500;off,750;on,1500;off,750;on,5000;off,1");
+
+//        try (InputStream in = getClass().getResourceAsStream("scheme_macros.json");
+//             BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+//            // Use resource
+//            while (reader.)
+//        }
+
+        scheme_macros = new JSONObject(IOUtils.toString(this.getClass().getClassLoader().getResourceAsStream("scheme_macros.json"), StandardCharsets.UTF_8));
+        log.debug("breakpoint");
     }
 
 
     // for fixed blinking schemes
     public String getScheme(String key) {
         return blink_schemes.getProperty(key, key);
+    }
+
+    public JSONObject getScheme_macros() {
+        return scheme_macros;
     }
 
     public Optional<File> getAudioFile(String subpath, String filename) {
@@ -213,8 +233,8 @@ public class Configs extends AbstractConfigs {
         configs.setProperty(MPG321_BIN, "");
         configs.setProperty(MPG321_OPTIONS, "");
 
-        configs.setProperty(FRAME_LOCATION_X, "-1");
-        configs.setProperty(FRAME_LOCATION_Y, "-1");
+        configs.setProperty(FRAME_LOCATION_X, "0");
+        configs.setProperty(FRAME_LOCATION_Y, "0");
         configs.setProperty(SELECTED_TAB, "0");
         configs.setProperty(FRAME_WIDTH0, "275");
         configs.setProperty(FRAME_HEIGHT0, "382");
