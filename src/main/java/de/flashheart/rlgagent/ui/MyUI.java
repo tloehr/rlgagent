@@ -4,13 +4,19 @@
 
 package de.flashheart.rlgagent.ui;
 
+import java.awt.event.*;
 import javax.swing.event.*;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import com.jgoodies.forms.factories.*;
+import com.jgoodies.forms.layout.*;
 import de.flashheart.rlgagent.misc.Configs;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
+import org.json.JSONObject;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -27,15 +33,30 @@ import java.util.HashMap;
  */
 @Log4j2
 public class MyUI extends JFrame {
+
+
+    // agent is in MEDIC mode. respawn counter on cards are decreased. denied when counter is zero.
+    public static final int HANDLER_MODE_REVIVAL = 0;
+
+    // agent is in RESPAWN mode. cards are reset to the max number of lives
+    public static final int HANDLER_MODE_INIT_PLAYER_TAGS = 1;
+
+    // agent simply reports the card's uid via MQTT. THIS IS THE DEFAULT.
+    public static final int HANDLER_MODE_REPORT_UID = 2;
+
     private final Configs configs;
     HashMap<String, MyLED> pinMap;
     ArrayList<JLabel> lineList;
     private JPanel leds, sirens;
     private boolean first_run = true;
     private final Font large, normal;
+    private final HashMap<String, Integer> mock_rfid_memory;
+    private int remaining_revives_per_agent;
+
 
     public MyUI(Configs configs) {
         this.configs = configs;
+        mock_rfid_memory = new HashMap<>();
         // made this especially for the simulation environment.
         // restores the window to the last used position.
         // great for screen setups with MANY agent JFrames
@@ -53,6 +74,9 @@ public class MyUI extends JFrame {
         }
         initComponents();
         setTitle(configs.getAgentname());
+        cmb_rfid_mode.setSelectedIndex(HANDLER_MODE_REPORT_UID);
+        set_max_revives_per_player(txt_rfid_uid.getText(), 3);
+        set_remaining_revives_per_agent(50);
         initLEDs();
         initLCD();
 
@@ -60,6 +84,17 @@ public class MyUI extends JFrame {
 
 
     }
+
+    public void set_max_revives_per_player(String uid, int max_revives_per_player) {
+        mock_rfid_memory.put(uid, max_revives_per_player);
+        txt_max_lives_player.setText(Integer.toString(max_revives_per_player));
+    }
+
+    public void set_remaining_revives_per_agent(int remaining_revives_per_agent) {
+        this.remaining_revives_per_agent = remaining_revives_per_agent;
+        txt_remaining_lives_agent.setText(Integer.toString(remaining_revives_per_agent));
+    }
+
 
     private void initLCD() {
         lineList = new ArrayList<>();
@@ -94,6 +129,7 @@ public class MyUI extends JFrame {
         sirens.add(pinMap.get(Configs.OUT_SIREN3));
         sirens.add(pinMap.get(Configs.OUT_SIREN4));
         sirens.add(pinMap.get(Configs.OUT_BUZZER));
+
 
         tabPanel.setSelectedIndex(configs.getInt(Configs.SELECTED_TAB));
         set_page_content_for_tab(configs.getInt(Configs.SELECTED_TAB));
@@ -156,7 +192,12 @@ public class MyUI extends JFrame {
             if (tab == 0) { // main
                 content1.add(get_full_page(), BorderLayout.CENTER);
                 content1.add(lbl, BorderLayout.EAST);
-                content1.add(pnlLCD, BorderLayout.SOUTH);
+                JPanel tmp_panel = new JPanel();
+                tmp_panel.setLayout(new BoxLayout(tmp_panel, BoxLayout.PAGE_AXIS));
+                tmp_panel.add(pnlLCD);
+                tmp_panel.add(new JSeparator(SwingConstants.HORIZONTAL));
+                tmp_panel.add(pnlRFID);
+                content1.add(tmp_panel, BorderLayout.SOUTH);
                 int width = configs.getInt(Configs.FRAME_WIDTH0);
                 int height = configs.getInt(Configs.FRAME_HEIGHT0);
                 if (width >= 0) setSize(new Dimension(width, height));
@@ -166,7 +207,7 @@ public class MyUI extends JFrame {
                 int width = configs.getInt(Configs.FRAME_WIDTH1);
                 int height = configs.getInt(Configs.FRAME_HEIGHT1);
                 if (width >= 0) setSize(new Dimension(width, height));
-            } else { // sirens
+            } else if (tab == 2) { // sirens
                 content3.add(lbl);
                 content3.add(get_siren_page());
                 int width = configs.getInt(Configs.FRAME_WIDTH2);
@@ -196,10 +237,6 @@ public class MyUI extends JFrame {
         );
     }
 
-    public JButton getBtn01() {
-        return btn01;
-    }
-
     private void thisComponentResized(ComponentEvent e) {
         if (tabPanel.getSelectedIndex() == 0) {
             configs.setInt(Configs.FRAME_WIDTH0, e.getComponent().getWidth());
@@ -218,30 +255,75 @@ public class MyUI extends JFrame {
         configs.setInt(Configs.FRAME_LOCATION_Y, e.getComponent().getY());
     }
 
-//    public JButton getBtn02() {
-//        return btn02;
-//    }
-//
-//    public void addActionListenerToBTN01(ActionListener actionListener) {
-//        btn01.addActionListener(actionListener);
-//    }
+    public void decrease_lives() {
+        int lives = Integer.parseInt(txt_lives.getText());
+        int remaining_agent_lives = Integer.parseInt(txt_remaining_lives_agent.getText());
+        //int max_lives_per_player = Integer.parseInt(txt_max_lives_player.getText());
 
-//    public void addActionListenerToBTN02(ActionListener actionListener) {
-//        btn02.addActionListener(actionListener);
-//    }
+        if (lives <= 0) {
+            log.warn("no more lives - go back to the spawn");
+            return;
+        }
 
-//    /**
-//     * the position of the frame was changed. storing new position in configs.
-//     * @param e
-//     */
-//    private void thisComponentMoved(ComponentEvent e) {
-//
-//
-//    }
+        if (remaining_agent_lives <= 0) {
+            log.warn("this medi is can't revive anymore");
+            return;
+        }
 
+        lives--;
+        this.remaining_revives_per_agent--;
+        mock_rfid_memory.put(txt_rfid_uid.getText(), lives);
+        txt_lives.setText(Integer.toString(lives));
+        txt_remaining_lives_agent.setText(Integer.toString(this.remaining_revives_per_agent));
+    }
+
+    public void init_player_tag(int max_revives_per_player) {
+        mock_rfid_memory.put(txt_rfid_uid.getText(), max_revives_per_player);
+        txt_lives.setText(Integer.toString(max_revives_per_player));
+        txt_max_lives_player.setText(Integer.toString(max_revives_per_player));
+    }
+
+    public JTextField getTxt_rfid_uid() {
+        return txt_rfid_uid;
+    }
+
+    public JButton getBtn_scanned_tag() {
+        return btn_scanned_tag;
+    }
+
+    public JButton getBtn01() {
+        return btn01;
+    }
+
+    public void setRfid_mode(int rfid_mode) {
+        cmb_rfid_mode.setSelectedIndex(rfid_mode);
+    }
+
+    private void cmb_rfid_modeItemStateChanged(ItemEvent e) {
+        if (e.getStateChange() != ItemEvent.SELECTED) return;
+        cmb_rfid_mode.getSelectedIndex();
+    }
+
+    public int get_rfid_mode() {
+        return cmb_rfid_mode.getSelectedIndex();
+    }
 
     private void initComponents() {
         // JFormDesigner - Component initialization - DO NOT MODIFY  //GEN-BEGIN:initComponents
+        pnlRFID = new JPanel();
+        label4 = new JLabel();
+        label1 = new JLabel();
+        txt_rfid_uid = new JTextField();
+        label2 = new JLabel();
+        panel1 = new JPanel();
+        txt_lives = new JTextField();
+        label3 = new JLabel();
+        txt_max_lives_player = new JTextField();
+        label6 = new JLabel();
+        txt_remaining_lives_agent = new JTextField();
+        label5 = new JLabel();
+        cmb_rfid_mode = new JComboBox<>();
+        btn_scanned_tag = new JButton();
         dialogPane = new JPanel();
         tabPanel = new JTabbedPane();
         content1 = new JPanel();
@@ -250,6 +332,77 @@ public class MyUI extends JFrame {
         buttonBar = new JPanel();
         btn01 = new JButton();
         pnlLCD = new JPanel();
+
+        //======== pnlRFID ========
+        {
+            pnlRFID.setLayout(new FormLayout(
+                    "default, $lcgap, left:default:grow",
+                    "2*(fill:default), 3*($lgap, default)"));
+
+            //---- label4 ----
+            label4.setText("NFC/RFID Tags");
+            label4.setFont(new Font(".AppleSystemUIFont", Font.BOLD, 18));
+            pnlRFID.add(label4, CC.xywh(1, 1, 3, 1, CC.CENTER, CC.DEFAULT));
+
+            //---- label1 ----
+            label1.setText("uid");
+            pnlRFID.add(label1, CC.xy(1, 2));
+
+            //---- txt_rfid_uid ----
+            txt_rfid_uid.setText("af-fe-ea-cd-1a");
+            pnlRFID.add(txt_rfid_uid, CC.xy(3, 2, CC.FILL, CC.DEFAULT));
+
+            //---- label2 ----
+            label2.setText("lives");
+            pnlRFID.add(label2, CC.xy(1, 4));
+
+            //======== panel1 ========
+            {
+                panel1.setLayout(new BoxLayout(panel1, BoxLayout.X_AXIS));
+
+                //---- txt_lives ----
+                txt_lives.setText("3");
+                txt_lives.setToolTipText("current lives");
+                panel1.add(txt_lives);
+
+                //---- label3 ----
+                label3.setText("/");
+                panel1.add(label3);
+
+                //---- txt_max_lives_player ----
+                txt_max_lives_player.setText("3");
+                txt_max_lives_player.setToolTipText("max per player");
+                panel1.add(txt_max_lives_player);
+
+                //---- label6 ----
+                label6.setText("///");
+                panel1.add(label6);
+
+                //---- txt_remaining_lives_agent ----
+                txt_remaining_lives_agent.setText("30");
+                txt_remaining_lives_agent.setToolTipText("max per agent");
+                panel1.add(txt_remaining_lives_agent);
+            }
+            pnlRFID.add(panel1, CC.xy(3, 4));
+
+            //---- label5 ----
+            label5.setText("mode");
+            pnlRFID.add(label5, CC.xy(1, 6));
+
+            //---- cmb_rfid_mode ----
+            cmb_rfid_mode.setModel(new DefaultComboBoxModel<>(new String[]{
+                    "REVIVAL",
+                    "INIT_PLAYER_TAGS",
+                    "REPORT_UID"
+            }));
+            cmb_rfid_mode.setSelectedIndex(2);
+            cmb_rfid_mode.addItemListener(e -> cmb_rfid_modeItemStateChanged(e));
+            pnlRFID.add(cmb_rfid_mode, CC.xy(3, 6));
+
+            //---- btn_scanned_tag ----
+            btn_scanned_tag.setText("RFID detected");
+            pnlRFID.add(btn_scanned_tag, CC.xywh(1, 8, 3, 1));
+        }
 
         //======== this ========
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -319,12 +472,26 @@ public class MyUI extends JFrame {
         {
             pnlLCD.setBackground(Color.gray);
             pnlLCD.setForeground(Color.black);
-            pnlLCD.setLayout(new BoxLayout(pnlLCD, BoxLayout.PAGE_AXIS));
+            pnlLCD.setLayout(new GridLayout(4, 1));
         }
         // JFormDesigner - End of component initialization  //GEN-END:initComponents
     }
 
     // JFormDesigner - Variables declaration - DO NOT MODIFY  //GEN-BEGIN:variables
+    private JPanel pnlRFID;
+    private JLabel label4;
+    private JLabel label1;
+    private JTextField txt_rfid_uid;
+    private JLabel label2;
+    private JPanel panel1;
+    private JTextField txt_lives;
+    private JLabel label3;
+    private JTextField txt_max_lives_player;
+    private JLabel label6;
+    private JTextField txt_remaining_lives_agent;
+    private JLabel label5;
+    private JComboBox<String> cmb_rfid_mode;
+    private JButton btn_scanned_tag;
     private JPanel dialogPane;
     private JTabbedPane tabPanel;
     private JPanel content1;

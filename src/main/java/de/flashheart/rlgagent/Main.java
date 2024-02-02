@@ -7,16 +7,14 @@ import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
 import de.flashheart.rlgagent.hardware.I2CLCD;
-import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
-import de.flashheart.rlgagent.hardware.abstraction.MyPin;
-import de.flashheart.rlgagent.hardware.pinhandler.PinHandler;
-import de.flashheart.rlgagent.hardware.pinhandler.PinHandler2;
+import de.flashheart.rlgagent.hardware.MyLCD;
+import de.flashheart.rlgagent.hardware.MyPin;
+import de.flashheart.rlgagent.hardware.PinHandler;
 import de.flashheart.rlgagent.misc.Configs;
 import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.cli.*;
-import org.json.JSONObject;
 
 import javax.swing.*;
 import java.awt.*;
@@ -31,7 +29,6 @@ public class Main {
     public static final String PROJECT = "rlgagent";
     private static RLGAgent agent;
     private static Configs configs;
-    private static PinHandler pinHandler;
     private static MyLCD myLCD;
     private static Optional<MyUI> myUI;
 
@@ -39,13 +36,13 @@ public class Main {
     private static Optional<MCP23017GpioProvider> mcp23017_1;
     private static Optional<I2CBus> i2CBus;
     private static Optional<I2CLCD> lcd_hardware;
-    private static PinHandler2 pinHandler2;
+    private static PinHandler pinHandler;
 
     public static void main(String[] args) throws Exception {
         initBaseSystem(args);
         initHardware();
         initGameSystem();
-        agent = new RLGAgent(configs, myUI, gpioController, pinHandler2, myLCD);
+        agent = new RLGAgent(configs, myUI, gpioController, pinHandler, myLCD);
     }
 
     private static void initBaseSystem(String[] args) throws IOException, UnsupportedLookAndFeelException, ClassNotFoundException, InstantiationException, IllegalAccessException {
@@ -84,7 +81,6 @@ public class Main {
         configs = new Configs();
 
         pinHandler = new PinHandler(configs);
-        pinHandler2 = new PinHandler2(configs);
         //pinHandler2 = new PinHandler2(configs, 25);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> agent.procShutdown(false)));
 
@@ -98,18 +94,6 @@ public class Main {
     }
 
     private static void initGameSystem() {
-
-        pinHandler2.add(new MyPin(Configs.OUT_LED_WHITE, configs, myUI, gpioController, mcp23017_1, -1, -1));
-        pinHandler2.add(new MyPin(Configs.OUT_LED_RED, configs, myUI, gpioController, mcp23017_1, -1, -1));
-        pinHandler2.add(new MyPin(Configs.OUT_LED_YELLOW, configs, myUI, gpioController, mcp23017_1, -1, -1));
-        pinHandler2.add(new MyPin(Configs.OUT_LED_GREEN, configs, myUI, gpioController, mcp23017_1, -1, -1));
-        pinHandler2.add(new MyPin(Configs.OUT_LED_BLUE, configs, myUI, gpioController, mcp23017_1, -1, -1));
-        pinHandler2.add(new MyPin(Configs.OUT_SIREN1, configs, myUI, gpioController, mcp23017_1, 70, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN1)));
-        pinHandler2.add(new MyPin(Configs.OUT_SIREN2, configs, myUI, gpioController, mcp23017_1, 50, 90, configs.is(Configs.TRIGGER_ON_HIGH_SIREN2)));
-        pinHandler2.add(new MyPin(Configs.OUT_SIREN3, configs, myUI, gpioController, mcp23017_1, 50, 75, configs.is(Configs.TRIGGER_ON_HIGH_SIREN3)));
-        pinHandler2.add(new MyPin(Configs.OUT_SIREN4, configs, myUI, gpioController, mcp23017_1, 50, 67, configs.is(Configs.TRIGGER_ON_HIGH_SIREN4)));
-        pinHandler2.add(new MyPin(Configs.OUT_BUZZER, configs, myUI, gpioController, mcp23017_1, 70, 60));
-
 
         pinHandler.add(new MyPin(Configs.OUT_LED_WHITE, configs, myUI, gpioController, mcp23017_1, -1, -1));
         pinHandler.add(new MyPin(Configs.OUT_LED_RED, configs, myUI, gpioController, mcp23017_1, -1, -1));

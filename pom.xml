@@ -35,6 +35,8 @@
         <quartz.version>2.3.2</quartz.version>
         <cli.version>1.5.0</cli.version>
         <ant.version>1.9.6</ant.version>
+        <jgoodies-forms.version>1.9.0</jgoodies-forms.version>
+        <jgoodies-common.version>1.8.1</jgoodies-common.version>
         <flatlaf.version>2.1</flatlaf.version>
         <javatuples.version>1.2</javatuples.version>
     </properties>
@@ -80,6 +82,18 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${commons.io.version}</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.jgoodies/jgoodies-common -->
+        <dependency>
+            <groupId>com.jgoodies</groupId>
+            <artifactId>jgoodies-common</artifactId>
+            <version>${jgoodies-common.version}</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.jgoodies/jgoodies-forms -->
+        <dependency>
+            <groupId>com.jgoodies</groupId>
+            <artifactId>jgoodies-forms</artifactId>
+            <version>${jgoodies-forms.version}</version>
         </dependency>
         <!-- SLF4J Bridge -->
         <dependency>

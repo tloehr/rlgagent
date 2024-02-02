@@ -1,4 +1,4 @@
-package de.flashheart.rlgagent.hardware.abstraction;
+package de.flashheart.rlgagent.hardware;
 
 import com.pi4j.gpio.extension.mcp.MCP23017GpioProvider;
 import com.pi4j.gpio.extension.mcp.MCP23017Pin;

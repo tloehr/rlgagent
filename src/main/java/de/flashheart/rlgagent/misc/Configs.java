@@ -81,11 +81,11 @@ public class Configs extends AbstractConfigs {
     public static final String STATUS_INTERVAL_IN_SECONDS = "status_interval_in_seconds";
     public static final String NETWORKING_MONITOR_DISCONNECT_AFTER_FAILED_PINGS = "networking_monitor_disconnect_after_failed_pings";
 
-    public Properties get_blink_schemes() {
-        return blink_schemes;
-    }
+//    public Properties get_blink_schemes() {
+//        return blink_schemes;
+//    }
 
-    private final Properties blink_schemes;
+//    private final Properties blink_schemes;
     private final JSONObject scheme_macros;
 
 
@@ -93,48 +93,15 @@ public class Configs extends AbstractConfigs {
         super(System.getProperties().getProperty("workspace"));
         // predefined schemes belong to the config file
         // so we can change the commander without necessarily having to update the agent, too
-
-        blink_schemes = new Properties();
-
-        blink_schemes.setProperty("very_long", "1:on,5000;off,0");
-        blink_schemes.setProperty("long", "1:on,2500;off,0");
-        blink_schemes.setProperty("medium", "1:on,1000;off,0");
-        blink_schemes.setProperty("short", "1:on,500;off,0");
-        blink_schemes.setProperty("very_short", "1:on,250;off,0");
-
-        // recurring signals
-        blink_schemes.setProperty("very_slow", "infty:on,1000;off,5000");
-        blink_schemes.setProperty("slow", "infty:on,1000;off,2000");
-        blink_schemes.setProperty("normal", "infty:on,1000;off,1000");
-        blink_schemes.setProperty("fast", "infty:on,500;off,500");
-        blink_schemes.setProperty("very_fast", "infty:on,250;off,250");
-        blink_schemes.setProperty("netstatus", "infty:on,250;off,750");
-
-        // for sirens
-        blink_schemes.setProperty("single_buzz", "1:on,75;off,75");
-        blink_schemes.setProperty("double_buzz", "2:on,75;off,75");
-        blink_schemes.setProperty("triple_buzz", "3:on,75;off,75");
-        blink_schemes.setProperty("annoying", "infty:on,75;off,75;on,75;off,5000");
-
-        // some defaults
-        blink_schemes.setProperty("game_starts", "1:on,5000;off,1");
-        blink_schemes.setProperty("game_ends", "1:on,1500;off,750;on,1500;off,750;on,5000;off,1");
-
-//        try (InputStream in = getClass().getResourceAsStream("scheme_macros.json");
-//             BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
-//            // Use resource
-//            while (reader.)
-//        }
-
         scheme_macros = new JSONObject(IOUtils.toString(this.getClass().getClassLoader().getResourceAsStream("scheme_macros.json"), StandardCharsets.UTF_8));
         log.debug("breakpoint");
     }
 
 
     // for fixed blinking schemes
-    public String getScheme(String key) {
-        return blink_schemes.getProperty(key, key);
-    }
+//    public String getScheme(String key) {
+//        return blink_schemes.getProperty(key, key);
+//    }
 
     public JSONObject getScheme_macros() {
         return scheme_macros;

@@ -1,9 +1,7 @@
-package de.flashheart.rlgagent.hardware.pinhandler;
+package de.flashheart.rlgagent.hardware;
 
-import de.flashheart.rlgagent.hardware.abstraction.MyPin;
 import de.flashheart.rlgagent.misc.Configs;
 import lombok.extern.log4j.Log4j2;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.*;
@@ -13,9 +11,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Log4j2
-public class PinHandler2 implements Runnable {
-    private static final int PERIOD = 25;
-
+public class PinHandler implements Runnable {
+    public static final int PERIOD = 25;
     private final Configs configs;
     ScheduledExecutorService executor;
     ReentrantLock lock;
@@ -25,7 +22,7 @@ public class PinHandler2 implements Runnable {
     //List<String> keys = Arrays.asList("wht", "red", "ylw", "grn", "blu", "sir1", "sir2", "sir3", "sir4", "buzzer");
     // contains a repeat number of every Linkes List available
 
-    public PinHandler2(Configs configs) {
+    public PinHandler(Configs configs) {
         this.configs = configs;
         pin_registry = new HashMap<>();
         lock = new ReentrantLock();
@@ -42,12 +39,11 @@ public class PinHandler2 implements Runnable {
         }
     }
 
-    public void parse_incoming(JSONObject incoming) {
+    public void parse_incoming(final JSONObject incoming) {
 
         lock.lock();
 
         try {
-
             // Preprocess sir_all and led_all device selectors
             // off is processed first, and then removed from the message
             // other schemes are duplicated to their devices names.
@@ -57,18 +53,19 @@ public class PinHandler2 implements Runnable {
                 } else {
                     Arrays.asList(Configs.ALL_SIRENS).forEach(key -> {
                         incoming.remove(key);
-                        incoming.put(key, incoming.getJSONObject("sir_all"));
+                        incoming.put(key, incoming.get("sir_all"));
                     });
                 }
             }
             incoming.remove("sir_all");
+
             if (incoming.has("led_all")) {
                 if (incoming.optString("led_all").equalsIgnoreCase("off")) {
                     Arrays.asList(Configs.ALL_LEDS).forEach(this::off);
                 } else {
                     Arrays.asList(Configs.ALL_LEDS).forEach(key -> {
                         incoming.remove(key);
-                        incoming.put(key, incoming.getJSONObject("led_all"));
+                        incoming.put(key, incoming.get("led_all"));
                     });
                 }
             }
@@ -86,28 +83,12 @@ public class PinHandler2 implements Runnable {
                 if (configs.getScheme_macros().keySet().contains(incoming.optString(key, "NOT_A_STRING"))) {
                     // replace scheme with macro
                     json_scheme = configs.getScheme_macros().getJSONObject(incoming.getString(key));
-                }  else {
+                } else {
                     json_scheme = incoming.getJSONObject(key);
                 }
 
-                pin_registry.get(key).setRepeat(json_scheme.getInt("repeat") < 0 ? Integer.MAX_VALUE : json_scheme.getInt("repeat") - 1);
-
-                JSONArray my_scheme = json_scheme.getJSONArray("scheme");
-
-                pin_registry.get(key).getScheme().clear();
-                my_scheme.forEach(o -> {
-                    int value = Integer.parseInt(o.toString());
-                    int multiplier = Math.abs(value / PERIOD);
-                    int sign = value >= 0 ? 1 : -1;
-
-                    // add multiplies times the value to the list
-                    for (int i = 0; i < multiplier; i++)
-                        pin_registry.get(key).getScheme().add(PERIOD * sign);
-                });
-                pin_registry.get(key).init_template();
-
-                log.trace(pin_registry.get(key).getScheme());
-
+                int repeat = json_scheme.getInt("repeat") < 0 ? Integer.MAX_VALUE : json_scheme.getInt("repeat") - 1;
+                pin_registry.get(key).init(repeat, json_scheme.getJSONArray("scheme"));
 
             });
         } finally {
@@ -120,28 +101,7 @@ public class PinHandler2 implements Runnable {
     public void run() {
         lock.lock();
         try {
-            // check all pins and set their on/off state
-            pin_registry.values().forEach(pinScheme -> {
-                if (pinScheme.is_empty()) { // this prevents, that we need to turn every pin off again
-                    if (pinScheme.getMyPin().isOn()) pinScheme.getMyPin().setState(false);
-                    return;
-                }
-
-                log.trace("current list for {}: {}", pinScheme.getMyPin().getName(), pinScheme.getScheme());
-                log.trace("removing head {}", pinScheme.getScheme().get(0));
-
-                // if head of scheme > 0  then pin must be ON, < 0 means OFF
-                int head = pinScheme.pop();
-                pinScheme.getMyPin().setState(head >= 0);
-
-                log.trace("current list for {}: {}", pinScheme.getMyPin().getName(), pinScheme.getScheme());
-
-                if (pinScheme.is_empty() && pinScheme.getRepeat() > 0) { // last pop emptied the list but we need to repeat at least once more
-                    log.trace("list is empty - refilling for repeat {} ", pinScheme.getRepeat());
-                    // REPEAT functionality
-                    pinScheme.reset_scheme();
-                }
-            });
+            pin_registry.values().forEach(PinScheme::next);
         } catch (IndexOutOfBoundsException indexOutOfBoundsException) {
             // empty list, nothing to do
         } finally {
@@ -153,6 +113,16 @@ public class PinHandler2 implements Runnable {
         lock.lock();
         try {
             pin_registry.get(key).clear();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void leds_off() {
+        lock.lock();
+        try {
+            Arrays.asList(Configs.ALL_LEDS).forEach(this::off);
+            //pin_registry.values().forEach(PinScheme::clear);
         } finally {
             lock.unlock();
         }

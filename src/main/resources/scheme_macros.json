@@ -64,6 +64,13 @@
       -250
     ]
   },
+  "mega_fast": {
+    "repeat": -1,
+    "scheme": [
+      100,
+      -100
+    ]
+  },
   "netstatus": {
     "repeat": -1,
     "scheme": [
@@ -116,6 +123,51 @@
       -750,
       5000
     ]
+  },
+  "prepare_team_signal": {
+    "repeat": 1,
+    "scheme": [
+      75,
+      -200,
+      400,
+      -75,
+      100
+    ]
+  },
+  "team_ready_signal": {
+    "repeat": 1,
+    "scheme": [
+      75,
+      -100,
+      400
+    ]
+  },
+  "team_hurry_up_signal": {
+    "repeat": -1,
+    "scheme": [
+      75,
+      -75,
+      75,
+      -5000
+    ]
+  },
+  "flag_taken": {
+    "repeat": 10,
+    "scheme": [
+      250,
+      -250
+    ]
+  },
+  "respawn_signal": {
+    "repeat": 1,
+    "scheme": [
+      75,
+      -500,
+      75,
+      -500,
+      150,
+      -500,
+      1200
+    ]
   }
 }
-

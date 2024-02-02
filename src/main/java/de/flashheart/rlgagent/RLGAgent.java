@@ -3,8 +3,8 @@ package de.flashheart.rlgagent;
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import de.flashheart.rlgagent.hardware.Agent;
-import de.flashheart.rlgagent.hardware.abstraction.MyLCD;
-import de.flashheart.rlgagent.hardware.pinhandler.PinHandler2;
+import de.flashheart.rlgagent.hardware.MyLCD;
+import de.flashheart.rlgagent.hardware.PinHandler;
 import de.flashheart.rlgagent.jobs.NetworkMonitoringJob;
 import de.flashheart.rlgagent.jobs.StatusJob;
 import de.flashheart.rlgagent.misc.AudioPlayer;
@@ -14,6 +14,9 @@ import de.flashheart.rlgagent.misc.Tools;
 import de.flashheart.rlgagent.ui.MyUI;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.json.JSONArray;
@@ -42,7 +45,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     private final String EVENTS, CMD4ME;//, CMD4ALL;
     private final Optional<MyUI> myUI;
     private final Optional<GpioController> gpio;
-    private final PinHandler2 pinHandler;
+    private final PinHandler pinHandler;
     private final Configs configs;
     private final MyLCD myLCD;
     private Optional<IMqttClient> iMqttClient;
@@ -65,11 +68,28 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     // Pair(Timerkey, led_grn, last_change as millis in long)
     //private Optional<Pair<String, String>> blinking_timer;
 
-    private final String[] PROGRESS_SCHEMES = new String[]{"normal", "normal", "fast", "fast", "very_fast"};
+    private final String[] PROGRESS_SCHEMES = new String[]{"normal", "normal", "fast", "very_fast", "mega_fast"};
     private int prev_progress_bar_value = -1; // we will receive a lot of value updates is we use a progress bar. This will reduce the number of updates.
 
-    public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler2 pinHandler2, MyLCD myLCD) throws SchedulerException {
-        //this.lock = new ReentrantLock();
+    private final ArrayList<Pair<List<String>, String>> PROGRESS_ESCALATION = new ArrayList<>();
+
+    public RLGAgent(Configs configs, Optional<MyUI> myUI, Optional<GpioController> gpio, PinHandler pinHandler, MyLCD myLCD) throws SchedulerException {
+
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht"), "normal"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht"), "fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht"), "very_fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red"), "normal"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red"), "fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red"), "very_fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw"), "normal"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw"), "fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw"), "very_fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw", "grn"), "normal"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw", "grn"), "fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw", "grn"), "very_fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw", "grn", "blu"), "fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw", "grn", "blu"), "very_fast"));
+        PROGRESS_ESCALATION.add(new ImmutablePair<>(Arrays.asList("wht", "red", "ylw", "grn", "blu"), "mega_fast"));
 
         log.info("RLG-Agent {}b{} {}", configs.getBuildProperties("my.version"), configs.getBuildProperties("buildNumber"), configs.getBuildProperties("buildDate"));
 
@@ -77,7 +97,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         //blinking_timer = Optional.empty();
         this.myUI = myUI;
         this.gpio = gpio;
-        this.pinHandler = pinHandler2;
+        this.pinHandler = pinHandler;
         this.configs = configs;
         this.myLCD = myLCD;
         this.myLCD.addPropertyChangeListener(this);
@@ -190,6 +210,7 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
             } else if (cmd.equalsIgnoreCase("visual")) {
                 if (json.has("progress")) {
                     // we need all LEDs for this.
+                    pinHandler.leds_off();
                     prev_progress_bar_value = -1;
                     progress_bar_timer = Optional.of(json.getString("progress"));
                 } else {
@@ -200,6 +221,8 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 pinHandler.parse_incoming(json);
             } else if (cmd.equalsIgnoreCase("play")) {
                 procPlay(json);
+            } else if (cmd.equalsIgnoreCase("rfid")) {
+                procRfid(json);
             } else if (cmd.equalsIgnoreCase("timers")) {
                 procTimers(json);
             } else if (cmd.equalsIgnoreCase("vars")) {
@@ -239,6 +262,24 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         if (system_shutdown) System.exit(0);
     }
 
+    private void procRfid(JSONObject jsonObject) {
+        if (jsonObject.getString("mode").equalsIgnoreCase("revive_player")) {
+            myUI.ifPresent(myUI1 -> {
+                myUI1.setRfid_mode(MyUI.HANDLER_MODE_REVIVAL);
+                myUI1.set_remaining_revives_per_agent(jsonObject.getInt("remaining_revives_per_agent"));
+            });
+        }
+        else if (jsonObject.getString("mode").equalsIgnoreCase("report_tag"))
+            myUI.ifPresent(myUI1 -> myUI1.setRfid_mode(MyUI.HANDLER_MODE_REPORT_UID));
+        else if (jsonObject.getString("mode").equalsIgnoreCase("init_player_tags"))
+            myUI.ifPresent(myUI1 -> {
+                myUI1.setRfid_mode(MyUI.HANDLER_MODE_INIT_PLAYER_TAGS);
+                myUI1.set_max_revives_per_player(jsonObject.getString("uid"), jsonObject.getInt("max_revives_per_player"));
+            });
+        else
+            log.warn("unknown rfid command");
+    }
+
     private void procTimers(JSONObject json) {
         prev_progress_bar_value = -1;
         Set<String> keys = json.keySet();
@@ -249,19 +290,12 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
     }
 
     private void procVars(JSONObject json) {
-        Set<String> keys = json.keySet();
-        if (keys.contains("_clearall")) {
-            myLCD.clear_timers();
-        } else
-            json.keySet().forEach(sKey -> myLCD.setVariable(sKey, json.get(sKey).toString()));
+        json.keySet().forEach(sKey -> myLCD.setVariable(sKey, json.get(sKey).toString()));
+
     }
 
     private void procPlay(JSONObject json) throws IOException {
-        if (json.optString("channel", "").equals("all")) {
-            Arrays.asList(AudioPlayer.MUSIC, AudioPlayer.SOUND1, AudioPlayer.SOUND2, AudioPlayer.VOICE1, AudioPlayer.VOICE2)
-                    .forEach(channel -> audioPlayer.play(channel, json.getString("subpath"), json.getString("soundfile")));
-        } else
-            audioPlayer.play(json.optString("channel", AudioPlayer.MUSIC), json.getString("subpath"), json.getString("soundfile"));
+        audioPlayer.play(json.optString("channel", "music"), json.getString("subpath"), json.getString("soundfile"));
     }
 
     private void procPaged(JSONObject json) {
@@ -312,17 +346,14 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
                 }
             });
 
-//            myUI1.getBtn02().addMouseListener(new MouseAdapter() {
-//                @Override
-//                public void mousePressed(MouseEvent e) {
-//                    reportEvent("btn02", new JSONObject().put("button", "down").toString());
-//                }
-//
-//                @Override
-//                public void mouseReleased(MouseEvent e) {
-//                    reportEvent("btn02", new JSONObject().put("button", "up").toString());
-//                }
-//            });
+            myUI1.getBtn_scanned_tag().addActionListener(e -> {
+                if (myUI1.get_rfid_mode() == MyUI.HANDLER_MODE_REPORT_UID)
+                    reportEvent("rfid", new JSONObject().put("uid", myUI1.getTxt_rfid_uid().getText()).toString());
+                if (myUI1.get_rfid_mode() == MyUI.HANDLER_MODE_REVIVAL)
+                    myUI1.decrease_lives();
+                if (myUI1.get_rfid_mode() == MyUI.HANDLER_MODE_INIT_PLAYER_TAGS)
+                    myUI1.init_player_tag(3);
+            });
         });
 
         current_network_stats.put("link", "100/100");
@@ -451,13 +482,9 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
 
                 myLCD.setLine("network1", 1, "ssid:${essid}");
                 myLCD.setLine("network1", 2, "AP:${ap}");
-                myLCD.setLine("network1", 3, "IP:${ip}");
+                myLCD.setLine("network1", 3, "");
                 myLCD.setLine("network1", 4, "wifi:${wifi}");
 
-                myLCD.setLine("network2", 1, "${ping_host} ${ping_success}");
-                myLCD.setLine("network2", 2, "ping:${ping_avg} ms");
-                myLCD.setLine("network2", 3, "last ping");
-                myLCD.setLine("network2", 4, "${last_ping}");
             }
         } else {
             log.debug("found host {}", reachable_host);
@@ -520,26 +547,6 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         //if (blinking_timer.isPresent()) led_blinking_timer(evt); // set a blink scheme to show the remaining time
     }
 
-    /**
-     * update the current "remaining timer" display on the pinhandler
-     *
-     * @param evt
-     */
-//    private void led_blinking_timer(PropertyChangeEvent evt) {
-//        // left is the timer key from mylcd
-//        if (!evt.getPropertyName().equalsIgnoreCase(blinking_timer.get().getRight())) return;
-//        if (((Long) evt.getNewValue()) == 0l) {
-//            pinHandler.setScheme(blinking_timer.get().getLeft(), "off");
-//            return;
-//        }
-//        LocalDateTime remainingTime = LocalDateTime.ofInstant(Instant.ofEpochMilli((Long) evt.getNewValue()),
-//                TimeZone.getTimeZone("UTC").toZoneId());
-//        // update timer only when minutes change
-//        if (prev_progress_bar_value == remainingTime.getMinute()) return;
-//        prev_progress_bar_value = remainingTime.getMinute();
-//        pinHandler.setScheme(blinking_timer.get().getLeft(), Tools.getGametimeBlinkingScheme(remainingTime));
-//    }
-
     void update_progress_bar(PropertyChangeEvent evt) {
         if (!progress_bar_timer.isPresent()) return;
         if (!progress_bar_timer.orElse("").equals(evt.getPropertyName())) return;
@@ -547,8 +554,11 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         long new_value = (Long) evt.getNewValue();
         long old_value = (Long) evt.getOldValue();
 
-        if (new_value == 0l) {
-            Arrays.asList(Configs.ALL_LEDS).forEach(pinHandler::off);
+        if (new_value == 0L) {
+            // say goodbye
+            pinHandler.parse_incoming(new JSONObject("{" +
+                    "\"led_all\": \"very_long\"" +
+                    "}"));
             return;
         }
 
@@ -556,23 +566,17 @@ public class RLGAgent implements MqttCallbackExtended, PropertyChangeListener {
         BigDecimal current_timer = BigDecimal.valueOf(new_value);
         BigDecimal ratio = BigDecimal.ONE.subtract(current_timer.divide(initial_timer, 2, RoundingMode.UP));
 
-        int progress_steps = Configs.ALL_LEDS.length;
-        int progress = ratio.multiply(BigDecimal.valueOf(progress_steps)).intValue();
-//        log.trace("timer progress ratio {}", ratio);
-//        //progress = Math.min(progress, progress_steps);
-//        log.trace("scaled to {} led stripes {}", progress_steps, progress);
-        if (progress == prev_progress_bar_value) return; // only set LEDs when necessary
-        prev_progress_bar_value = progress;
-
-        List<String> leds_to_use = new ArrayList<>(Arrays.asList(Arrays.copyOfRange(Configs.ALL_LEDS, 0, progress + 1)));
-        List<String> leds_to_set_off = new ArrayList<>(Arrays.asList(Configs.ALL_LEDS));
-        leds_to_set_off.removeAll(leds_to_use); // set difference
-        log.trace("leds to use {} with progress {}", leds_to_use, progress);
-        log.trace("leds to be off {}", leds_to_set_off);
+        int progress_steps = PROGRESS_ESCALATION.size();
+        int step = ratio.multiply(BigDecimal.valueOf(progress_steps)).intValue();
+        if (step == prev_progress_bar_value) return; // only set LEDs when necessary
+        prev_progress_bar_value = step;
 
         // create a scheme json object to make the progress bar visible on the agents
-        JSONObject progress_scheme = new JSONObject().put("led_all", "off");  // white is always flashing
-        leds_to_use.forEach(key -> progress_scheme.put(key, configs.getScheme_macros().getJSONObject(PROGRESS_SCHEMES[progress])));
+        JSONObject progress_scheme = new JSONObject();  // white is always flashing
+        PROGRESS_ESCALATION.get(step).getLeft().forEach(pin -> {
+            String speed = PROGRESS_ESCALATION.get(step).getRight();
+            progress_scheme.put(pin, speed);
+        });
         pinHandler.parse_incoming(progress_scheme);
     }
 }

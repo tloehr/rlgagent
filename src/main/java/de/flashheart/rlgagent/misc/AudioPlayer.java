@@ -17,12 +17,8 @@ import java.util.Optional;
 public class AudioPlayer {
     private final Configs configs;
     private File mpg_bin;
-    public static final String MUSIC = "music";
-    public static final String VOICE1 = "voice1";
-    public static final String VOICE2 = "voice2";
-    public static final String SOUND1 = "sound1";
-    public static final String SOUND2 = "sound2";
-    private HashMap<String, Process> process_map;
+
+    private final HashMap<String, Process> process_map;
 
     public AudioPlayer(Configs configs) {
         this.configs = configs;
@@ -35,8 +31,9 @@ public class AudioPlayer {
             process_map.remove(channel).destroy();
     }
 
-    public void play(final String subpath, final String songfile) {
-        play(MUSIC, subpath, songfile);
+    public void stop() {
+        process_map.forEach((s, process) -> process.destroy());
+        process_map.clear();
     }
 
     /**
@@ -45,7 +42,11 @@ public class AudioPlayer {
      */
     public void play(final String channel, final String subpath, final String songfile) {
         if (!mpg_bin.exists()) return;
-        Optional<File> file = Optional.empty();
+        if (channel.isEmpty()) { // stop all
+            stop();
+            return;
+        }
+        Optional<File> file;
         if (songfile.equals("<random>"))
             file = configs.pickRandomAudioFile(subpath);
         else

@@ -62,104 +62,7 @@ public class Tools {
 
     }
 
-    public static String getWorkingPath(String folder) {
-        return (isArm() ? "/home/pi" : System.getProperty("user.home")) + File.separator + folder;
-    }
 
-    // https://stackoverflow.com/questions/3760152/split-string-to-equal-length-substrings-in-java
-    public static String[] splitInParts(String s, int partLength) {
-        int len = s.length();
-
-        // Number of parts
-        int nparts = (len + partLength - 1) / partLength;
-        String parts[] = new String[nparts];
-
-        // Break into parts
-        int offset = 0;
-        int i = 0;
-        while (i < nparts) {
-            parts[i] = s.substring(offset, Math.min(offset + partLength, len));
-            offset += partLength;
-            i++;
-        }
-
-        return parts;
-    }
-
-    public static String left(String text, int size) {
-        return left(text, size, "...");
-    }
-
-    public static String left(String text, int size, String abrev) {
-        //        OPDE.debug("IN: " + text);
-        int originalLaenge = text.length();
-        int max = Math.min(size, originalLaenge);
-        text = text.substring(0, max);
-        if (max < originalLaenge) {
-            text += abrev;
-        }
-        return text;
-    }
-
-    // https://stackoverflow.com/questions/4672271/reverse-opposing-colors
-    public static Color getContrastColor(Color color) {
-        double y = (299 * color.getRed() + 587 * color.getGreen() + 114 * color.getBlue()) / 1000;
-        return y >= 128 ? Color.black : Color.white;
-    }
-
-    /**
-     * Creates a Color object according to the names of the Java color constants. A HTML color string like "62A9FF" may
-     * also be used. Please remove the leading "#".
-     *
-     * @param colornameOrHTMLCode
-     * @return the desired color. Defaults to BLACK, in case of an error.
-     */
-    public static Color getColor(String colornameOrHTMLCode) {
-        Color color = Color.black;
-
-        if (colornameOrHTMLCode.equalsIgnoreCase("red")) {
-            color = Color.red;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("blue")) {
-            color = Color.blue;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("dark_red")) {
-            color = Color.red.darker();
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("green")) {
-            color = Color.green;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("dark_green")) {
-            color = Color.green.darker();
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("yellow")) {
-            color = Color.yellow;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("cyan")) {
-            color = Color.CYAN;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("light_gray")) {
-            color = Color.LIGHT_GRAY;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("dark_gray")) {
-            color = Color.DARK_GRAY;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("gray")) {
-            color = Color.GRAY;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("pink")) {
-            color = Color.PINK;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("magenta")) {
-            color = Color.MAGENTA;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("white")) {
-            color = Color.WHITE;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("orange")) {
-            color = gold7;
-        } else if (colornameOrHTMLCode.equalsIgnoreCase("dark_orange")) {
-            color = darkorange;
-        } else {
-            colornameOrHTMLCode = colornameOrHTMLCode.startsWith("#") ? colornameOrHTMLCode.substring(1) : colornameOrHTMLCode;
-            try {
-                int red = Integer.parseInt(colornameOrHTMLCode.substring(0, 2), 16);
-                int green = Integer.parseInt(colornameOrHTMLCode.substring(2, 4), 16);
-                int blue = Integer.parseInt(colornameOrHTMLCode.substring(4), 16);
-                color = new Color(red, green, blue);
-            } catch (NumberFormatException nfe) {
-                color = Color.BLACK;
-            }
-        }
-        return color;
-    }
 
     public static LocalDateTime from_iso8601(String iso8601) {
         return ZonedDateTime.parse(iso8601).toLocalDateTime();
@@ -308,8 +211,6 @@ public class Tools {
     }
 
     public static String replaceVariables(String text, Map<String, String> replacements) {
-        //if (replacements.isEmpty()) return text;
-        // matches ${var} style words
         log.trace("var replacement with {}. before {}", replacements.toString(), text);
         for (Map.Entry<String, String> entry : replacements.entrySet()) {
             text = text.replace(entry.getKey(), entry.getValue());

@@ -1,4 +1,4 @@
-package de.flashheart.rlgagent.hardware.abstraction;
+package de.flashheart.rlgagent.hardware;
 
 import de.flashheart.rlgagent.hardware.I2CLCD;
 import de.flashheart.rlgagent.misc.AbstractConfigs;
@@ -40,13 +40,12 @@ public class MyLCD implements Runnable {
     // something that will show up on the display
     // so we maintain them here
     private long time_difference_since_last_cycle;
-    // left Long = starting value - neverchanges
+    // left Long = starting value -> never changes
     // right Long = decreasing value ends with 0
     private HashMap<String, Pair<Long, Long>> timers;
     private HashMap<String, String> variables; // replacement variables for text lines containing something like ${template}
 
     private long last_cycle_started_at;
-    private boolean dirty; // page refresh needed
     private ArrayList<LCDPage> pages;
 
     private int visible_page_index = 0;
@@ -101,12 +100,12 @@ public class MyLCD implements Runnable {
     public void init() {
         lock.lock();
         try {
-            dirty = false;
             pages.clear();
             pages.add(new LCDPage("page0"));
             visible_page_index = 0;
             // set defaults for variables
             setVariable("wifi", "--");
+            setVariable("wifi_signal", "YX"); // Dummy signal
             setVariable("ssid", "--");
             setVariable("agversion", configs.getBuildProperties("my.version"));
             setVariable("agbuild", configs.getBuildProperties("buildNumber"));
@@ -180,7 +179,6 @@ public class MyLCD implements Runnable {
             visible_page_index++;
             if (visible_page_index >= pages.size()) visible_page_index = 0;
             log.trace("index of active_page {}", visible_page_index);
-            //active_page = pages.get(visible_page_index);
         } catch (Exception e) {
             log.error(e);
         } finally {
@@ -197,10 +195,6 @@ public class MyLCD implements Runnable {
         for (int r = 0; r < rows; r++) {
             String line = pages.get(visible_page_index).getLine(r).isEmpty() ? StringUtils.repeat(" ", cols) : StringUtils.rightPad(StringUtils.left(pages.get(visible_page_index).getLine(r), cols), cols); // -1 ??
             log.trace("VISIBLE PAGE #" + visible_page_index + " Line" + r + ": " + line);
-//            if (log.getLevel().equals(Level.trace) && r == rows - 1) { // last line, we want a pagenumber here, when in trace mode
-//                String pagenumber = Integer.toString(visible_page_index);
-//                line = StringUtils.overlay(line, pagenumber, line.length() - pagenumber.length(), line.length());
-//            }
             if (i2CLCD.isPresent()) {
                 i2CLCD.get().display_string(line, r + 1);
             }
@@ -215,7 +209,7 @@ public class MyLCD implements Runnable {
         pages.get(visible_page_index).clear();
     }
 
-    public boolean pageExists(String handle) {
+    public boolean pageExists(String handle) { // not in pyAgent
         return pages.stream().filter(lcdPage -> lcdPage.getName().equalsIgnoreCase(handle)).count() > 0;
     }
 
@@ -240,15 +234,15 @@ public class MyLCD implements Runnable {
         time_difference_since_last_cycle = now - last_cycle_started_at;
         last_cycle_started_at = now;
 
-        // remove all timers that are zero and below
+        // remove all variables when the timers are zero and below
         timers.entrySet().stream().filter(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle <= 0).forEach(stringPairEntry -> setVariable(stringPairEntry.getKey(), "--"));
         // notify everybody about timers that ran out
         timers.entrySet().stream().filter(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle < 0).forEach(stringPairEntry ->
                 fireStateReached(new PropertyChangeEvent(this, stringPairEntry.getKey(), stringPairEntry.getValue().getLeft(), 0l)));
+        // remove all timers that are zero and below
         timers.entrySet().removeIf(stringPairEntry -> stringPairEntry.getValue().getRight() - time_difference_since_last_cycle < 0);
         // recalculate all timers
         timers.replaceAll((key, longPair) -> new ImmutablePair<>(longPair.getLeft(), longPair.getRight() - time_difference_since_last_cycle));
-        //timers.replaceAll((key, aLong) -> aLong - time_difference_since_last_cycle);
         // re-set all variables
         timers.entrySet().forEach(stringPairEntry -> {
             log.trace("time {} is now {}", stringPairEntry.getKey(), stringPairEntry.getValue().getRight());
@@ -262,18 +256,8 @@ public class MyLCD implements Runnable {
 
     public void setTimer(String key, long time) {
         log.trace("setting timer {} to {}", key, time);
-        long initial_value = (time+1) * 1000l; // we have to add one second here so the display fits to the timer notion of the players.
+        long initial_value = (time + 1) * 1000l; // we have to add one second here so the display fits to the timer notion of the players.
         timers.put(key, new ImmutablePair<>(initial_value, initial_value));
-    }
-
-    public void clear_variables() {
-        variables.clear();
-        setVariable("wifi", "--");
-        setVariable("ssid", "--");
-        setVariable("agversion", configs.getBuildProperties("my.version"));
-        setVariable("agbuild", configs.getBuildProperties("buildNumber"));
-        setVariable("agbdate", configs.getBuildProperties("buildDate"));
-        setVariable("agentname", configs.get(Configs.MY_ID));
     }
 
     public void clear_timers() {
@@ -298,14 +282,10 @@ public class MyLCD implements Runnable {
 
                     if (pages.size() > 1 && loopcounter % cycles_per_page == 0) {
                         next_page();
-                        calculate_timers();
-                        display_active_page();
                     }
 
-                    if (pages.size() == 1) {
-                        calculate_timers();
-                        display_active_page();
-                    }
+                    calculate_timers();
+                    display_active_page();
 
                 } catch (Exception ex) {
                     log.error(ex);
@@ -329,15 +309,6 @@ public class MyLCD implements Runnable {
         propertyChangeListeners.add(toAdd);
     }
 
-
-    /**
-     * sets the page cycle multiplicator. changes will be used immediately
-     *
-     * @param cycles_per_page
-     */
-    public void setCycles_per_page(int cycles_per_page) {
-        this.cycles_per_page = cycles_per_page;
-    }
 
     /**
      * internal helper class to store the contents of a page
